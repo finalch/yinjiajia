@@ -1,0 +1,6 @@
+MYSQL_HOST = 'localhost'
+MYSQL_PORT = 3306
+MYSQL_USER = 'yjj'
+MYSQL_PASSWORD = 'bV8?rC'
+MYSQL_DB = 'yinjiajia'
+SQLALCHEMY_DATABASE_URI = f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DB}?charset=utf8mb4" 

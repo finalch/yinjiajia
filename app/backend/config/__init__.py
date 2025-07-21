@@ -1,0 +1,8 @@
+# config.py
+from .mysql import SQLALCHEMY_DATABASE_URI
+from .log import LOG_PATH
+
+class Config:
+    SQLALCHEMY_DATABASE_URI = SQLALCHEMY_DATABASE_URI
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    LOG_PATH = LOG_PATH
