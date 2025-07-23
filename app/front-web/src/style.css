@@ -23,11 +23,11 @@ a:hover {
 }
 
 body {
+  max-width: none;
+  min-width: 1200px;
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+  padding: 0;
+  background: #f5f6fa;
 }
 
 h1 {
@@ -59,10 +59,28 @@ button:focus-visible {
 }
 
 #app {
-  max-width: 1280px;
+  max-width: 1600px;
+  min-width: 1200px;
   margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  min-height: 100vh;
+}
+
+/* 可选：让 el-card、el-table、el-form 等内容块自适应宽度 */
+.el-card, .el-table, .el-form {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 增大筛选表单项宽度，避免icon重叠 */
+.el-form--inline .el-form-item {
+  min-width: 220px;
+  margin-right: 16px;
+}
+.el-form--inline .el-input,
+.el-form--inline .el-select {
+  width: 200px;
 }
 
 @media (prefers-color-scheme: light) {

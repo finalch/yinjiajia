@@ -56,6 +56,7 @@ class Product(db.Model):
     category = db.Column(db.String(64))  # 商品分类（兼容旧字段）
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'))  # 分类ID（新字段）
     merchant_id = db.Column(db.Integer, db.ForeignKey('merchants.id'), nullable=False)  # 所属商家ID
+    status = db.Column(db.String(16), default='pending')  # 商品状态：pending(审核中)/on_sale(已上架)/off_sale(已下架)/rejected(审核失败)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
     reviews = db.relationship('Review', backref='product', lazy=True)  # 商品评价

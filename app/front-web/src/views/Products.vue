@@ -26,10 +26,7 @@
         </el-form-item>
         <el-form-item label="商品状态">
           <el-select v-model="filters.status" placeholder="选择状态" clearable>
-            <el-option label="在售" value="on_sale" />
-            <el-option label="下架" value="off_sale" />
-            <el-option label="待审核" value="pending" />
-            <el-option label="审核失败" value="rejected" />
+            <el-option v-for="opt in statusOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -173,6 +170,8 @@ import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
+import axios from '@/api/request'
+import dayjs from 'dayjs'
 
 export default {
   name: 'Products',
@@ -198,77 +197,75 @@ export default {
     const total = ref(156)
     
     // 商品分类
-    const categories = ref([
-      { id: 1, name: '手机数码' },
-      { id: 2, name: '服装配饰' },
-      { id: 3, name: '家居生活' },
-      { id: 4, name: '美妆护肤' }
-    ])
+    const categories = ref([])
     
     // 商品列表
-    const products = ref([
-      {
-        id: 1,
-        name: 'Apple iPhone 15 Pro',
-        specs: '暗紫色 256GB',
-        categoryName: '手机数码',
-        price: 7999,
-        stock: 50,
-        sales: 25,
-        status: 'on_sale',
-        image: 'https://img.alicdn.com/imgextra/i1/O1CN01Z5paLz1UyR3MKMFvk_!!6000000002585-0-tps-400-400.jpg',
-        createTime: '2024-01-15 14:30:00'
-      },
-      {
-        id: 2,
-        name: 'MacBook Pro 14英寸',
-        specs: 'M2 Pro芯片 16G 512G',
-        categoryName: '手机数码',
-        price: 14999,
-        stock: 20,
-        sales: 8,
-        status: 'on_sale',
-        image: 'https://img.alicdn.com/imgextra/i3/O1CN01c26iB51UyR3MKMFvk_!!6000000002585-0-tps-400-400.jpg',
-        createTime: '2024-01-14 10:20:00'
-      },
-      {
-        id: 3,
-        name: 'AirPods Pro',
-        specs: '白色',
-        categoryName: '手机数码',
-        price: 1899,
-        stock: 100,
-        sales: 45,
-        status: 'pending',
-        image: 'https://img.alicdn.com/imgextra/i4/O1CN01FgolV51UyR3MKMFvk_!!6000000002585-0-tps-400-400.jpg',
-        createTime: '2024-01-13 16:45:00'
-      },
-      {
-        id: 4,
-        name: 'Nike Air Max 270',
-        specs: '黑色 42码',
-        categoryName: '服装配饰',
-        price: 899,
-        stock: 30,
-        sales: 12,
-        status: 'off_sale',
-        image: 'https://img.alicdn.com/imgextra/i1/O1CN01c26iB51UyR3MKMFvk_!!6000000002585-0-tps-400-400.jpg',
-        createTime: '2024-01-12 09:15:00'
-      }
-    ])
+    const products = ref([])
+    
+    // 商品状态映射
+    const statusOptions = [
+      { label: '审核中', value: 'pending' },
+      { label: '已上架', value: 'on_sale' },
+      { label: '已下架', value: 'off_sale' },
+      { label: '审核失败', value: 'rejected' }
+    ]
     
     // 计算属性
     const hasSelected = computed(() => selectedProducts.value.length > 0)
     const selectedCount = computed(() => selectedProducts.value.length)
     
+    // 获取商品列表
+    const fetchProducts = async () => {
+      loading.value = true
+      try {
+        const params = {}
+        if (filters.name) params.name = filters.name
+        if (filters.category) params.category_id = filters.category
+        if (filters.status) params.status = filters.status
+        params.merchant_id = 1 // 示例
+
+        const res = await axios.get('/api/web/product/', { params })
+        // 适配后端返回数据到前端表格字段
+        products.value = (res.data.products || []).map(item => ({
+          id: item.id,
+          name: item.name,
+          specs: '',
+          categoryName: item.category || '',
+          price: item.price,
+          stock: item.stock,
+          sales: 0,
+          status: item.status,
+          image: item.image_url,
+          createTime: item.created_at ? dayjs(item.created_at).format('YYYY-MM-DD HH:mm:ss') : ''
+        }))
+        total.value = products.value.length
+        // 回显筛选项（如分类、状态）
+        if (params.category_id) filters.category = params.category_id
+        if (params.status) filters.status = params.status
+        if (params.name) filters.name = params.name
+      } catch (e) {
+        products.value = []
+      } finally {
+        loading.value = false
+      }
+    }
+    // 获取分类列表
+    const fetchCategories = async () => {
+      try {
+        const res = await axios.get('/api/web/categories?merchant_id=1&status=active')
+        categories.value = (res.data.data && res.data.data.list) ? res.data.data.list : []
+      } catch (e) {
+        categories.value = []
+      }
+    }
+    // 页面加载时获取数据
+    fetchProducts()
+    fetchCategories()
+    
     // 方法
     const handleSearch = () => {
-      loading.value = true
-      // 模拟搜索
-      setTimeout(() => {
-        loading.value = false
-        ElMessage.success('搜索完成')
-      }, 1000)
+      fetchProducts()
+      ElMessage.success('搜索完成')
     }
     
     const resetFilters = () => {
@@ -332,9 +329,9 @@ export default {
     
     const getStatusText = (status) => {
       const texts = {
-        on_sale: '在售',
-        off_sale: '下架',
-        pending: '待审核',
+        pending: '审核中',
+        on_sale: '已上架',
+        off_sale: '已下架',
         rejected: '审核失败'
       }
       return texts[status] || '未知'
@@ -400,7 +397,10 @@ export default {
       viewProduct,
       deleteProduct,
       handleSizeChange,
-      handleCurrentChange
+      handleCurrentChange,
+      fetchProducts,
+      fetchCategories,
+      statusOptions
     }
   }
 }
