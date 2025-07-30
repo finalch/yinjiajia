@@ -4,16 +4,17 @@ import HelloWorld from './components/HelloWorld.vue'
 
 <template>
   <div id="app">
+    
+    
+    <main class="main-content">
+      <router-view />
+    </main>
     <nav class="navbar">
       <router-link to="/" class="nav-link">商城</router-link>
       <router-link to="/cart" class="nav-link">购物车</router-link>
       <router-link to="/my-order" class="nav-link">我的订单</router-link>
       <router-link to="/customer-service" class="nav-link">客服</router-link>
     </nav>
-    
-    <main class="main-content">
-      <router-view />
-    </main>
   </div>
 </template>
 

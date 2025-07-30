@@ -29,20 +29,28 @@ def create_app():
 
     # Blueprint 延迟导入，避免循环引用
     from api.app.product import app_product_api
+    from api.app.cart import app_cart_api
     from api.web.product import web_product_api
     from api.app.order import app_order_api
     from api.web.order import web_order_api
     from api.app.review import app_review_api
     from api.web.review import web_review_api
     from api.web.category import category_bp
+    from api.web.analytics import web_analytics_api
+    from api.web.finance import web_finance_api
+    from api.web.customer_service import web_customer_service_api
 
     app.register_blueprint(app_product_api)
+    app.register_blueprint(app_cart_api)
     app.register_blueprint(web_product_api)
     app.register_blueprint(app_order_api)
     app.register_blueprint(web_order_api)
     app.register_blueprint(app_review_api)
     app.register_blueprint(web_review_api)
     app.register_blueprint(category_bp)
+    app.register_blueprint(web_analytics_api)
+    app.register_blueprint(web_finance_api)
+    app.register_blueprint(web_customer_service_api)
 
     return app, logger, LOG_PATH
 

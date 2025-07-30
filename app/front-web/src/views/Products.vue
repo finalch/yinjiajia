@@ -104,7 +104,7 @@
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="getStatusType(row.status)">
-              {{ getStatusText(row.status) }}
+              {{ row.statusText }}
             </el-tag>
           </template>
         </el-table-column>
@@ -126,7 +126,7 @@
               type="text" 
               size="small" 
               @click="toggleStatus(row)"
-              v-else
+              v-else-if="row.status === 'approved' || row.status === 'off_sale'"
             >
               上架
             </el-button>
@@ -188,7 +188,7 @@ export default {
     const filters = reactive({
       name: '',
       category: '',
-      status: ''
+      status: ''  // 默认为空，显示所有状态
     })
     
     // 分页
@@ -204,7 +204,9 @@ export default {
     
     // 商品状态映射
     const statusOptions = [
+      { label: '全部', value: '' },
       { label: '审核中', value: 'pending' },
+      { label: '审核通过', value: 'approved' },
       { label: '已上架', value: 'on_sale' },
       { label: '已下架', value: 'off_sale' },
       { label: '审核失败', value: 'rejected' }
@@ -218,33 +220,42 @@ export default {
     const fetchProducts = async () => {
       loading.value = true
       try {
-        const params = {}
+        const params = {
+          page: currentPage.value,
+          per_page: pageSize.value
+        }
         if (filters.name) params.name = filters.name
         if (filters.category) params.category_id = filters.category
         if (filters.status) params.status = filters.status
         params.merchant_id = 1 // 示例
 
         const res = await axios.get('/api/web/product/', { params })
-        // 适配后端返回数据到前端表格字段
-        products.value = (res.data.products || []).map(item => ({
-          id: item.id,
-          name: item.name,
-          specs: '',
-          categoryName: item.category || '',
-          price: item.price,
-          stock: item.stock,
-          sales: 0,
-          status: item.status,
-          image: item.image_url,
-          createTime: item.created_at ? dayjs(item.created_at).format('YYYY-MM-DD HH:mm:ss') : ''
-        }))
-        total.value = products.value.length
-        // 回显筛选项（如分类、状态）
-        if (params.category_id) filters.category = params.category_id
-        if (params.status) filters.status = params.status
-        if (params.name) filters.name = params.name
+        
+        if (res.data.code === 200) {
+          // 适配后端返回数据到前端表格字段
+          products.value = (res.data.data.list || []).map(item => ({
+            id: item.id,
+            name: item.name,
+            specs: '',
+            categoryName: item.category_name || '',
+            price: item.price,
+            stock: item.stock,
+            sales: 0,
+            status: item.status,
+            statusText: item.status_text || getStatusText(item.status), // 使用后端返回的状态文本
+            image: item.image_url,
+            createTime: item.created_at || ''
+          }))
+          total.value = res.data.data.pagination.total
+        } else {
+          products.value = []
+          total.value = 0
+        }
       } catch (e) {
+        console.error('获取商品列表失败:', e)
         products.value = []
+        total.value = 0
+        ElMessage.error('获取商品列表失败')
       } finally {
         loading.value = false
       }
@@ -253,8 +264,13 @@ export default {
     const fetchCategories = async () => {
       try {
         const res = await axios.get('/api/web/categories?merchant_id=1&status=active')
-        categories.value = (res.data.data && res.data.data.list) ? res.data.data.list : []
+        if (res.data.code === 200) {
+          categories.value = res.data.data.list || []
+        } else {
+          categories.value = []
+        }
       } catch (e) {
+        console.error('获取分类列表失败:', e)
         categories.value = []
       }
     }
@@ -291,18 +307,50 @@ export default {
     const batchOnSale = async () => {
       try {
         await ElMessageBox.confirm('确定要批量上架选中的商品吗？', '提示')
-        ElMessage.success('批量上架成功')
-      } catch {
-        // 用户取消
+        
+        const productIds = selectedProducts.value
+        const response = await axios.post('/api/web/product/batch-toggle-status', {
+          product_ids: productIds,
+          status: 'on_sale'
+        })
+        
+        if (response.data.code === 200) {
+          ElMessage.success(`批量上架成功，成功${response.data.data.updated_count}个，失败${response.data.data.failed_count}个`)
+          selectedProducts.value = []
+          fetchProducts() // 刷新列表
+        } else {
+          ElMessage.error(response.data.message || '批量上架失败')
+        }
+      } catch (error) {
+        if (error.message !== 'cancel') {
+          console.error('批量上架失败:', error)
+          ElMessage.error('批量上架失败')
+        }
       }
     }
     
     const batchOffSale = async () => {
       try {
         await ElMessageBox.confirm('确定要批量下架选中的商品吗？', '提示')
-        ElMessage.success('批量下架成功')
-      } catch {
-        // 用户取消
+        
+        const productIds = selectedProducts.value
+        const response = await axios.post('/api/web/product/batch-toggle-status', {
+          product_ids: productIds,
+          status: 'off_sale'
+        })
+        
+        if (response.data.code === 200) {
+          ElMessage.success(`批量下架成功，成功${response.data.data.updated_count}个，失败${response.data.data.failed_count}个`)
+          selectedProducts.value = []
+          fetchProducts() // 刷新列表
+        } else {
+          ElMessage.error(response.data.message || '批量下架失败')
+        }
+      } catch (error) {
+        if (error.message !== 'cancel') {
+          console.error('批量下架失败:', error)
+          ElMessage.error('批量下架失败')
+        }
       }
     }
     
@@ -311,9 +359,33 @@ export default {
         await ElMessageBox.confirm('确定要批量删除选中的商品吗？此操作不可恢复！', '警告', {
           type: 'warning'
         })
-        ElMessage.success('批量删除成功')
-      } catch {
-        // 用户取消
+        
+        // 批量删除需要逐个调用删除API
+        const productIds = selectedProducts.value
+        let successCount = 0
+        let failCount = 0
+        
+        for (const productId of productIds) {
+          try {
+            const response = await axios.delete(`/api/web/product/${productId}`)
+            if (response.data.code === 200) {
+              successCount++
+            } else {
+              failCount++
+            }
+          } catch (error) {
+            failCount++
+          }
+        }
+        
+        ElMessage.success(`批量删除完成，成功${successCount}个，失败${failCount}个`)
+        selectedProducts.value = []
+        fetchProducts() // 刷新列表
+      } catch (error) {
+        if (error.message !== 'cancel') {
+          console.error('批量删除失败:', error)
+          ElMessage.error('批量删除失败')
+        }
       }
     }
     
@@ -322,6 +394,7 @@ export default {
         on_sale: 'success',
         off_sale: 'info',
         pending: 'warning',
+        approved: 'success',
         rejected: 'danger'
       }
       return types[status] || 'info'
@@ -330,6 +403,7 @@ export default {
     const getStatusText = (status) => {
       const texts = {
         pending: '审核中',
+        approved: '审核通过',
         on_sale: '已上架',
         off_sale: '已下架',
         rejected: '审核失败'
@@ -341,9 +415,31 @@ export default {
       router.push(`/products/edit/${product.id}`)
     }
     
-    const toggleStatus = (product) => {
-      const action = product.status === 'on_sale' ? '下架' : '上架'
-      ElMessage.success(`${action}成功`)
+    const toggleStatus = async (product) => {
+      try {
+        const newStatus = product.status === 'on_sale' ? 'off_sale' : 'on_sale'
+        const action = product.status === 'on_sale' ? '下架' : '上架'
+        
+        // 只有审核通过的商品才能上架
+        if (newStatus === 'on_sale' && product.status !== 'approved') {
+          ElMessage.warning('只有审核通过的商品才能上架')
+          return
+        }
+        
+        const response = await axios.post(`/api/web/product/${product.id}/toggle-status`, {
+          status: newStatus
+        })
+        
+        if (response.data.code === 200) {
+          ElMessage.success(`${action}成功`)
+          fetchProducts() // 刷新列表
+        } else {
+          ElMessage.error(response.data.message || `${action}失败`)
+        }
+      } catch (error) {
+        console.error('切换状态失败:', error)
+        ElMessage.error('操作失败')
+      }
     }
     
     const viewProduct = (product) => {
@@ -355,20 +451,32 @@ export default {
         await ElMessageBox.confirm(`确定要删除商品"${product.name}"吗？`, '警告', {
           type: 'warning'
         })
-        ElMessage.success('删除成功')
-      } catch {
-        // 用户取消
+        
+        const response = await axios.delete(`/api/web/product/${product.id}`)
+        
+        if (response.data.code === 200) {
+          ElMessage.success('删除成功')
+          fetchProducts() // 刷新列表
+        } else {
+          ElMessage.error(response.data.message || '删除失败')
+        }
+      } catch (error) {
+        if (error.message !== 'cancel') {
+          console.error('删除失败:', error)
+          ElMessage.error('删除失败')
+        }
       }
     }
     
     const handleSizeChange = (val) => {
       pageSize.value = val
-      // 重新加载数据
+      currentPage.value = 1
+      fetchProducts()
     }
     
     const handleCurrentChange = (val) => {
       currentPage.value = val
-      // 重新加载数据
+      fetchProducts()
     }
     
     return {

@@ -50,6 +50,7 @@ class Product(db.Model):
     name = db.Column(db.String(128), nullable=False)  # 商品名称
     description = db.Column(db.Text)  # 商品描述
     price = db.Column(db.Float, nullable=False)  # 商品价格
+    original_price = db.Column(db.Float)  # 原价（用于促销显示）
     stock = db.Column(db.Integer, default=0)  # 库存数量
     image_url = db.Column(db.String(256))  # 商品图片URL
     video_url = db.Column(db.String(256))  # 商品视频URL
@@ -66,11 +67,39 @@ class Order(db.Model):
     id = db.Column(db.Integer, primary_key=True)  # 订单ID
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)  # 下单用户ID
     merchant_id = db.Column(db.Integer, db.ForeignKey('merchants.id'), nullable=False)  # 商家ID
+    order_number = db.Column(db.String(50), unique=True, nullable=False)  # 订单号
     total_amount = db.Column(db.Float, nullable=False)  # 订单总金额
     status = db.Column(db.String(32), default='pending')  # 订单状态
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
     logistics = db.relationship('Logistics', backref='order', uselist=False)  # 物流信息
+
+class OrderItem(db.Model):
+    __tablename__ = 'order_items'
+    id = db.Column(db.Integer, primary_key=True)  # 订单商品ID
+    order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=False)  # 订单ID
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)  # 商品ID
+    price = db.Column(db.Float, nullable=False)  # 商品价格
+    quantity = db.Column(db.Integer, nullable=False)  # 商品数量
+    subtotal = db.Column(db.Float, nullable=False)  # 小计金额
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
+    
+    # 关联关系
+    order = db.relationship('Order', backref='items')
+    product = db.relationship('Product', backref='order_items')
+
+class Cart(db.Model):
+    __tablename__ = 'cart'
+    id = db.Column(db.Integer, primary_key=True)  # 购物车ID
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)  # 用户ID
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)  # 商品ID
+    quantity = db.Column(db.Integer, nullable=False, default=1)  # 数量
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
+    
+    # 关联关系
+    user = db.relationship('User', backref='cart_items')
+    product = db.relationship('Product', backref='cart_items')
 
 class Review(db.Model):
     __tablename__ = 'reviews'

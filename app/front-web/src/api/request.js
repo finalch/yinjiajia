@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const instance = axios.create({
-  baseURL: 'http://127.0.0.1:5000', // 后端服务地址
+  baseURL: '', // 使用相对路径，让 vite 代理生效
   timeout: 10000
 })
 
