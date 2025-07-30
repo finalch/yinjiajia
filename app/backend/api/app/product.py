@@ -63,6 +63,15 @@ def get_products():
     # 构建返回数据
     products = []
     for product in pagination.items:
+        # 处理图片数组，如果有多个图片用逗号分隔
+        images = []
+        if product.image_url:
+            images = [img.strip() for img in product.image_url.split(',') if img.strip()]
+        
+        # 如果没有图片，添加默认图片
+        if not images:
+            images = ['https://via.placeholder.com/400x300?text=商品图片']
+        
         products.append({
             'id': product.id,
             'name': product.name,
@@ -70,7 +79,8 @@ def get_products():
             'price': float(product.price),
             'original_price': float(product.original_price) if product.original_price else None,
             'stock': product.stock,
-            'image_url': product.image_url,
+            'images': images,  # 改为images数组
+            'image_url': product.image_url,  # 保留原字段
             'video_url': product.video_url,
             'category_id': product.category_id,
             'category_name': product.category.name if product.category else '',
@@ -127,6 +137,15 @@ def get_product_detail(product_id):
             'image_url': p.image_url
         })
     
+    # 处理图片数组，如果有多个图片用逗号分隔
+    images = []
+    if product.image_url:
+        images = [img.strip() for img in product.image_url.split(',') if img.strip()]
+    
+    # 如果没有图片，添加默认图片
+    if not images:
+        images = ['https://via.placeholder.com/400x300?text=商品图片']
+    
     data = {
         'id': product.id,
         'name': product.name,
@@ -134,7 +153,8 @@ def get_product_detail(product_id):
         'price': float(product.price),
         'original_price': float(product.original_price) if product.original_price else None,
         'stock': product.stock,
-        'image_url': product.image_url,
+        'images': images,  # 改为images数组
+        'image_url': product.image_url,  # 保留原字段
         'video_url': product.video_url,
         'category_id': product.category_id,
         'category_name': product.category.name if product.category else '',

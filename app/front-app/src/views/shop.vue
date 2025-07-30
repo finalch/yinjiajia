@@ -64,7 +64,7 @@
 		<!-- 商品列表 -->
 		<div class="product-list">
 			<div class="product-item" v-for="item in products" :key="item.id" @click="goToProduct(item.id)">
-				<img class="product-image" :src="item.image_url || 'https://via.placeholder.com/300x200?text=商品图片'" />
+				<img class="product-image" :src="item.images && item.images[0] || item.image_url || 'https://via.placeholder.com/300x200?text=商品图片'" />
 				<div class="product-info">
 					<div class="product-title">{{ item.name }}</div>
 					<div class="product-meta">
