@@ -118,17 +118,22 @@
 				sortBy: 'created_at',
 				sortOrder: 'desc',
 				page: 1,
-				perPage: 20,
+				perPage: 16,
 				loading: false,
 				refreshing: false,
 				hasMore: true,
 				total: 0
 			}
 		},
-		mounted() {
-			this.fetchCategories()
-			this.fetchProducts()
-		},
+			mounted() {
+		this.fetchCategories()
+		this.fetchProducts()
+		this.setupScrollListener()
+	},
+	
+	beforeUnmount() {
+		this.removeScrollListener()
+	},
 		methods: {
 			// 获取商品分类
 			async fetchCategories() {
@@ -230,6 +235,37 @@
 			// 跳转到商品详情
 			goToProduct(productId) {
 				this.$router.push(`/product/${productId}`)
+			},
+			
+			// 设置滚动监听
+			setupScrollListener() {
+				window.addEventListener('scroll', this.handleScroll)
+			},
+			
+			// 移除滚动监听
+			removeScrollListener() {
+				window.removeEventListener('scroll', this.handleScroll)
+			},
+			
+			// 处理滚动事件
+			handleScroll() {
+				if (this.loading || !this.hasMore) return
+				
+				const scrollTop = window.pageYOffset || document.documentElement.scrollTop
+				const windowHeight = window.innerHeight
+				const documentHeight = document.documentElement.scrollHeight
+				
+				if (scrollTop + windowHeight >= documentHeight - 100) {
+					this.loadMore()
+				}
+			},
+			
+			// 加载更多
+			loadMore() {
+				if (this.hasMore && !this.loading) {
+					this.page++
+					this.fetchProducts()
+				}
 			}
 		}
 	}
@@ -337,8 +373,9 @@
 
 	.product-list {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-		gap: 20px;
+		grid-template-columns: repeat(2, 1fr);
+		gap: 12px;
+		margin-bottom: 20px;
 	}
 
 	.product-item {
@@ -348,50 +385,58 @@
 		box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 		transition: transform 0.3s, box-shadow 0.3s;
 		cursor: pointer;
+		height: 280px;
+		display: flex;
+		flex-direction: column;
 	}
 
 	.product-item:hover {
-		transform: translateY(-2px);
-		box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+		transform: translateY(-3px);
+		box-shadow: 0 6px 16px rgba(0,0,0,0.15);
 	}
 
 	.product-image {
 		width: 100%;
-		height: 200px;
+		height: 160px;
 		object-fit: cover;
 	}
 
 	.product-info {
-		padding: 15px;
+		padding: 12px;
+		display: flex;
+		flex-direction: column;
+		flex: 1;
 	}
 
 	.product-title {
-		font-size: 14px;
-		line-height: 1.4;
+		font-size: 13px;
+		line-height: 1.3;
 		color: #333;
-		margin-bottom: 8px;
+		margin-bottom: 6px;
 		display: -webkit-box;
 		-webkit-box-orient: vertical;
 		-webkit-line-clamp: 2;
 		overflow: hidden;
+		height: 34px;
 	}
 
 	.product-meta {
 		display: flex;
 		justify-content: space-between;
-		font-size: 12px;
+		font-size: 11px;
 		color: #999;
-		margin-bottom: 8px;
+		margin-bottom: 6px;
 	}
 
 	.price-section {
 		display: flex;
 		align-items: baseline;
-		margin-bottom: 8px;
+		margin-bottom: 6px;
+		flex: 1;
 	}
 
 	.current-price {
-		font-size: 18px;
+		font-size: 16px;
 		color: #e93b3d;
 		font-weight: bold;
 	}
@@ -406,7 +451,7 @@
 	.rating-section {
 		display: flex;
 		align-items: center;
-		font-size: 12px;
+		font-size: 11px;
 		color: #999;
 	}
 
@@ -430,7 +475,7 @@
 
 	.loading, .no-more, .empty-state {
 		grid-column: 1 / -1;
-		padding: 40px 0;
+		padding: 30px 0;
 		text-align: center;
 	}
 
@@ -456,8 +501,29 @@
 		}
 		
 		.product-list {
-			grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-			gap: 15px;
+			grid-template-columns: repeat(2, 1fr);
+			gap: 10px;
+		}
+		
+		.product-item {
+			height: 260px;
+		}
+		
+		.product-image {
+			height: 140px;
+		}
+		
+		.product-info {
+			padding: 10px;
+		}
+		
+		.product-title {
+			font-size: 12px;
+			height: 32px;
+		}
+		
+		.current-price {
+			font-size: 15px;
 		}
 		
 		.sort-bar {
@@ -466,6 +532,33 @@
 		
 		.sort-item {
 			margin-right: 20px;
+		}
+	}
+	
+	@media (max-width: 480px) {
+		.product-list {
+			gap: 8px;
+		}
+		
+		.product-item {
+			height: 240px;
+		}
+		
+		.product-image {
+			height: 120px;
+		}
+		
+		.product-info {
+			padding: 8px;
+		}
+		
+		.product-title {
+			font-size: 11px;
+			height: 28px;
+		}
+		
+		.current-price {
+			font-size: 14px;
 		}
 	}
 </style>
