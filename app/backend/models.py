@@ -27,7 +27,6 @@ class Merchant(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
     products = db.relationship('Product', backref='merchant', lazy=True)  # 商家商品
-    orders = db.relationship('Order', backref='merchant', lazy=True)  # 商家订单
     account = db.relationship('Account', backref='merchant', uselist=False)  # 商家账户
     categories = db.relationship('Category', backref='merchant', lazy=True)  # 商家分类
 
@@ -94,7 +93,6 @@ class Order(db.Model):
     __tablename__ = 'orders'
     id = db.Column(db.Integer, primary_key=True)  # 订单ID
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)  # 下单用户ID
-    merchant_id = db.Column(db.Integer, db.ForeignKey('merchants.id'), nullable=False)  # 商家ID
     order_number = db.Column(db.String(50), unique=True, nullable=False)  # 订单号
     total_amount = db.Column(db.Float, nullable=False)  # 订单总金额
     status = db.Column(db.String(32), default='pending')  # 订单状态

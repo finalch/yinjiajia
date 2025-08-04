@@ -285,14 +285,22 @@
 			                title: '请选择至少一个商品',
 			                icon: 'none',
 			            });
-			            return;
+			        return;
 			        }
 			
-			        // 2. 跳转到下单页面
+			        // 2. 计算总金额
+			        const totalAmount = selectedItems.reduce((total, item) => {
+			            return total + (item.price * item.quantity);
+			        }, 0);
+			
+			        // 3. 跳转到支付方式选择页面
 			        const cartItemIds = selectedItems.map(item => item.id).join(',');
 			        this.$router.push({
-			            path: '/checkout',
-			            query: { cart_items: cartItemIds }
+			            path: '/payment-method',
+			            query: { 
+			                cart_items: cartItemIds,
+			                total_amount: totalAmount.toFixed(2)
+			            }
 			        });
 			    } catch (error) {
 			        console.error('跳转下单页面失败:', error);

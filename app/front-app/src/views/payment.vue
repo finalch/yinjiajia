@@ -1,58 +1,90 @@
 <template>
-	<view class="payment-container">
-		<!-- 顶部导航栏 -->
-		<uni-nav-bar title="支付订单" left-icon="back" @clickLeft="goBack"></uni-nav-bar>
+	<div class="payment-container">
+		<!-- 头部 -->
+		<div class="header">
+			<div class="back-btn" @click="goBack">
+				<span>←</span>
+			</div>
+			<div class="title">支付订单</div>
+		</div>
 
 		<!-- 订单信息 -->
-		<view class="order-info">
-			<view class="info-item">
-				<text class="label">订单编号：</text>
-				<text class="value">{{ orderInfo.orderNo }}</text>
-				<text class="copy-btn" @click="copyOrderNo">复制</text>
-			</view>
-			<view class="info-item">
-				<text class="label">创建时间：</text>
-				<text class="value">{{ orderInfo.createTime }}</text>
-			</view>
-			<view class="info-item">
-				<text class="label">商品名称：</text>
-				<text class="value">{{ orderInfo.productName }}</text>
-			</view>
-			<view class="info-item">
-				<text class="label">应付金额：</text>
-				<text class="price">¥{{ orderInfo.totalAmount }}</text>
-			</view>
-		</view>
+		<div class="order-info">
+			<div class="info-item">
+				<span class="label">订单编号：</span>
+				<span class="value">{{ orderInfo.orderNo }}</span>
+				<span class="copy-btn" @click="copyOrderNo">复制</span>
+			</div>
+			<div class="info-item">
+				<span class="label">创建时间：</span>
+				<span class="value">{{ orderInfo.createTime }}</span>
+			</div>
+			<div class="info-item">
+				<span class="label">商品名称：</span>
+				<span class="value">{{ orderInfo.productName }}</span>
+			</div>
+			<div class="info-item">
+				<span class="label">应付金额：</span>
+				<span class="price">¥{{ orderInfo.totalAmount }}</span>
+			</div>
+		</div>
 
 		<!-- 支付方式选择 -->
-		<view class="payment-methods">
-			<view class="section-title">选择支付方式</view>
-			<radio-group @change="paymentMethodChange">
-				<!-- 简化支付方式，只保留微信和支付宝 -->
-				<label class="method-item" v-for="(item, index) in paymentMethods" :key="item.value">
-					<view class="method-left">
-						<!-- 添加图标显示判断，避免App端路径问题 -->
-						<image class="method-icon" :src="item.icon" v-if="item.icon"></image>
-						<uni-icons v-else :type="item.iconType" size="24" :color="item.iconColor"></uni-icons>
-						<text class="method-name">{{ item.name }}</text>
-					</view>
-					<view class="method-right">
-						<!-- 移除radio上的style属性，改为在style标签中统一设置 -->
-						<radio :value="item.value" :checked="item.value === currentMethod" color="#ff2442"></radio>
-					</view>
-				</label>
-			</radio-group>
-		</view>
+		<div class="payment-methods">
+			<div class="section-title">支付方式</div>
+			<div class="method-list">
+				<div 
+					class="method-item" 
+					v-for="method in paymentMethods" 
+					:key="method.value"
+					:class="{ selected: method.value === currentMethod }"
+					@click="selectMethod(method.value)"
+				>
+					<div class="method-left">
+						<div class="method-icon">
+							<span :class="method.icon"></span>
+						</div>
+						<div class="method-info">
+							<div class="method-name">{{ method.name }}</div>
+							<div class="method-desc">{{ method.description }}</div>
+						</div>
+					</div>
+					<div class="method-right">
+						<div class="radio-btn" :class="{ active: method.value === currentMethod }">
+							<span class="radio-inner"></span>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
 
 		<!-- 底部支付按钮 -->
-		<view class="payment-footer">
-			<view class="price-info">
-				<text>应付：</text>
-				<text class="price">¥{{ orderInfo.totalAmount }}</text>
-			</view>
-			<button class="pay-btn" @click="confirmPayment">立即支付</button>
-		</view>
-	</view>
+		<div class="payment-footer">
+			<div class="price-info">
+				<span>应付：</span>
+				<span class="price">¥{{ orderInfo.totalAmount }}</span>
+			</div>
+			<div class="pay-btn" @click="confirmPayment">立即支付</div>
+		</div>
+
+		<!-- 支付确认弹窗 -->
+		<div class="payment-modal" v-if="showPaymentModal">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h3>确认支付</h3>
+				</div>
+				<div class="modal-body">
+					<p>订单号：{{ orderInfo.orderNo }}</p>
+					<p>支付金额：¥{{ orderInfo.totalAmount }}</p>
+					<p>支付方式：{{ getCurrentMethodName() }}</p>
+				</div>
+				<div class="modal-footer">
+					<button class="cancel-btn" @click="cancelPayment">取消</button>
+					<button class="confirm-btn" @click="processPayment">确认支付</button>
+				</div>
+			</div>
+		</div>
+	</div>
 </template>
 
 <script>
@@ -60,47 +92,32 @@
 		data() {
 			return {
 				orderInfo: {
-					orderNo: '20230701123456',
-					createTime: '2023-07-01 12:34:56',
+					orderNo: '',
+					createTime: '',
 					productName: '',
 					totalAmount: '0.00'
 				},
-				// 简化支付方式，只保留微信和支付宝
-				paymentMethods: [{
+				paymentMethods: [
+					{
 						name: '微信支付',
 						value: 'wechat',
-						icon: '/static/images/payment/wechat.png',
-						iconType: 'weixin',
-						iconColor: '#09BB07'
+						description: '推荐使用微信支付',
+						icon: 'wechat-icon'
 					},
 					{
 						name: '支付宝',
 						value: 'alipay',
-						icon: '/static/images/payment/alipay.png',
-						iconType: 'staff',
-						iconColor: '#00AAEE'
+						description: '安全便捷的支付方式',
+						icon: 'alipay-icon'
 					}
 				],
 				currentMethod: 'wechat',
-				productId: '',
-				productPrice: ''
+				showPaymentModal: false,
+				isProcessing: false
 			}
 		},
-		onLoad(options) {
-			// 从商品页面传递过来的参数
-			this.productId = options.productId || '';
-			this.productPrice = options.price || '0.00';
-
-			// 模拟订单数据
-			this.orderInfo.productName = '商品' + this.productId;
-			this.orderInfo.totalAmount = this.productPrice;
-			this.orderInfo.orderNo = '' + new Date().getTime();
-			this.orderInfo.createTime = this.formatDate(new Date());
-
-			// App端自动选择可用支付方式 - 修正条件编译语法
-			// #ifdef APP-PLUS
-			this.checkAvailablePaymentMethods();
-			// #endif
+		mounted() {
+			this.loadOrderInfo();
 		},
 		methods: {
 			// 格式化日期
@@ -117,140 +134,120 @@
 
 			// 返回上一页
 			goBack() {
-				uni.navigateBack();
+				this.$router.go(-1);
+			},
+
+			// 加载订单信息
+			loadOrderInfo() {
+				const query = this.$route.query;
+				this.orderInfo.orderNo = query.order_number || '';
+				this.orderInfo.totalAmount = query.total_amount || '0.00';
+				this.orderInfo.createTime = this.formatDate(new Date());
+				this.orderInfo.productName = '商品订单';
+				this.currentMethod = query.payment_method || 'wechat';
 			},
 
 			// 复制订单号
 			copyOrderNo() {
-				uni.setClipboardData({
-					data: this.orderInfo.orderNo,
-					success: () => {
-						uni.showToast({
-							title: '订单号已复制',
-							icon: 'success'
-						});
+				if (navigator.clipboard) {
+					navigator.clipboard.writeText(this.orderInfo.orderNo).then(() => {
+						alert('订单号已复制');
+					}).catch(() => {
+						alert('复制失败');
+					});
+				} else {
+					// 兼容旧浏览器
+					const textArea = document.createElement('textarea');
+					textArea.value = this.orderInfo.orderNo;
+					document.body.appendChild(textArea);
+					textArea.select();
+					try {
+						document.execCommand('copy');
+						alert('订单号已复制');
+					} catch (err) {
+						alert('复制失败');
 					}
-				});
+					document.body.removeChild(textArea);
+				}
 			},
 
-			// 支付方式变更
-			paymentMethodChange(e) {
-				this.currentMethod = e.detail.value;
+			// 选择支付方式
+			selectMethod(methodId) {
+				this.currentMethod = methodId;
+			},
+
+			// 获取当前支付方式名称
+			getCurrentMethodName() {
+				const method = this.paymentMethods.find(m => m.value === this.currentMethod);
+				return method ? method.name : '';
 			},
 
 			// 确认支付
 			confirmPayment() {
-				uni.showLoading({
-					title: '正在调起支付...',
-					mask: true
-				});
-
-				// 根据不同平台调用不同支付方式 - 修正条件编译语法
-				// #ifdef APP-PLUS
-				this.appPayment();
-				// #else
-				this.h5Payment();
-				// #endif
+				this.showPaymentModal = true;
 			},
 
-			// App端支付处理
-			appPayment() {
-				let provider = '';
-				if (this.currentMethod === 'wechat') {
-					provider = 'wxpay';
-				} else if (this.currentMethod === 'alipay') {
-					provider = 'alipay';
-				}
-
-				uni.requestPayment({
-					provider: provider,
-					orderInfo: this.getOrderInfoForPayment(), // 需要根据实际支付参数构造
-					success: (res) => {
-						uni.hideLoading();
-						this.paymentSuccess();
-					},
-					fail: (err) => {
-						uni.hideLoading();
-						this.paymentFail(err);
-					}
-				});
+			// 取消支付
+			cancelPayment() {
+				this.showPaymentModal = false;
 			},
 
-			// H5端支付处理
-			h5Payment() {
-				// 这里模拟支付成功，实际项目中需要对接支付接口
+			// 处理支付
+			processPayment() {
+				if (this.isProcessing) return;
+				
+				this.isProcessing = true;
+				this.showPaymentModal = false;
+				
+				// 显示加载状态
+				this.showLoading('正在处理支付...');
+				
+				// 模拟支付处理
 				setTimeout(() => {
-					uni.hideLoading();
+					this.hideLoading();
 					this.paymentSuccess();
-				}, 1500);
+				}, 2000);
+			},
+
+			// 显示加载状态
+			showLoading(message) {
+				// 创建加载提示
+				const loading = document.createElement('div');
+				loading.className = 'loading-overlay';
+				loading.innerHTML = `
+					<div class="loading-content">
+						<div class="loading-spinner"></div>
+						<div class="loading-text">${message}</div>
+					</div>
+				`;
+				document.body.appendChild(loading);
+			},
+
+			// 隐藏加载状态
+			hideLoading() {
+				const loading = document.querySelector('.loading-overlay');
+				if (loading) {
+					document.body.removeChild(loading);
+				}
 			},
 
 			// 支付成功处理
 			paymentSuccess() {
-				uni.redirectTo({
-					url: `/pages/trade-list/pay-result?status=success&orderNo=${this.orderInfo.orderNo}&amount=
-					${this.orderInfo.totalAmount}`
+				// 跳转到支付结果页面
+				this.$router.push({
+					path: '/pay-result',
+					query: {
+						status: 'success',
+						order_number: this.orderInfo.orderNo,
+						total_amount: this.orderInfo.totalAmount
+					}
 				});
 			},
 
 			// 支付失败处理
 			paymentFail(err) {
 				console.error('支付失败:', err);
-				uni.showModal({
-					title: '支付失败',
-					content: err.errMsg || '支付过程中出现问题',
-					showCancel: false
-				});
-			},
-
-			// 构造支付参数
-			getOrderInfoForPayment() {
-				// 实际项目中需要根据支付平台要求构造支付参数
-				return {
-					orderNo: this.orderInfo.orderNo,
-					amount: this.orderInfo.totalAmount,
-					subject: this.orderInfo.productName,
-					// 其他必要参数...
-				};
-			},
-
-			// 检查App端可用的支付方式
-			checkAvailablePaymentMethods() {
-				uni.getProvider({
-					service: 'payment',
-					success: (res) => {
-						const availableMethods = [];
-						this.paymentMethods.forEach(method => {
-							let provider = '';
-							if (method.value === 'wechat') {
-								provider = 'wxpay';
-							} else if (method.value === 'alipay') {
-								provider = 'alipay';
-							}
-
-							if (res.provider.includes(provider)) {
-								availableMethods.push(method);
-							}
-						});
-
-						if (availableMethods.length > 0) {
-							this.paymentMethods = availableMethods;
-							this.currentMethod = availableMethods[0].value;
-						} else {
-							uni.showModal({
-								title: '提示',
-								content: '未检测到可用的支付方式',
-								showCancel: false,
-								success: () => {
-									uni.navigateBack();
-								}
-							});
-						}
-					},
-					fail: (err) => {
-						console.error('获取支付供应商失败:', err);
-					}
-				});
+				alert('支付失败：' + (err.message || '支付过程中出现问题'));
 			}
 		}
 	}
@@ -258,16 +255,40 @@
 
 <style scoped>
 	.payment-container {
-		padding-bottom: 100px;
-		background-color: #f5f5f5;
 		min-height: 100vh;
+		background-color: #f5f5f5;
+		padding-bottom: 80px;
+	}
+
+	.header {
+		background: white;
+		padding: 15px 20px;
+		display: flex;
+		align-items: center;
+		border-bottom: 1px solid #eee;
+		position: sticky;
+		top: 0;
+		z-index: 100;
+	}
+
+	.back-btn {
+		font-size: 20px;
+		cursor: pointer;
+		padding: 5px;
+		margin-right: 10px;
+	}
+
+	.title {
+		font-size: 18px;
+		font-weight: bold;
 	}
 
 	/* 订单信息样式 */
 	.order-info {
 		background-color: #fff;
 		padding: 20px 15px;
-		margin-bottom: 10px;
+		margin: 10px;
+		border-radius: 8px;
 	}
 
 	.info-item {
@@ -304,12 +325,15 @@
 		border-radius: 3px;
 		padding: 2px 6px;
 		margin-left: 10px;
+		cursor: pointer;
 	}
 
 	/* 支付方式样式 */
 	.payment-methods {
 		background-color: #fff;
-		padding: 0 15px;
+		padding: 15px;
+		margin: 10px;
+		border-radius: 8px;
 	}
 
 	.section-title {
@@ -319,33 +343,104 @@
 		border-bottom: 1px solid #f5f5f5;
 	}
 
+	.method-list {
+		margin-top: 10px;
+	}
+
 	.method-item {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
 		padding: 15px 0;
-		border-bottom: 1px solid #f5f5f5;
+		border-bottom: 1px solid #f0f0f0;
+		cursor: pointer;
+		transition: background-color 0.3s;
+	}
+
+	.method-item:last-child {
+		border-bottom: none;
+	}
+
+	.method-item:hover {
+		background-color: #f8f9fa;
+	}
+
+	.method-item.selected {
+		background-color: #fff5f5;
 	}
 
 	.method-left {
 		display: flex;
 		align-items: center;
+		flex: 1;
 	}
 
 	.method-icon {
-		width: 24px;
-		height: 24px;
-		margin-right: 10px;
+		width: 40px;
+		height: 40px;
+		border-radius: 8px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		margin-right: 15px;
+		font-size: 20px;
+	}
+
+	.wechat-icon {
+		color: #07c160;
+	}
+
+	.alipay-icon {
+		color: #1677ff;
+	}
+
+	.method-info {
+		flex: 1;
 	}
 
 	.method-name {
-		font-size: 15px;
+		font-size: 16px;
 		color: #333;
+		margin-bottom: 4px;
+		font-weight: 500;
 	}
 
-	/* 添加radio样式 */
-	.method-right radio {
-		transform: scale(0.9);
+	.method-desc {
+		font-size: 12px;
+		color: #999;
+	}
+
+	.method-right {
+		margin-left: 15px;
+	}
+
+	.radio-btn {
+		width: 20px;
+		height: 20px;
+		border: 2px solid #ddd;
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		transition: all 0.3s;
+	}
+
+	.radio-btn.active {
+		border-color: #ff4757;
+		background-color: #ff4757;
+	}
+
+	.radio-inner {
+		width: 8px;
+		height: 8px;
+		background-color: white;
+		border-radius: 50%;
+		opacity: 0;
+		transition: opacity 0.3s;
+	}
+
+	.radio-btn.active .radio-inner {
+		opacity: 1;
 	}
 
 	/* 底部支付按钮样式 */
@@ -354,30 +449,138 @@
 		bottom: 0;
 		left: 0;
 		right: 0;
-		height: 50px;
+		background: white;
+		padding: 15px 20px;
 		display: flex;
-		background-color: #fff;
-		box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+		align-items: center;
+		justify-content: space-between;
+		border-top: 1px solid #eee;
 		z-index: 100;
 	}
 
 	.price-info {
-		flex: 1;
-		display: flex;
-		align-items: center;
-		justify-content: flex-end;
-		padding-right: 15px;
 		font-size: 14px;
-		color: #333;
+		color: #666;
 	}
 
 	.pay-btn {
-		width: 120px;
-		height: 50px;
-		line-height: 50px;
-		background-color: #ff2442;
-		color: #fff;
+		background: #ff4757;
+		color: white;
+		padding: 12px 30px;
+		border-radius: 25px;
+		cursor: pointer;
 		font-size: 16px;
-		border-radius: 0;
+		font-weight: bold;
+		transition: background-color 0.3s;
+	}
+
+	.pay-btn:hover {
+		background: #ff3742;
+	}
+
+	/* 支付确认弹窗样式 */
+	.payment-modal {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background: rgba(0, 0, 0, 0.5);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 1000;
+	}
+
+	.modal-content {
+		background: white;
+		border-radius: 8px;
+		width: 90%;
+		max-width: 400px;
+		overflow: hidden;
+	}
+
+	.modal-header {
+		padding: 20px;
+		border-bottom: 1px solid #eee;
+		text-align: center;
+	}
+
+	.modal-header h3 {
+		margin: 0;
+		color: #333;
+	}
+
+	.modal-body {
+		padding: 20px;
+	}
+
+	.modal-body p {
+		margin: 10px 0;
+		color: #666;
+	}
+
+	.modal-footer {
+		display: flex;
+		border-top: 1px solid #eee;
+	}
+
+	.cancel-btn, .confirm-btn {
+		flex: 1;
+		padding: 15px;
+		border: none;
+		font-size: 16px;
+		cursor: pointer;
+	}
+
+	.cancel-btn {
+		background: #f5f5f5;
+		color: #666;
+	}
+
+	.confirm-btn {
+		background: #ff4757;
+		color: white;
+	}
+
+	/* 加载状态样式 */
+	.loading-overlay {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background: rgba(0, 0, 0, 0.5);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 2000;
+	}
+
+	.loading-content {
+		background: white;
+		padding: 30px;
+		border-radius: 8px;
+		text-align: center;
+	}
+
+	.loading-spinner {
+		width: 40px;
+		height: 40px;
+		border: 4px solid #f3f3f3;
+		border-top: 4px solid #ff4757;
+		border-radius: 50%;
+		animation: spin 1s linear infinite;
+		margin: 0 auto 15px;
+	}
+
+	.loading-text {
+		color: #666;
+		font-size: 14px;
+	}
+
+	@keyframes spin {
+		0% { transform: rotate(0deg); }
+		100% { transform: rotate(360deg); }
 	}
 </style>

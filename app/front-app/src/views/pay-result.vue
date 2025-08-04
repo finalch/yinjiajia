@@ -1,74 +1,100 @@
 <template>
-	<view class="result-container">
-		<uni-nav-bar title="支付结果" left-icon="back" @clickLeft="goBack"></uni-nav-bar>
+	<div class="pay-result-container">
+		<!-- 头部 -->
+		<div class="header">
+			<div class="back-btn" @click="goBack">
+				<span>←</span>
+			</div>
+			<div class="title">支付结果</div>
+		</div>
 
-		<view class="result-content">
-			<image class="result-icon" :src="resultIcon"></image>
-			<text class="result-title">{{ resultTitle }}</text>
-			<text class="result-desc">{{ resultDesc }}</text>
+		<!-- 支付结果内容 -->
+		<div class="result-content">
+			<!-- 成功状态 -->
+			<div v-if="paymentStatus === 'success'" class="success-result">
+				<div class="result-icon success">
+					<span>✓</span>
+				</div>
+				<div class="result-title">支付成功</div>
+				<div class="result-desc">您的订单已支付成功，我们会尽快为您发货</div>
+				
+				<div class="order-info">
+					<div class="info-item">
+						<span class="label">订单号：</span>
+						<span class="value">{{ orderInfo.orderNo }}</span>
+					</div>
+					<div class="info-item">
+						<span class="label">支付金额：</span>
+						<span class="value price">¥{{ orderInfo.totalAmount }}</span>
+					</div>
+					<div class="info-item">
+						<span class="label">支付时间：</span>
+						<span class="value">{{ orderInfo.payTime }}</span>
+					</div>
+				</div>
+			</div>
 
-			<view class="order-info">
-				<view class="info-item">
-					<text class="label">订单编号：</text>
-					<text class="value">{{ orderInfo.orderNo }}</text>
-				</view>
-				<view class="info-item">
-					<text class="label">支付金额：</text>
-					<text class="value price">¥{{ orderInfo.amount }}</text>
-				</view>
-				<view class="info-item">
-					<text class="label">支付方式：</text>
-					<text class="value">{{ orderInfo.paymentMethod }}</text>
-				</view>
-				<view class="info-item">
-					<text class="label">支付时间：</text>
-					<text class="value">{{ orderInfo.paymentTime }}</text>
-				</view>
-			</view>
-		</view>
+			<!-- 失败状态 -->
+			<div v-else class="fail-result">
+				<div class="result-icon fail">
+					<span>✗</span>
+				</div>
+				<div class="result-title">支付失败</div>
+				<div class="result-desc">支付过程中出现问题，请重新尝试</div>
+				
+				<div class="order-info">
+					<div class="info-item">
+						<span class="label">订单号：</span>
+						<span class="value">{{ orderInfo.orderNo }}</span>
+					</div>
+					<div class="info-item">
+						<span class="label">应付金额：</span>
+						<span class="value price">¥{{ orderInfo.totalAmount }}</span>
+					</div>
+				</div>
+			</div>
+		</div>
 
-		<view class="action-btns">
-			<button class="btn" @click="goToHome">返回首页</button>
-			<button class="btn primary" @click="viewOrder">查看订单</button>
-		</view>
-	</view>
+		<!-- 操作按钮 -->
+		<div class="action-buttons">
+			<div v-if="paymentStatus === 'success'" class="btn-group">
+				<button class="btn btn-secondary" @click="viewOrder">查看订单</button>
+				<button class="btn btn-primary" @click="goHome">返回首页</button>
+			</div>
+			<div v-else class="btn-group">
+				<button class="btn btn-secondary" @click="retryPayment">重新支付</button>
+				<button class="btn btn-primary" @click="goHome">返回首页</button>
+			</div>
+		</div>
+	</div>
 </template>
 
 <script>
 	export default {
 		data() {
 			return {
-				status: 'success', // success/fail
+				paymentStatus: 'success', // success 或 fail
 				orderInfo: {
 					orderNo: '',
-					amount: '0.00',
-					paymentMethod: '微信支付',
-					paymentTime: ''
+					totalAmount: '0.00',
+					payTime: ''
 				}
 			}
 		},
-		computed: {
-			resultIcon() {
-				return this.status === 'success' ?
-					'/static/images/payment/success.png' :
-					'/static/images/payment/fail.png';
-			},
-			resultTitle() {
-				return this.status === 'success' ? '支付成功' : '支付失败';
-			},
-			resultDesc() {
-				return this.status === 'success' ?
-					'您的订单已支付成功，我们将尽快为您发货' :
-					'支付过程中出现问题，请重新尝试或选择其他支付方式';
-			}
-		},
-		onLoad(options) {
-			this.status = options.status || 'success';
-			this.orderInfo.orderNo = options.orderNo || 'JD20230701123456';
-			this.orderInfo.amount = options.amount || '0.00';
-			this.orderInfo.paymentTime = this.formatDate(new Date());
+		mounted() {
+			this.loadPaymentResult();
 		},
 		methods: {
+			// 加载支付结果
+			loadPaymentResult() {
+				const query = this.$route.query;
+				this.paymentStatus = query.status || 'success';
+				this.orderInfo.orderNo = query.order_number || '';
+				this.orderInfo.totalAmount = query.total_amount || '0.00';
+				this.orderInfo.payTime = this.formatDate(new Date());
+			},
+
+			// 格式化日期
 			formatDate(date) {
 				const year = date.getFullYear();
 				const month = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -80,48 +106,96 @@
 				return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 			},
 
+			// 返回上一页
 			goBack() {
-				uni.navigateBack();
+				this.$router.go(-1);
 			},
 
-			goToHome() {
-				uni.switchTab({
-					url: '/pages/tabbar/index/index'
-				});
-			},
-
+			// 查看订单
 			viewOrder() {
-				uni.navigateTo({
-					url: `/pages/trade-list/myorder?orderNo=${this.orderInfo.orderNo}`
+				this.$router.push({
+					path: '/myorder',
+					query: { order_number: this.orderInfo.orderNo }
 				});
+			},
+
+			// 重新支付
+			retryPayment() {
+				this.$router.push({
+					path: '/payment',
+					query: {
+						order_number: this.orderInfo.orderNo,
+						total_amount: this.orderInfo.totalAmount
+					}
+				});
+			},
+
+			// 返回首页
+			goHome() {
+				this.$router.push('/');
 			}
 		}
 	}
 </script>
 
 <style scoped>
-	.result-container {
-		background-color: #f5f5f5;
+	.pay-result-container {
 		min-height: 100vh;
+		background-color: #f5f5f5;
+		padding-bottom: 80px;
 	}
 
-	.result-content {
+	.header {
+		background: white;
+		padding: 15px 20px;
 		display: flex;
-		flex-direction: column;
 		align-items: center;
-		padding: 30px 15px;
-		background-color: #fff;
-		margin-bottom: 10px;
+		border-bottom: 1px solid #eee;
+		position: sticky;
+		top: 0;
+		z-index: 100;
+	}
+
+	.back-btn {
+		font-size: 20px;
+		cursor: pointer;
+		padding: 5px;
+		margin-right: 10px;
+	}
+
+	.title {
+		font-size: 18px;
+		font-weight: bold;
+	}
+
+	/* 结果内容样式 */
+	.result-content {
+		padding: 40px 20px;
+		text-align: center;
 	}
 
 	.result-icon {
 		width: 80px;
 		height: 80px;
-		margin-bottom: 20px;
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		margin: 0 auto 20px;
+		font-size: 40px;
+		color: white;
+	}
+
+	.result-icon.success {
+		background: #07c160;
+	}
+
+	.result-icon.fail {
+		background: #ff4757;
 	}
 
 	.result-title {
-		font-size: 20px;
+		font-size: 24px;
 		font-weight: bold;
 		margin-bottom: 10px;
 		color: #333;
@@ -129,21 +203,29 @@
 
 	.result-desc {
 		font-size: 14px;
-		color: #999;
+		color: #666;
 		margin-bottom: 30px;
-		text-align: center;
+		line-height: 1.5;
 	}
 
+	/* 订单信息样式 */
 	.order-info {
-		width: 100%;
-		border-top: 1px solid #f5f5f5;
-		padding-top: 15px;
+		background: white;
+		border-radius: 8px;
+		padding: 20px;
+		margin: 20px 0;
+		text-align: left;
 	}
 
 	.info-item {
 		display: flex;
-		margin-bottom: 10px;
+		align-items: center;
+		margin-bottom: 12px;
 		font-size: 14px;
+	}
+
+	.info-item:last-child {
+		margin-bottom: 0;
 	}
 
 	.label {
@@ -161,27 +243,43 @@
 		font-weight: bold;
 	}
 
-	.action-btns {
+	/* 操作按钮样式 */
+	.action-buttons {
+		padding: 20px;
+	}
+
+	.btn-group {
 		display: flex;
-		padding: 15px;
-		background-color: #fff;
+		gap: 15px;
 	}
 
 	.btn {
 		flex: 1;
-		height: 44px;
-		line-height: 44px;
-		border: 1px solid #ddd;
-		border-radius: 22px;
+		padding: 15px;
+		border: none;
+		border-radius: 8px;
 		font-size: 16px;
-		color: #333;
-		background-color: #fff;
-		margin: 0 5px;
+		font-weight: bold;
+		cursor: pointer;
+		transition: all 0.3s;
 	}
 
-	.btn.primary {
-		background-color: #ff2442;
-		color: #fff;
-		border-color: #ff2442;
+	.btn-primary {
+		background: #ff4757;
+		color: white;
+	}
+
+	.btn-primary:hover {
+		background: #ff3742;
+	}
+
+	.btn-secondary {
+		background: #f5f5f5;
+		color: #666;
+		border: 1px solid #ddd;
+	}
+
+	.btn-secondary:hover {
+		background: #e9e9e9;
 	}
 </style>

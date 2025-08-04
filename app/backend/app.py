@@ -2,8 +2,10 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import logging
-from flask import Flask
+import time
+from flask import Flask, request, g
 from config import Config
+from config.log import get_logger
 from models import db
 from flask_cors import CORS
 
@@ -15,17 +17,27 @@ def create_app():
     # 启用CORS，允许所有来源访问
     CORS(app, supports_credentials=True)
 
-    # 日志配置
-    LOG_PATH = Config.LOG_PATH
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s %(levelname)s [%(module)s] %(message)s',
-        handlers=[
-            logging.FileHandler(LOG_PATH, encoding='utf-8'),
-            logging.StreamHandler()
-        ]
-    )
-    logger = logging.getLogger(__name__)
+    # 获取logger
+    logger = get_logger(__name__)
+
+    # 请求日志中间件
+    @app.before_request
+    def log_request_info():
+        g.start_time = time.time()
+        logger.info(f"Request: {request.method} {request.path} - User-Agent: {request.headers.get('User-Agent', 'Unknown')}")
+        if request.method in ['POST', 'PUT', 'PATCH']:
+            logger.debug(f"Request Body: {request.get_json(silent=True)}")
+
+    @app.after_request
+    def log_response_info(response):
+        duration = time.time() - g.start_time
+        logger.info(f"Response: {request.method} {request.path} - Status: {response.status_code} - Duration: {duration:.3f}s")
+        return response
+
+    @app.errorhandler(Exception)
+    def log_exception(error):
+        logger.error(f"Unhandled Exception: {request.method} {request.path} - Error: {str(error)}", exc_info=True)
+        return {"code": 500, "message": "Internal Server Error"}, 500
 
     # Blueprint 延迟导入，避免循环引用
     from api.app.product import app_product_api
@@ -56,7 +68,8 @@ def create_app():
     app.register_blueprint(web_customer_service_api)
     app.register_blueprint(web_media_api)
 
-    return app, logger, LOG_PATH
+    logger.info("All blueprints registered successfully")
+    return app, logger, Config.LOG_PATH
 
 if __name__ == '__main__':
     app, logger, LOG_PATH = create_app()

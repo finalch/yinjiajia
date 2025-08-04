@@ -42,12 +42,27 @@ const routes = [
     component: () => import('../views/address.vue')
   },
   {
+    path: '/address-list',
+    name: 'AddressList',
+    component: () => import('../views/address-list.vue')
+  },
+  {
     path: '/checkout',
     name: 'Checkout',
     component: () => import('../views/checkout.vue')
   },
   {
+    path: '/payment-method',
+    name: 'PaymentMethod',
+    component: () => import('../views/payment-method.vue')
+  },
+  {
     path: '/my-order',
+    name: 'MyOrder',
+    component: () => import('../views/myorder.vue')
+  },
+  {
+    path: '/myorder',
     name: 'MyOrder',
     component: () => import('../views/myorder.vue')
   },

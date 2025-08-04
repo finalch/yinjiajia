@@ -1,1 +1,0 @@
-ALTER TABLE products ADD COLUMN status VARCHAR(16) NOT NULL DEFAULT 'pending' COMMENT '商品状态：pending(审核中)/on_sale(已上架)/off_sale(已下架)/rejected(审核失败)'; 

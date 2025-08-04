@@ -160,6 +160,38 @@
 		  </div>
 		  
 		  <div class="spec-content">
+			<!-- 收货地址选择 -->
+			<div class="address-section">
+			  <div class="section-title">
+				<span class="title-text">收货地址</span>
+				<span class="title-tip" @click="selectAddress">选择地址</span>
+			  </div>
+			  <div class="address-content" v-if="selectedAddress">
+				<div class="address-info">
+				  <div class="receiver-info">
+					<span class="receiver-name">{{ selectedAddress.receiver_name }}</span>
+					<span class="receiver-phone">{{ selectedAddress.phone }}</span>
+				  </div>
+				  <div class="address-detail">{{ selectedAddress.full_address }}</div>
+				</div>
+				<div class="address-arrow">></div>
+			  </div>
+			  <div class="no-address" v-else @click="selectAddress">
+				<span>请选择收货地址</span>
+				<div class="address-arrow">></div>
+			  </div>
+			</div>
+
+			<!-- 物流信息 -->
+			<div class="logistics-section" v-if="selectedAddress">
+			  <div class="section-title">
+				<span class="title-text">物流信息</span>
+			  </div>
+			  <div class="logistics-info">
+				<span class="logistics-text">预计 3-5 日送达至 {{ selectedAddress.full_address }}</span>
+			  </div>
+			</div>
+
 			<!-- 规格选择 -->
 			<div class="spec-section" v-if="product.has_specs && product.specs && product.specs.length > 0">
 			  <div class="section-title">
@@ -230,16 +262,17 @@
 			</div>
 		  </div>
 		  
+		  <!-- 底部确认区域 -->
 		  <div class="popup-footer">
 			<div class="total-info">
-			  <span class="total-label">总计：</span>
+			  <span class="total-label">合计：</span>
 			  <span class="total-price">¥{{ (currentPrice * quantity).toFixed(2) }}</span>
 			</div>
-			<button class="confirm-btn" 
-			  @click="confirmSpec"
-			  :disabled="!canConfirm">
-			  {{ confirmButtonText }}
-			</button>
+			<div class="confirm-btn" 
+			  @click="confirmDirectBuy" 
+			  :class="{ disabled: !canConfirm || !selectedAddress }">
+			  立即购买
+			</div>
 		  </div>
 		</div>
 	  </div>
@@ -248,6 +281,8 @@
   
   <script>
 	  import { productApi, cartApi } from '@/utils/api.js'
+import request from '@/utils/request.js'
+import AddressService from '../services/addressService.js'
 	  
 	  export default {
 		  name: 'ProductDetail',
@@ -285,7 +320,8 @@
 				  quantity: 1,
 				  cartCount: 0,
 				  showPopup: false,
-				  loading: false
+				  loading: false,
+				  selectedAddress: null // 新增：用于存储选中的收货地址
 			  }
 		  },
 		  computed: {
@@ -341,6 +377,11 @@
 			  this.productId = this.$route.params.id
 			  this.fetchProductDetail()
 			  this.fetchCartCount()
+			  this.loadAddressInfo()
+		  },
+		  activated() {
+			  // 当页面重新激活时（比如从地址选择页面返回），重新加载地址信息
+			  this.loadAddressInfo()
 		  },
 		  methods: {
 			  // 获取商品详情
@@ -425,6 +466,12 @@
 				  } catch (error) {
 					  console.error('获取购物车数量失败:', error)
 				  }
+			  },
+			  
+			  // 加载地址信息
+			  async loadAddressInfo() {
+				  // 使用AddressService获取默认地址
+				  this.selectedAddress = await AddressService.getDefaultAddress(1)
 			  },
 			  
 			  // 返回上一页
@@ -682,6 +729,49 @@
 					  .join('&')
 				  
 				  this.$router.push(`/checkout?${queryString}`)
+			  },
+
+			  // 选择收货地址
+			  selectAddress() {
+				  this.$router.push('/address-list')
+			  },
+
+			  // 确认立即购买
+			  confirmDirectBuy() {
+				  if (!this.selectedAddress) {
+					  alert('请先选择收货地址')
+					  return
+				  }
+				  if (this.product.has_specs && this.product.specs && this.product.specs.length > 0 && 
+					  Object.keys(this.selectedSpecs).length < this.product.specs.length) {
+					  alert('请选择完整规格')
+					  return
+				  }
+				  if (!this.selectedCombination) {
+					  alert('所选规格组合不可用')
+					  return
+				  }
+				  if (this.quantity < 1 || this.quantity > this.currentStock) {
+					  alert('请选择有效的购买数量')
+					  return
+				  }
+
+				  // 使用AddressService保存选中的地址
+				  AddressService.setSelectedAddress(this.selectedAddress)
+				  
+				  this.closeSpecPopup()
+				  
+				  // 跳转到支付方式选择页面
+				  this.$router.push({
+					  path: '/payment-method',
+					  query: {
+						  product_id: this.product.id,
+						  quantity: this.quantity,
+						  spec_combination_id: this.selectedCombination ? this.selectedCombination.id : null,
+						  address_id: this.selectedAddress.id,
+						  total_amount: (this.currentPrice * this.quantity).toFixed(2)
+					  }
+				  })
 			  }
 		  }
 	  }
@@ -1444,8 +1534,10 @@
 		  overflow-y: auto;
 	  }
 
-	  .spec-section {
+	  .address-section {
 		  margin-bottom: 24px;
+		  padding-bottom: 20px;
+		  border-bottom: 1px solid #eee;
 	  }
 
 	  .section-title {
@@ -1467,6 +1559,96 @@
 		  background-color: #ffece6;
 		  padding: 4px 8px;
 		  border-radius: 4px;
+		  cursor: pointer;
+	  }
+
+	  .address-content {
+		  display: flex;
+		  align-items: center;
+		  justify-content: space-between;
+		  padding: 12px 16px;
+		  background-color: #f8f9fa;
+		  border-radius: 8px;
+		  cursor: pointer;
+		  transition: background-color 0.3s;
+	  }
+
+	  .address-content:hover {
+		  background-color: #f0f0f0;
+	  }
+
+	  .address-info {
+		  flex: 1;
+	  }
+
+	  .receiver-info {
+		  display: flex;
+		  align-items: center;
+		  margin-bottom: 4px;
+	  }
+
+	  .receiver-name {
+		  font-size: 15px;
+		  color: #333;
+		  font-weight: 500;
+		  margin-right: 8px;
+	  }
+
+	  .receiver-phone {
+		  font-size: 14px;
+		  color: #666;
+	  }
+
+	  .address-detail {
+		  font-size: 14px;
+		  color: #666;
+		  line-height: 1.4;
+	  }
+
+	  .address-arrow {
+		  font-size: 18px;
+		  color: #999;
+		  transition: transform 0.3s ease;
+	  }
+
+	  .address-content:hover .address-arrow {
+		  transform: translateX(5px);
+	  }
+
+	  .no-address {
+		  display: flex;
+		  align-items: center;
+		  justify-content: space-between;
+		  padding: 12px 16px;
+		  background-color: #f8f9fa;
+		  border-radius: 8px;
+		  cursor: pointer;
+		  transition: background-color 0.3s;
+	  }
+
+	  .no-address:hover {
+		  background-color: #f0f0f0;
+	  }
+
+	  .no-address span {
+		  font-size: 14px;
+		  color: #666;
+	  }
+
+	  .logistics-section {
+		  margin-top: 24px;
+		  padding-top: 20px;
+		  border-top: 1px solid #eee;
+	  }
+
+	  .logistics-info {
+		  font-size: 14px;
+		  color: #666;
+		  line-height: 1.6;
+	  }
+
+	  .spec-section {
+		  margin-bottom: 24px;
 	  }
 
 	  .spec-groups {

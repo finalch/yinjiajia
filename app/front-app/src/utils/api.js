@@ -1,5 +1,8 @@
 import request from './request.js'
 
+// 导出request供其他文件使用
+export { request }
+
 // 商品相关API
 export const productApi = {
 	// 获取商品列表

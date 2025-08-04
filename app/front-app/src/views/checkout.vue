@@ -83,7 +83,8 @@
 </template>
 
 <script>
-import { request } from '../utils/api.js'
+import request from '../utils/request.js'
+import AddressService from '../services/addressService.js'
 
 export default {
   name: 'Checkout',
@@ -100,6 +101,11 @@ export default {
   mounted() {
     this.loadCheckoutInfo()
   },
+  activated() {
+    // 当页面重新激活时（比如从地址选择页面返回），重新加载地址信息
+    this.loadAddressInfo()
+  },
+
   methods: {
     goBack() {
       this.$router.go(-1)
@@ -126,18 +132,19 @@ export default {
           }
         }
         
-        const response = await request.get('/api/app/order/checkout', { params })
+        // 并行获取商品信息和默认地址
+        const [checkoutResponse] = await Promise.all([
+          request.get('/api/app/order/checkout', { params })
+        ])
         
-        if (response.data.code === 200) {
-          const data = response.data.data
+        if (checkoutResponse.data.code === 200) {
+          const data = checkoutResponse.data.data
           this.products = data.products
           this.totalAmount = data.total_amount
-          
-          // 设置默认地址
-          if (data.default_address) {
-            this.selectedAddress = data.default_address
-          }
         }
+        
+        // 使用AddressService获取默认地址
+        this.selectedAddress = await AddressService.getDefaultAddress(this.user_id)
       } catch (error) {
         console.error('加载下单信息失败:', error)
       }
@@ -145,14 +152,29 @@ export default {
     
     selectAddress() {
       this.$router.push({
-        path: '/address',
+        path: '/address-list',
         query: { from: 'checkout' }
       })
     },
     
+
+    
+    async loadAddressInfo() {
+      // 使用AddressService获取默认地址
+      this.selectedAddress = await AddressService.getDefaultAddress(this.user_id)
+    },
+    
     async submitOrder() {
+      console.log('提交订单 - selectedAddress:', this.selectedAddress)
+      
       if (!this.selectedAddress) {
         alert('请选择收货地址')
+        return
+      }
+      
+      if (!this.selectedAddress.id) {
+        console.error('地址ID为空:', this.selectedAddress)
+        alert('收货地址信息不完整，请重新选择')
         return
       }
       
@@ -178,6 +200,9 @@ export default {
             orderData.direct_buy.spec_combination_id = parseInt(spec_combination_id)
           }
         }
+        
+        console.log('提交订单数据:', orderData)
+        console.log('提交订单数据JSON:', JSON.stringify(orderData))
         
         const response = await request.post('/api/app/order/', orderData)
         
