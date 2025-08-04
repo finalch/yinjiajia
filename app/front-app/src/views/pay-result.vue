@@ -113,10 +113,7 @@
 
 			// 查看订单
 			viewOrder() {
-				this.$router.push({
-					path: '/myorder',
-					query: { order_number: this.orderInfo.orderNo }
-				});
+				this.$router.push('/my-order');
 			},
 
 			// 重新支付

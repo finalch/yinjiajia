@@ -26,9 +26,12 @@ class Merchant(db.Model):
     phone = db.Column(db.String(20))  # 商家电话
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
+    # 关联关系
     products = db.relationship('Product', backref='merchant', lazy=True)  # 商家商品
     account = db.relationship('Account', backref='merchant', uselist=False)  # 商家账户
     categories = db.relationship('Category', backref='merchant', lazy=True)  # 商家分类
+    order_items = db.relationship('OrderItem', backref='merchant')
+    order_stats = db.relationship('MerchantOrderStats', backref='merchant')
 
 class Category(db.Model):
     __tablename__ = 'categories'
@@ -98,6 +101,7 @@ class Order(db.Model):
     status = db.Column(db.String(32), default='pending')  # 订单状态
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
+    # 关联关系
     logistics = db.relationship('Logistics', backref='order', uselist=False)  # 物流信息
 
 class OrderItem(db.Model):
@@ -109,12 +113,21 @@ class OrderItem(db.Model):
     price = db.Column(db.Float, nullable=False)  # 商品价格
     quantity = db.Column(db.Integer, nullable=False)  # 商品数量
     subtotal = db.Column(db.Float, nullable=False)  # 小计金额
+    merchant_id = db.Column(db.Integer, db.ForeignKey('merchants.id'), nullable=False)  # 商家ID
+    item_status = db.Column(db.String(32), default='pending')  # 商品状态：pending(待处理)/shipped(已发货)/delivered(已送达)/refunded(已退款)
+    shipping_company = db.Column(db.String(64))  # 物流公司
+    tracking_number = db.Column(db.String(64))  # 物流单号
+    shipped_at = db.Column(db.DateTime)  # 发货时间
+    delivered_at = db.Column(db.DateTime)  # 送达时间
+    refund_reason = db.Column(db.Text)  # 退款原因
+    refunded_at = db.Column(db.DateTime)  # 退款时间
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
     
     # 关联关系
     order = db.relationship('Order', backref='items')
     product = db.relationship('Product', backref='order_items')
     spec_combination = db.relationship('ProductSpecCombination', backref='order_items')
+    merchant = db.relationship('Merchant', backref='order_items')
 
 class Cart(db.Model):
     __tablename__ = 'cart'
@@ -161,6 +174,43 @@ class Logistics(db.Model):
     status = db.Column(db.String(32))  # 当前物流状态
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
+
+class OrderItemLogistics(db.Model):
+    __tablename__ = 'order_item_logistics'
+    id = db.Column(db.Integer, primary_key=True)  # 物流ID
+    order_item_id = db.Column(db.Integer, db.ForeignKey('order_items.id'), nullable=False)  # 订单商品ID
+    company = db.Column(db.String(64), nullable=False)  # 物流公司
+    tracking_number = db.Column(db.String(64), nullable=False)  # 物流单号
+    status = db.Column(db.String(32), default='shipped')  # 物流状态：shipped(已发货)/in_transit(运输中)/delivered(已送达)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
+    
+    # 关联关系
+    order_item = db.relationship('OrderItem', backref='logistics')
+
+class MerchantOrderStats(db.Model):
+    __tablename__ = 'merchant_order_stats'
+    id = db.Column(db.Integer, primary_key=True)  # 统计ID
+    merchant_id = db.Column(db.Integer, db.ForeignKey('merchants.id'), nullable=False)  # 商家ID
+    stat_date = db.Column(db.Date, nullable=False)  # 统计日期
+    total_orders = db.Column(db.Integer, default=0)  # 订单总数
+    total_sales = db.Column(db.Float, default=0.0)  # 销售总额
+    pending_orders = db.Column(db.Integer, default=0)  # 待处理订单数
+    paid_orders = db.Column(db.Integer, default=0)  # 已付款订单数
+    shipped_orders = db.Column(db.Integer, default=0)  # 已发货订单数
+    delivered_orders = db.Column(db.Integer, default=0)  # 已送达订单数
+    cancelled_orders = db.Column(db.Integer, default=0)  # 已取消订单数
+    refunded_orders = db.Column(db.Integer, default=0)  # 已退款订单数
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
+    
+    # 关联关系
+    merchant = db.relationship('Merchant', backref='order_stats')
+    
+    # 唯一约束
+    __table_args__ = (
+        db.UniqueConstraint('merchant_id', 'stat_date', name='uk_merchant_date'),
+    )
 
 class Address(db.Model):
     __tablename__ = 'addresses'

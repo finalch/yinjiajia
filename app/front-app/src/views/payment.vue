@@ -88,7 +88,9 @@
 </template>
 
 <script>
-	export default {
+import request from '../utils/request.js'
+
+export default {
 		data() {
 			return {
 				orderInfo: {
@@ -97,6 +99,7 @@
 					productName: '',
 					totalAmount: '0.00'
 				},
+				orderId: null, // 订单ID
 				paymentMethods: [
 					{
 						name: '微信支付',
@@ -145,6 +148,7 @@
 				this.orderInfo.createTime = this.formatDate(new Date());
 				this.orderInfo.productName = '商品订单';
 				this.currentMethod = query.payment_method || 'wechat';
+				this.orderId = query.order_id; // 保存订单ID
 			},
 
 			// 复制订单号
@@ -194,19 +198,39 @@
 
 			// 处理支付
 			processPayment() {
-				if (this.isProcessing) return;
+				if (this.isProcessing) return
 				
-				this.isProcessing = true;
-				this.showPaymentModal = false;
+				this.isProcessing = true
+				this.showPaymentModal = false
 				
 				// 显示加载状态
-				this.showLoading('正在处理支付...');
+				this.showLoading('正在处理支付...')
 				
 				// 模拟支付处理
-				setTimeout(() => {
-					this.hideLoading();
-					this.paymentSuccess();
-				}, 2000);
+				setTimeout(async () => {
+					try {
+						// 调用支付成功接口
+						if (this.orderInfo.orderNo) {
+							const response = await request.post(`/api/app/order/${this.orderInfo.orderNo}/pay-success`, {
+								user_id: 1, // TODO: 从用户状态获取
+								payment_method: this.currentMethod
+							})
+							
+							if (response.data.code === 200) {
+								this.hideLoading()
+								this.paymentSuccess()
+							} else {
+								throw new Error(response.data.message || '支付失败')
+							}
+						} else {
+							throw new Error('订单号不存在')
+						}
+					} catch (error) {
+						console.error('支付处理失败:', error)
+						this.hideLoading()
+						this.paymentFail(error)
+					}
+				}, 2000)
 			},
 
 			// 显示加载状态

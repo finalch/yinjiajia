@@ -243,4 +243,57 @@ def cancel_order(order_id):
             'message': f'取消订单失败: {str(e)}'
         }), 500
 
+@app_order_api.route('/<order_number>/pay-success', methods=['POST'])
+def payment_success(order_number):
+    """APP端-支付成功回调"""
+    data = request.json
+    logger.info(f"支付成功回调: order_number={order_number}, data={data}")
+    
+    user_id = data.get('user_id', 1)
+    payment_method = data.get('payment_method', 'unknown')
+    
+    order = Order.query.filter_by(order_number=order_number, user_id=user_id).first()
+    if not order:
+        logger.error(f"订单不存在: order_id={order_number}, user_id={user_id}")
+        return jsonify({
+            'code': 404,
+            'message': '订单不存在'
+        }), 404
+    
+    if order.status != 'pending':
+        logger.warning(f"订单状态不是待付款: order_id={order_number}, status={order.status}")
+        return jsonify({
+            'code': 400,
+            'message': '订单状态不正确'
+        }), 400
+    
+    try:
+        # 更新订单状态为已付款
+        order.status = 'paid'
+        order.updated_at = datetime.utcnow()
+        
+        # 这里可以添加支付记录等其他逻辑
+        # 例如：记录支付方式、支付时间等
+        
+        db.session.commit()
+        
+        logger.info(f"支付成功，订单状态更新: order_id={order_number}, user_id={user_id}, payment_method={payment_method}")
+        
+        return jsonify({
+            'code': 200,
+            'message': '支付成功',
+            'data': {
+                'order_number': order.order_number,
+                'status': order.status,
+                'status_text': get_order_status_text(order.status)
+            }
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"支付成功回调处理失败: {str(e)}, order_id={order_id}, user_id={user_id}", exc_info=True)
+        return jsonify({
+            'code': 500,
+            'message': f'支付成功回调处理失败: {str(e)}'
+        }), 500
+
 
