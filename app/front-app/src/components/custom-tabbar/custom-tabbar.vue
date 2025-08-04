@@ -8,9 +8,9 @@
       <div class="icon">🛒</div>
       <div class="label">购物车</div>
     </div>
-    <div class="tabbar-item" @click="navigateTo('/my-order')">
-      <div class="icon">📋</div>
-      <div class="label">订单</div>
+    <div class="tabbar-item" @click="navigateTo('/profile')">
+      <div class="icon">👤</div>
+      <div class="label">我的</div>
     </div>
     <div class="tabbar-item" @click="navigateTo('/customer-service')">
       <div class="icon">💬</div>

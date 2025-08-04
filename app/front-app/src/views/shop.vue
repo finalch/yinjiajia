@@ -180,7 +180,7 @@
 					const response = await productApi.getProducts(params)
 					
 					if (response.data.code === 200) {
-						const { list, pagination } = response.data.data
+						const { list, total, has_next } = response.data.data
 						
 						if (refresh) {
 							this.products = list
@@ -188,8 +188,8 @@
 							this.products = [...this.products, ...list]
 						}
 						
-						this.total = pagination.total
-						this.hasMore = pagination.has_next
+						this.total = total
+						this.hasMore = has_next
 						
 						if (this.refreshing) {
 							this.refreshing = false

@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from models import db, Product, Cart
+from models import db, Product, Cart, ProductSpecCombination
 from datetime import datetime
 
 app_cart_api = Blueprint('app_cart_api', __name__, url_prefix='/api/app/cart')
@@ -18,7 +18,18 @@ def get_cart():
     for item in cart_items:
         product = Product.query.get(item.product_id)
         if product and product.status == 'on_sale':
-            item_total = float(product.price) * item.quantity
+            # 获取价格和库存信息
+            price = float(product.price)
+            stock = product.stock
+            
+            # 如果有规格组合，使用规格组合的价格和库存
+            if item.spec_combination_id:
+                spec_combo = ProductSpecCombination.query.get(item.spec_combination_id)
+                if spec_combo and spec_combo.status == 'active':
+                    price = float(spec_combo.price)
+                    stock = spec_combo.stock
+            
+            item_total = price * item.quantity
             total_amount += item_total
             
             data.append({
@@ -26,10 +37,11 @@ def get_cart():
                 'product_id': item.product_id,
                 'product_name': product.name,
                 'product_image': product.image_url,
-                'price': float(product.price),
+                'price': price,
                 'original_price': float(product.original_price) if product.original_price else None,
                 'quantity': item.quantity,
-                'stock': product.stock,
+                'stock': stock,
+                'spec_combination_id': item.spec_combination_id,
                 'item_total': item_total,
                 'created_at': item.created_at.isoformat() if item.created_at else None
             })
@@ -57,6 +69,7 @@ def add_to_cart():
     
     product_id = data['product_id']
     quantity = data['quantity']
+    spec_combination_id = data.get('spec_combination_id')
     user_id = data.get('user_id', 1)  # TODO: 从用户认证获取
     
     # 检查商品是否存在且上架
@@ -73,22 +86,42 @@ def add_to_cart():
             'message': '商品已下架'
         }), 400
     
-    if product.stock < quantity:
-        return jsonify({
-            'code': 400,
-            'message': '商品库存不足'
-        }), 400
+    # 检查规格组合
+    if spec_combination_id:
+        spec_combo = ProductSpecCombination.query.get(spec_combination_id)
+        if not spec_combo or spec_combo.product_id != product_id or spec_combo.status != 'active':
+            return jsonify({
+                'code': 400,
+                'message': '规格组合不存在或已下架'
+            }), 400
+        
+        # 检查规格组合库存
+        if spec_combo.stock < quantity:
+            return jsonify({
+                'code': 400,
+                'message': '商品库存不足'
+            }), 400
+    else:
+        # 检查商品总库存
+        if product.stock < quantity:
+            return jsonify({
+                'code': 400,
+                'message': '商品库存不足'
+            }), 400
     
-    # 检查购物车是否已有该商品
+    # 检查购物车是否已有该商品（相同规格组合）
     existing_item = Cart.query.filter_by(
         user_id=user_id, 
-        product_id=product_id
+        product_id=product_id,
+        spec_combination_id=spec_combination_id
     ).first()
     
     if existing_item:
         # 更新数量
         new_quantity = existing_item.quantity + quantity
-        if new_quantity > product.stock:
+        max_stock = spec_combo.stock if spec_combo else product.stock
+        
+        if new_quantity > max_stock:
             return jsonify({
                 'code': 400,
                 'message': '商品库存不足'
@@ -101,6 +134,7 @@ def add_to_cart():
         cart_item = Cart(
             user_id=user_id,
             product_id=product_id,
+            spec_combination_id=spec_combination_id,
             quantity=quantity
         )
         db.session.add(cart_item)

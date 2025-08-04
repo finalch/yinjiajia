@@ -1,15 +1,29 @@
 <script setup>
 import HelloWorld from './components/HelloWorld.vue'
+import CustomTabbar from './components/custom-tabbar/custom-tabbar.vue'
+import { useRoute } from 'vue-router'
+import { computed } from 'vue'
+
+const route = useRoute()
+
+// 只在商城首页显示custom-tabbar
+const showCustomTabbar = computed(() => {
+  return route.path === '/'
+})
+
+// 在非首页显示原来的导航栏
+const showNavbar = computed(() => {
+  return route.path !== '/'
+})
 </script>
 
 <template>
   <div id="app">
-    
-    
-    <main class="main-content">
+    <main class="main-content" :class="{ 'with-tabbar': showCustomTabbar }">
       <router-view />
     </main>
-    <nav class="navbar">
+    <CustomTabbar v-if="showCustomTabbar" />
+    <nav class="navbar" v-if="showNavbar">
       <router-link to="/" class="nav-link">商城</router-link>
       <router-link to="/cart" class="nav-link">购物车</router-link>
       <router-link to="/my-order" class="nav-link">我的订单</router-link>
@@ -46,6 +60,15 @@ body {
   flex-direction: column;
 }
 
+.main-content {
+  flex: 1;
+  padding: 1rem;
+}
+
+.main-content.with-tabbar {
+  padding-bottom: 80px; /* 为底部tabbar留出空间 */
+}
+
 .navbar {
   background-color: #fff;
   padding: 1rem;
@@ -71,10 +94,5 @@ body {
 .nav-link.router-link-active {
   background-color: #007bff;
   color: white;
-}
-
-.main-content {
-  flex: 1;
-  padding: 1rem;
 }
 </style>

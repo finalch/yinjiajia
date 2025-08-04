@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
-from models import db, Product, Category
+from models import db, Product, Category, ProductSpec, ProductSpecCombination
 from sqlalchemy import or_
+import json
 
 app_product_api = Blueprint('app_product_api', __name__, url_prefix='/api/app/product')
 
@@ -66,7 +67,7 @@ def get_products():
         # 处理图片数组，如果有多个图片用逗号分隔
         images = []
         if product.image_url:
-            images = [img.strip() for img in product.image_url.split(',') if img.strip()]
+            images = [img.strip() for img in product.image_url.split('$%%$') if img.strip()]
         
         # 如果没有图片，添加默认图片
         if not images:
@@ -86,6 +87,7 @@ def get_products():
             'category_name': product.category.name if product.category else '',
             'merchant_id': product.merchant_id,
             'merchant_name': product.merchant.name if product.merchant else '',
+            'has_specs': product.has_specs,  # 是否有规格
             'sales_count': 0,  # TODO: 添加销量统计
             'rating': 4.5,  # TODO: 添加评分统计
             'review_count': 0,  # TODO: 添加评价数量统计
@@ -98,14 +100,12 @@ def get_products():
         'message': '获取商品列表成功',
         'data': {
             'list': products,
-            'pagination': {
-                'page': page,
-                'per_page': per_page,
-                'total': pagination.total,
-                'pages': pagination.pages,
-                'has_prev': pagination.has_prev,
-                'has_next': pagination.has_next
-            }
+            'total': pagination.total,
+            'page': pagination.page,
+            'per_page': pagination.per_page,
+            'pages': pagination.pages,
+            'has_prev': pagination.has_prev,
+            'has_next': pagination.has_next
         }
     }), 200
 
@@ -140,16 +140,59 @@ def get_product_detail(product_id):
     # 处理图片数组，如果有多个图片用逗号分隔
     images = []
     if product.image_url:
-        images = [img.strip() for img in product.image_url.split(',') if img.strip()]
+        images = [img.strip() for img in product.image_url.split('$%%$') if img.strip()]
     
     # 如果没有图片，添加默认图片
     if not images:
         images = ['https://via.placeholder.com/400x300?text=商品图片']
     
+    # 获取规格信息
+    specs = []
+    spec_combinations = []
+    
+    if product.has_specs:
+        # 获取商品规格
+        product_specs = ProductSpec.query.filter(
+            ProductSpec.product_id == product.id
+        ).order_by(ProductSpec.sort_order).all()
+        
+        for spec in product_specs:
+            try:
+                values = json.loads(spec.values)
+                specs.append({
+                    'id': spec.id,
+                    'name': spec.name,
+                    'values': values,
+                    'sort_order': spec.sort_order
+                })
+            except json.JSONDecodeError:
+                continue
+        
+        # 获取规格组合
+        combinations = ProductSpecCombination.query.filter(
+            ProductSpecCombination.product_id == product.id,
+            ProductSpecCombination.status == 'active'
+        ).all()
+        
+        for combo in combinations:
+            try:
+                spec_values = json.loads(combo.spec_values)
+                spec_combinations.append({
+                    'id': combo.id,
+                    'spec_values': spec_values,
+                    'price': float(combo.price),
+                    'stock': combo.stock,
+                    'image_url': combo.image_url,
+                    'status': combo.status
+                })
+            except json.JSONDecodeError:
+                continue
+    
     data = {
         'id': product.id,
         'name': product.name,
         'description': product.description,
+        'detail': product.detail,  # 商品详情（富文本）
         'price': float(product.price),
         'original_price': float(product.original_price) if product.original_price else None,
         'stock': product.stock,
@@ -160,6 +203,9 @@ def get_product_detail(product_id):
         'category_name': product.category.name if product.category else '',
         'merchant_id': product.merchant_id,
         'merchant_name': product.merchant.name if product.merchant else '',
+        'has_specs': product.has_specs,  # 是否有规格
+        'specs': specs,  # 规格信息
+        'spec_combinations': spec_combinations,  # 规格组合
         'sales_count': 0,  # TODO: 添加销量统计
         'rating': 4.5,  # TODO: 添加评分统计
         'review_count': 0,  # TODO: 添加评价数量统计

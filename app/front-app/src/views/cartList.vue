@@ -282,73 +282,25 @@
 			        const selectedItems = this.cartList.filter(item => item.selected);
 			        if (selectedItems.length === 0) {
 			            uni.showToast({
-			                title: '请选择至少一个课程',
+			                title: '请选择至少一个商品',
 			                icon: 'none',
 			            });
 			            return;
 			        }
 			
-			        // 2. 创建订单
-			        const orderRes = await this.createOrders(selectedItems);
-					console.log('订单信息：',orderRes);
-			        if (!orderRes.data || !orderRes.data.order_id) {
-			            throw new Error('创建订单失败');
-			        }
-			        const orderId = orderRes.data.order_id;
-			
-			        // 3. 获取支付参数
-			        const payRes = await this.payOrders(orderId);
-					console.log('支付参数：',payRes);
-			        if (!payRes.orderInfo) {
-			            throw new Error('获取支付参数失败');
-			        }
-			        // const paymentParams = payRes.data;
-					
-			        // 4. 调用支付接口
-			        // const paymentRes = await this.payment(paymentParams);
-					// console.log('paymentRes next:',paymentRes);
-					
-					if (payRes.provider === 'alipay') {
-						const pay_url = payRes.pay_url
-						// this.paymentUrl = paymentRes.payment_url;							
-						window.location.href = pay_url; // 直接跳转			
-					// 5. 处理支付结果
-					// if (paymentRes[0].errMsg === 'requestPayment:ok') {
-						// 支付API调用成功，开始轮询检查支付状态
-						
-						//等待支付完成回调（这里可以增加一个等待用户支付完成的逻辑）
-						// 在实际应用中，支付宝/微信支付会有一个前端返回的结果
-						// 但为了更可靠，我们仍然需要后端验证
-						
-						const isPaid = await this.pollPaymentStatus(orderId);
-						console.log('ispaid:',isPaid);
-						if (isPaid) {
-							// 支付成功处理
-							const addRes = await this.addToOrders(orderId);
-							
-							if (addRes.data.status === 'success') {
-								uni.showToast({
-									title: '支付成功，已加入我的课程',
-									icon: 'success'
-								});
-								this.clearSelectedItems();
-								
-								// 跳转到支付成功页面
-								uni.navigateTo({
-									url: '/pages/mylist/cartList/cartList'
-								});
-							}
-						} else {
-							throw new Error('支付超时，请检查支付结果');
-						}
-					}
-				} catch (error) {
-					console.error('支付流程出错:', error);
-					uni.showToast({
-						title: error.message || '支付流程出错',
-						icon: 'none'
-					});
-				}
+			        // 2. 跳转到下单页面
+			        const cartItemIds = selectedItems.map(item => item.id).join(',');
+			        this.$router.push({
+			            path: '/checkout',
+			            query: { cart_items: cartItemIds }
+			        });
+			    } catch (error) {
+			        console.error('跳转下单页面失败:', error);
+			        uni.showToast({
+			            title: error.message || '跳转失败',
+			            icon: 'none'
+			        });
+			    }
 			},
 
 			// 轮询检查支付状态

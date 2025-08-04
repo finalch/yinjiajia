@@ -1,7 +1,8 @@
 from flask import Blueprint, jsonify, request
-from models import db, Product, Category, Merchant
+from models import db, Product, Category, Merchant, ProductSpec, ProductSpecCombination
 from datetime import datetime
 from sqlalchemy import func
+import json
 
 web_product_api = Blueprint('web_product_api', __name__, url_prefix='/api/web/product')
 
@@ -50,6 +51,7 @@ def get_products():
             'category_name': category.name if category else '',
             'merchant_id': product.merchant_id,
             'merchant_name': merchant.name if merchant else '',
+            'has_specs': product.has_specs,  # 是否有规格
             'status': product.status,
             'status_text': get_status_text(product.status),
             'created_at': product.created_at.strftime('%Y-%m-%d %H:%M:%S'),
@@ -85,6 +87,7 @@ def get_product_detail(product_id):
         'id': product.id,
         'name': product.name,
         'description': product.description,
+        'detail': product.detail,
         'price': product.price,
         'stock': product.stock,
         'image_url': product.image_url,
@@ -94,47 +97,67 @@ def get_product_detail(product_id):
         'category_name': category.name if category else '',
         'merchant_id': product.merchant_id,
         'merchant_name': merchant.name if merchant else '',
+        'has_specs': product.has_specs,  # 是否有规格
         'status': product.status,
         'status_text': get_status_text(product.status),
         'created_at': product.created_at.strftime('%Y-%m-%d %H:%M:%S'),
         'updated_at': product.updated_at.strftime('%Y-%m-%d %H:%M:%S')
     }
+    
+    # 如果是多规格商品，添加规格信息
+    if product.has_specs:
+        # 获取规格信息
+        specs = ProductSpec.query.filter(ProductSpec.product_id == product.id).order_by(ProductSpec.sort_order).all()
+        specs_data = []
+        for spec in specs:
+            try:
+                values = json.loads(spec.values)
+                specs_data.append({
+                    'id': spec.id,
+                    'name': spec.name,
+                    'values': values,
+                    'sort_order': spec.sort_order
+                })
+            except json.JSONDecodeError:
+                continue
+        
+        # 获取规格组合信息
+        combinations = ProductSpecCombination.query.filter(
+            ProductSpecCombination.product_id == product.id,
+            ProductSpecCombination.status == 'active'
+        ).all()
+        combinations_data = []
+        for combo in combinations:
+            try:
+                spec_values = json.loads(combo.spec_values)
+                combinations_data.append({
+                    'id': combo.id,
+                    'spec_values': spec_values,
+                    'price': float(combo.price),
+                    'stock': combo.stock,
+                    'image_url': combo.image_url,
+                    'status': combo.status
+                })
+            except json.JSONDecodeError:
+                continue
+        
+        data['specs'] = specs_data
+        data['spec_combinations'] = combinations_data
     return jsonify({
         "code": 200,
         "message": "获取商品详情成功",
         "data": data
     }), 200
 
-@web_product_api.route('/upload-image', methods=['POST'])
-def upload_image():
-    # Mock实现，实际存储逻辑后续补充
-    return jsonify({"url": "https://mock.cdn.com/your-image.jpg"})
-
 @web_product_api.route('/', methods=['POST'])
 def create_product():
     """WEB端-创建商品"""
     data = request.json
     
-    required_fields = ['name', 'price', 'stock', 'category_id', 'merchant_id']
+    required_fields = ['name', 'category_id', 'merchant_id']
     for field in required_fields:
         if not data.get(field):
             return jsonify({"code": 400, "message": f"{field} 不能为空"}), 400
-    
-    # 校验价格
-    try:
-        price = float(data['price'])
-        if price <= 0:
-            return jsonify({"code": 400, "message": "价格必须为大于0的数字"}), 400
-    except Exception:
-        return jsonify({"code": 400, "message": "价格必须为数字"}), 400
-    
-    # 校验库存
-    try:
-        stock = int(data['stock'])
-        if stock < 0:
-            return jsonify({"code": 400, "message": "库存必须为不小于0的整数"}), 400
-    except Exception:
-        return jsonify({"code": 400, "message": "库存必须为整数"}), 400
     
     # 校验分类和商家是否存在
     category = Category.query.get(data['category_id'])
@@ -145,21 +168,149 @@ def create_product():
     if not merchant:
         return jsonify({"code": 404, "message": "商家不存在"}), 404
     
-    # 创建商品，status 默认为 'pending'
-    product = Product(
-        name=data['name'],
-        description=data.get('description', ''),
-        price=price,
-        stock=stock,
-        image_url=data.get('image_url', ''),
-        video_url=data.get('video_url', ''),
-        category_id=data['category_id'],
-        merchant_id=data['merchant_id'],
-        status='pending'  # 新商品默认为待审核状态
-    )
+    # 检查是否是多规格商品
+    has_specs = data.get('has_specs', False)
+    
+    if not has_specs:
+        # 无规格商品验证
+        if not data.get('price'):
+            return jsonify({"code": 400, "message": "价格不能为空"}), 400
+        if not data.get('stock'):
+            return jsonify({"code": 400, "message": "库存不能为空"}), 400
+        
+        # 校验价格
+        try:
+            price = float(data['price'])
+            if price <= 0:
+                return jsonify({"code": 400, "message": "价格必须为大于0的数字"}), 400
+        except Exception:
+            return jsonify({"code": 400, "message": "价格必须为数字"}), 400
+        
+        # 校验库存
+        try:
+            stock = int(data['stock'])
+            if stock < 0:
+                return jsonify({"code": 400, "message": "库存必须为不小于0的整数"}), 400
+        except Exception:
+            return jsonify({"code": 400, "message": "库存必须为整数"}), 400
+        
+        # 处理图片和视频
+        main_image = data.get('main_image', '')
+        images = data.get('images', [])
+        videos = data.get('videos', [])
+        
+        # 合并所有图片URL
+        all_images = [main_image] + images if main_image else images
+        image_url = '$%%$'.join(all_images) if all_images else ''
+        
+        # 处理视频URL
+        video_url = videos[0] if videos else ''
+        
+        # 创建无规格商品
+        product = Product(
+            name=data['name'],
+            description=data.get('description', ''),
+            detail=data.get('detail', ''),
+            price=price,
+            stock=stock,
+            image_url=image_url,
+            video_url=video_url,
+            category_id=data['category_id'],
+            merchant_id=data['merchant_id'],
+            has_specs=False,
+            status='pending'  # 新商品默认为待审核状态
+        )
+    else:
+        # 多规格商品验证
+        if not data.get('specs') or not isinstance(data['specs'], list):
+            return jsonify({"code": 400, "message": "多规格商品必须包含规格信息"}), 400
+        
+        if not data.get('spec_combinations') or not isinstance(data['spec_combinations'], list):
+            return jsonify({"code": 400, "message": "多规格商品必须包含规格组合信息"}), 400
+        
+        # 验证规格信息
+        for spec in data['specs']:
+            if not spec.get('name') or not spec.get('values'):
+                return jsonify({"code": 400, "message": "规格信息不完整"}), 400
+        
+        # 验证规格组合信息
+        for combo in data['spec_combinations']:
+            if not combo.get('price') or not combo.get('stock'):
+                return jsonify({"code": 400, "message": "规格组合信息不完整"}), 400
+            
+            try:
+                price = float(combo['price'])
+                if price <= 0:
+                    return jsonify({"code": 400, "message": "规格组合价格必须为大于0的数字"}), 400
+            except Exception:
+                return jsonify({"code": 400, "message": "规格组合价格必须为数字"}), 400
+            
+            try:
+                stock = int(combo['stock'])
+                if stock < 0:
+                    return jsonify({"code": 400, "message": "规格组合库存必须为不小于0的整数"}), 400
+            except Exception:
+                return jsonify({"code": 400, "message": "规格组合库存必须为整数"}), 400
+        
+        # 计算最低价格和总库存
+        min_price = min(float(combo['price']) for combo in data['spec_combinations'])
+        total_stock = sum(int(combo['stock']) for combo in data['spec_combinations'])
+        
+        # 处理图片和视频
+        main_image = data.get('main_image', '')
+        images = data.get('images', [])
+        videos = data.get('videos', [])
+        
+        # 合并所有图片URL
+        all_images = [main_image] + images if main_image else images
+        image_url = '$%%$'.join(all_images) if all_images else ''
+        
+        # 处理视频URL
+        video_url = videos[0] if videos else ''
+        
+        # 创建多规格商品
+        product = Product(
+            name=data['name'],
+            description=data.get('description', ''),
+            detail=data.get('detail', ''),
+            price=min_price,  # 使用最低价格作为基础价格
+            stock=total_stock,  # 使用总库存
+            image_url=image_url,
+            video_url=video_url,
+            category_id=data['category_id'],
+            merchant_id=data['merchant_id'],
+            has_specs=True,
+            status='pending'  # 新商品默认为待审核状态
+        )
     
     try:
         db.session.add(product)
+        db.session.flush()  # 获取product.id
+        
+        # 如果是多规格商品，创建规格和规格组合
+        if has_specs:
+            # 创建规格
+            for spec_data in data['specs']:
+                spec = ProductSpec(
+                    product_id=product.id,
+                    name=spec_data['name'],
+                    values=spec_data['values'],  # 已经是JSON字符串
+                    sort_order=spec_data.get('sort_order', 0)
+                )
+                db.session.add(spec)
+            
+            # 创建规格组合
+            for combo_data in data['spec_combinations']:
+                combo = ProductSpecCombination(
+                    product_id=product.id,
+                    spec_values=combo_data['spec_values'],  # 已经是JSON字符串
+                    price=float(combo_data['price']),
+                    stock=int(combo_data['stock']),
+                    image_url=combo_data.get('image_url', ''),
+                    status='active'
+                )
+                db.session.add(combo)
+        
         db.session.commit()
         return jsonify({
             "code": 200,
@@ -183,36 +334,128 @@ def update_product(product_id):
     if not data:
         return jsonify({"code": 400, "message": "更新数据不能为空"}), 400
     
-    # 更新商品信息
+    # 检查是否是多规格商品
+    has_specs = data.get('has_specs', product.has_specs)
+    
+    # 更新基本信息
     if 'name' in data:
         product.name = data['name']
     if 'description' in data:
         product.description = data['description']
-    if 'price' in data:
-        try:
-            price = float(data['price'])
-            if price <= 0:
-                return jsonify({"code": 400, "message": "价格必须为大于0的数字"}), 400
-            product.price = price
-        except Exception:
-            return jsonify({"code": 400, "message": "价格必须为数字"}), 400
-    if 'stock' in data:
-        try:
-            stock = int(data['stock'])
-            if stock < 0:
-                return jsonify({"code": 400, "message": "库存必须为不小于0的整数"}), 400
-            product.stock = stock
-        except Exception:
-            return jsonify({"code": 400, "message": "库存必须为整数"}), 400
+    if 'detail' in data:
+        product.detail = data['detail']
     if 'category_id' in data:
         category = Category.query.get(data['category_id'])
         if not category:
             return jsonify({"code": 404, "message": "分类不存在"}), 404
         product.category_id = data['category_id']
-    if 'image_url' in data:
-        product.image_url = data['image_url']
-    if 'video_url' in data:
-        product.video_url = data['video_url']
+    if 'main_image' in data or 'images' in data or 'videos' in data:
+        # 处理图片和视频
+        main_image = data.get('main_image', '')
+        images = data.get('images', [])
+        videos = data.get('videos', [])
+        
+        # 合并所有图片URL
+        all_images = [main_image] + images if main_image else images
+        image_url = '$%%$'.join(all_images) if all_images else ''
+        
+        # 处理视频URL
+        video_url = videos[0] if videos else ''
+        
+        product.image_url = image_url
+        product.video_url = video_url
+    
+    # 处理规格相关更新
+    if not has_specs:
+        # 无规格商品更新
+        if 'price' in data:
+            try:
+                price = float(data['price'])
+                if price <= 0:
+                    return jsonify({"code": 400, "message": "价格必须为大于0的数字"}), 400
+                product.price = price
+            except Exception:
+                return jsonify({"code": 400, "message": "价格必须为数字"}), 400
+        if 'stock' in data:
+            try:
+                stock = int(data['stock'])
+                if stock < 0:
+                    return jsonify({"code": 400, "message": "库存必须为不小于0的整数"}), 400
+                product.stock = stock
+            except Exception:
+                return jsonify({"code": 400, "message": "库存必须为整数"}), 400
+        
+        # 如果从多规格改为无规格，删除相关规格数据
+        if product.has_specs and not has_specs:
+            ProductSpec.query.filter(ProductSpec.product_id == product.id).delete()
+            ProductSpecCombination.query.filter(ProductSpecCombination.product_id == product.id).delete()
+        
+        product.has_specs = False
+    else:
+        # 多规格商品更新
+        if not data.get('specs') or not isinstance(data['specs'], list):
+            return jsonify({"code": 400, "message": "多规格商品必须包含规格信息"}), 400
+        
+        if not data.get('spec_combinations') or not isinstance(data['spec_combinations'], list):
+            return jsonify({"code": 400, "message": "多规格商品必须包含规格组合信息"}), 400
+        
+        # 验证规格信息
+        for spec in data['specs']:
+            if not spec.get('name') or not spec.get('values'):
+                return jsonify({"code": 400, "message": "规格信息不完整"}), 400
+        
+        # 验证规格组合信息
+        for combo in data['spec_combinations']:
+            if not combo.get('price') or not combo.get('stock'):
+                return jsonify({"code": 400, "message": "规格组合信息不完整"}), 400
+            
+            try:
+                price = float(combo['price'])
+                if price <= 0:
+                    return jsonify({"code": 400, "message": "规格组合价格必须为大于0的数字"}), 400
+            except Exception:
+                return jsonify({"code": 400, "message": "规格组合价格必须为数字"}), 400
+            
+            try:
+                stock = int(combo['stock'])
+                if stock < 0:
+                    return jsonify({"code": 400, "message": "规格组合库存必须为不小于0的整数"}), 400
+            except Exception:
+                return jsonify({"code": 400, "message": "规格组合库存必须为整数"}), 400
+        
+        # 计算最低价格和总库存
+        min_price = min(float(combo['price']) for combo in data['spec_combinations'])
+        total_stock = sum(int(combo['stock']) for combo in data['spec_combinations'])
+        
+        product.price = min_price
+        product.stock = total_stock
+        product.has_specs = True
+        
+        # 删除旧的规格数据
+        ProductSpec.query.filter(ProductSpec.product_id == product.id).delete()
+        ProductSpecCombination.query.filter(ProductSpecCombination.product_id == product.id).delete()
+        
+        # 创建新的规格数据
+        for spec_data in data['specs']:
+            spec = ProductSpec(
+                product_id=product.id,
+                name=spec_data['name'],
+                values=spec_data['values'],  # 已经是JSON字符串
+                sort_order=spec_data.get('sort_order', 0)
+            )
+            db.session.add(spec)
+        
+        # 创建新的规格组合数据
+        for combo_data in data['spec_combinations']:
+            combo = ProductSpecCombination(
+                product_id=product.id,
+                spec_values=combo_data['spec_values'],  # 已经是JSON字符串
+                price=float(combo_data['price']),
+                stock=int(combo_data['stock']),
+                image_url=combo_data.get('image_url', ''),
+                status='active'
+            )
+            db.session.add(combo)
     
     product.updated_at = datetime.utcnow()
     

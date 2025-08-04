@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from models import db, Product, Order, OrderItem, Cart, Logistics
+from models import db, Product, Order, OrderItem, Cart, Logistics, Address, ProductSpecCombination
 from datetime import datetime
 import uuid
 
@@ -33,7 +33,8 @@ def get_orders():
                 'product_image': product.image_url if product else '',
                 'price': float(item.price),
                 'quantity': item.quantity,
-                'subtotal': float(item.subtotal)
+                'subtotal': float(item.subtotal),
+                'spec_combination_id': item.spec_combination_id
             })
         
         logistics = Logistics.query.filter_by(order_id=order.id).first()
@@ -74,6 +75,108 @@ def get_orders():
             }
         }
     }), 200
+
+@app_order_api.route('/checkout', methods=['GET'])
+def get_checkout_info():
+    """APP端-获取下单页面信息"""
+    user_id = request.args.get('user_id', 1, type=int)
+    cart_item_ids = request.args.get('cart_items', '').split(',') if request.args.get('cart_items') else []
+    product_id = request.args.get('product_id', type=int)
+    quantity = request.args.get('quantity', 1, type=int)
+    spec_combination_id = request.args.get('spec_combination_id', type=int)
+    
+    # 获取用户默认收货地址
+    default_address = Address.query.filter_by(user_id=user_id, is_default=True).first()
+    addresses = Address.query.filter_by(user_id=user_id).order_by(Address.is_default.desc(), Address.created_at.desc()).all()
+    
+    address_list = []
+    for addr in addresses:
+        address_list.append({
+            'id': addr.id,
+            'receiver_name': addr.receiver_name,
+            'phone': addr.phone,
+            'province': addr.province,
+            'city': addr.city,
+            'district': addr.district,
+            'detail_address': addr.detail_address,
+            'is_default': addr.is_default,
+            'full_address': f"{addr.province}{addr.city}{addr.district}{addr.detail_address}"
+        })
+    
+    # 获取商品信息
+    products = []
+    total_amount = 0
+    
+    # 处理购物车商品
+    if cart_item_ids and cart_item_ids[0]:
+        for cart_item_id in cart_item_ids:
+            cart_item = Cart.query.filter_by(id=cart_item_id, user_id=user_id).first()
+            if cart_item:
+                product = Product.query.get(cart_item.product_id)
+                if product and product.status == 'on_sale':
+                    # 获取价格和库存信息
+                    price = float(product.price)
+                    stock = product.stock
+                    
+                    # 如果有规格组合，使用规格组合的价格和库存
+                    if cart_item.spec_combination_id:
+                        spec_combo = ProductSpecCombination.query.get(cart_item.spec_combination_id)
+                        if spec_combo and spec_combo.status == 'active':
+                            price = float(spec_combo.price)
+                            stock = spec_combo.stock
+                    
+                    item_total = price * cart_item.quantity
+                    total_amount += item_total
+                    products.append({
+                        'cart_item_id': cart_item.id,
+                        'product_id': product.id,
+                        'product_name': product.name,
+                        'product_image': product.image_url,
+                        'price': price,
+                        'quantity': cart_item.quantity,
+                        'subtotal': item_total,
+                        'spec_combination_id': cart_item.spec_combination_id
+                    })
+    
+    # 处理直接购买商品
+    if product_id:
+        product = Product.query.get(product_id)
+        if product and product.status == 'on_sale':
+            # 获取价格和库存信息
+            price = float(product.price)
+            stock = product.stock
+            
+            # 如果有规格组合，使用规格组合的价格和库存
+            if spec_combination_id:
+                spec_combo = ProductSpecCombination.query.get(spec_combination_id)
+                if spec_combo and spec_combo.product_id == product_id and spec_combo.status == 'active':
+                    price = float(spec_combo.price)
+                    stock = spec_combo.stock
+            
+            item_total = price * quantity
+            total_amount += item_total
+            products.append({
+                'cart_item_id': None,
+                'product_id': product.id,
+                'product_name': product.name,
+                'product_image': product.image_url,
+                'price': price,
+                'quantity': quantity,
+                'subtotal': item_total,
+                'spec_combination_id': spec_combination_id
+            })
+    
+    return jsonify({
+        'code': 200,
+        'message': '获取下单信息成功',
+        'data': {
+            'addresses': address_list,
+            'default_address': address_list[0] if address_list else None,
+            'products': products,
+            'total_amount': total_amount,
+            'product_count': len(products)
+        }
+    })
 
 @app_order_api.route('/<int:order_id>', methods=['GET'])
 def get_order_detail(order_id):
@@ -136,37 +239,109 @@ def create_order():
     """APP端-创建订单"""
     data = request.json
     
-    if not data or 'cart_items' not in data:
+    user_id = data.get('user_id', 1)
+    address_id = data.get('address_id')
+    
+    # 验证收货地址
+    if not address_id:
         return jsonify({
             'code': 400,
-            'message': '购物车商品不能为空'
+            'message': '收货地址不能为空'
         }), 400
     
-    cart_items = data['cart_items']
-    user_id = data.get('user_id', 1)
-    
-    if not cart_items:
+    address = Address.query.filter_by(id=address_id, user_id=user_id).first()
+    if not address:
         return jsonify({
             'code': 400,
-            'message': '购物车商品不能为空'
+            'message': '收货地址不存在'
+        }), 400
+    
+    # 支持两种下单方式：购物车商品和直接购买
+    cart_items = data.get('cart_items', [])
+    direct_buy = data.get('direct_buy', {})  # 直接购买的商品信息
+    
+    if not cart_items and not direct_buy:
+        return jsonify({
+            'code': 400,
+            'message': '商品信息不能为空'
         }), 400
     
     cart_products = []
     total_amount = 0
     
-    for cart_item_id in cart_items:
-        cart_item = Cart.query.filter_by(id=cart_item_id, user_id=user_id).first()
-        if not cart_item:
+    # 处理购物车商品
+    if cart_items:
+        for cart_item_id in cart_items:
+            cart_item = Cart.query.filter_by(id=cart_item_id, user_id=user_id).first()
+            if not cart_item:
+                return jsonify({
+                    'code': 400,
+                    'message': f'购物车商品ID {cart_item_id} 不存在'
+                }), 400
+            
+            product = Product.query.get(cart_item.product_id)
+            if not product:
+                return jsonify({
+                    'code': 400,
+                    'message': f'商品ID {cart_item.product_id} 不存在'
+                }), 400
+            
+            if product.status != 'on_sale':
+                return jsonify({
+                    'code': 400,
+                    'message': f'商品 {product.name} 已下架'
+                }), 400
+            
+            # 检查规格组合
+            price = float(product.price)
+            stock = product.stock
+            spec_combination = None
+            
+            if cart_item.spec_combination_id:
+                spec_combination = ProductSpecCombination.query.get(cart_item.spec_combination_id)
+                if not spec_combination or spec_combination.product_id != product.id or spec_combination.status != 'active':
+                    return jsonify({
+                        'code': 400,
+                        'message': f'商品 {product.name} 规格组合不存在或已下架'
+                    }), 400
+                price = float(spec_combination.price)
+                stock = spec_combination.stock
+            
+            if stock < cart_item.quantity:
+                return jsonify({
+                    'code': 400,
+                    'message': f'商品 {product.name} 库存不足'
+                }), 400
+            
+            item_total = price * cart_item.quantity
+            total_amount += item_total
+            
+            cart_products.append({
+                'cart_item': cart_item,
+                'product': product,
+                'quantity': cart_item.quantity,
+                'price': price,
+                'subtotal': item_total,
+                'spec_combination': spec_combination
+            })
+    
+    # 处理直接购买商品
+    if direct_buy:
+        product_id = direct_buy.get('product_id')
+        quantity = direct_buy.get('quantity', 1)
+        spec_combination_id = direct_buy.get('spec_combination_id')
+        
+        if not product_id:
             return jsonify({
                 'code': 400,
-                'message': f'购物车商品ID {cart_item_id} 不存在'
+                'message': '直接购买商品ID不能为空'
             }), 400
         
-        product = Product.query.get(cart_item.product_id)
+        product = Product.query.get(product_id)
         if not product:
             return jsonify({
                 'code': 400,
-                'message': f'商品ID {cart_item.product_id} 不存在'
+                'message': f'商品ID {product_id} 不存在'
             }), 400
         
         if product.status != 'on_sale':
@@ -175,27 +350,44 @@ def create_order():
                 'message': f'商品 {product.name} 已下架'
             }), 400
         
-        if product.stock < cart_item.quantity:
+        # 检查规格组合
+        price = float(product.price)
+        stock = product.stock
+        spec_combination = None
+        
+        if spec_combination_id:
+            spec_combination = ProductSpecCombination.query.get(spec_combination_id)
+            if not spec_combination or spec_combination.product_id != product.id or spec_combination.status != 'active':
+                return jsonify({
+                    'code': 400,
+                    'message': f'商品 {product.name} 规格组合不存在或已下架'
+                }), 400
+            price = float(spec_combination.price)
+            stock = spec_combination.stock
+        
+        if stock < quantity:
             return jsonify({
                 'code': 400,
                 'message': f'商品 {product.name} 库存不足'
             }), 400
         
-        item_total = float(product.price) * cart_item.quantity
+        item_total = price * quantity
         total_amount += item_total
         
         cart_products.append({
-            'cart_item': cart_item,
+            'cart_item': None,  # 直接购买没有购物车项
             'product': product,
-            'quantity': cart_item.quantity,
-            'price': float(product.price),
-            'subtotal': item_total
+            'quantity': quantity,
+            'price': price,
+            'subtotal': item_total,
+            'spec_combination': spec_combination
         })
     
     order_number = f"ORD{datetime.now().strftime('%Y%m%d%H%M%S')}{uuid.uuid4().hex[:8].upper()}"
     
     order = Order(
         user_id=user_id,
+        merchant_id=cart_products[0]['product'].merchant_id,  # 使用第一个商品的商家ID
         order_number=order_number,
         status='pending',
         total_amount=total_amount
@@ -209,14 +401,22 @@ def create_order():
             order_item = OrderItem(
                 order_id=order.id,
                 product_id=item_data['product'].id,
+                spec_combination_id=item_data['spec_combination'].id if item_data['spec_combination'] else None,
                 price=item_data['price'],
                 quantity=item_data['quantity'],
                 subtotal=item_data['subtotal']
             )
             db.session.add(order_item)
             
-            item_data['product'].stock -= item_data['quantity']
-            db.session.delete(item_data['cart_item'])
+            # 更新库存
+            if item_data['spec_combination']:
+                item_data['spec_combination'].stock -= item_data['quantity']
+            else:
+                item_data['product'].stock -= item_data['quantity']
+            
+            # 只删除购物车商品，直接购买的不删除购物车
+            if item_data['cart_item']:
+                db.session.delete(item_data['cart_item'])
         
         db.session.commit()
         
@@ -226,7 +426,17 @@ def create_order():
             'data': {
                 'order_id': order.id,
                 'order_number': order.order_number,
-                'total_amount': float(order.total_amount)
+                'total_amount': float(order.total_amount),
+                'address': {
+                    'id': address.id,
+                    'receiver_name': address.receiver_name,
+                    'phone': address.phone,
+                    'province': address.province,
+                    'city': address.city,
+                    'district': address.district,
+                    'detail_address': address.detail_address,
+                    'full_address': f"{address.province}{address.city}{address.district}{address.detail_address}"
+                }
             }
         }), 200
         
