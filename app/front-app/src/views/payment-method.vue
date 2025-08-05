@@ -131,11 +131,27 @@ export default {
 
       try {
         const query = this.$route.query
+        
+        // 获取默认地址
+        let addressId = parseInt(query.address_id) || 1
+        if (!query.address_id) {
+          try {
+            const addressResponse = await request.get('/api/app/address/default', {
+              params: { user_id: 1 }
+            })
+            if (addressResponse.data.code === 200 && addressResponse.data.data) {
+              addressId = addressResponse.data.data.id
+            }
+          } catch (error) {
+            console.warn('获取默认地址失败，使用默认值:', error)
+          }
+        }
+        
         // 创建订单
         const orderData = {
           user_id: 1, // TODO: 从用户状态获取
           payment_method: this.selectedMethod,
-          address_id: parseInt(query.address_id)
+          address_id: addressId
         }
         
         if (this.orderType === 'cart') {
@@ -151,9 +167,11 @@ export default {
           }
         }
 
+        console.log('创建订单数据:', orderData)
         const response = await request.post('/api/app/order/', orderData)
         
         if (response.data.code === 200) {
+          console.log('订单创建成功:', response.data)
           // 跳转到支付页面
           this.$router.push({
             path: '/payment',
@@ -164,6 +182,9 @@ export default {
               payment_method: this.selectedMethod
             }
           })
+        } else {
+          console.error('创建订单失败:', response.data)
+          alert(response.data.message || '创建订单失败')
         }
       } catch (error) {
         console.error('创建订单失败:', error)

@@ -1,700 +1,799 @@
 <template>
-	<view class="section" v-if="!paymentUrl">
-		<view class="title">课程库</view>
-		<view class='shopping-cart'>
-			<view class="cart-header">
-				<view class="header-item">
-					<checkbox :checked="isAllSelected" @click="toggleSelectAll" /> 全选
-				</view>
-				<view class="header-item">课程</view>
-				<view class="header-item">价格</view>
-				<view class="header-item">数量</view>
-				<view class="header-item">操作</view>
-			</view>
+	<div class="cart-container">
+		<!-- 页面头部 -->
+		<div class="cart-header">
+			<h1 class="page-title">购物车</h1>
+			<span class="item-count">{{ cartList.length }}件商品</span>
+		</div>
 
-			<view v-for="(item, index) in cartList" :key="item.id" class="cart-item">
-				<view class="select-item">
-					<checkbox :checked="item.selected" @click="toggleSelectItem(item)" style="width: 20rpx; height: 20rpx" />
-				</view>
-				<view class='product-image'>
-					<image :src='item.picture'></image>
-					<view class='product-name'>{{ item.name }}</view>
-				</view>				
-				<view class='product-price'><text>￥{{ item.price }}</text></view>	
-				<view class="quantity-control">
-					<button @click="decreaseQuantity(index)">-</button>
-					<text>{{ item.quantity }}</text>
-					<button @click="increaseQuantity(index)">+</button>
-				</view>				
-				<button @click="removeFromCart(index)">删除</button>
-			</view>
-		</view>
-		<view class="order-total">总计: ￥{{ selectedTotalPrice }}</view>
-		<button @click="goToPay">去支付</button> <!-- 添加去支付按钮 -->
-	</view>
-	<!-- 全屏web-view用于支付 -->
-	<!-- <web-view 
-	  v-if="paymentUrl" 
-	  :src="paymentUrl"
-	  style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 9999;"
-	></web-view> -->
+		<!-- 购物车为空状态 -->
+		<div v-if="cartList.length === 0" class="empty-cart">
+			<div class="empty-icon">🛒</div>
+			<div class="empty-text">购物车空空如也</div>
+			<button class="shop-btn" @click="goToShop">去购物</button>
+		</div>
+
+		<!-- 购物车列表 -->
+		<div v-else class="cart-content">
+			<!-- 商品列表 -->
+			<div class="cart-items">
+				<div 
+					v-for="(item, index) in cartList" 
+					:key="item.id" 
+					class="cart-item"
+					:class="{ 'item-selected': item.selected }"
+					@touchstart="startLongPress(item)"
+					@touchend="endLongPress"
+					@touchcancel="endLongPress"
+					@mousedown="startLongPress(item)"
+					@mouseup="endLongPress"
+					@mouseleave="endLongPress"
+				>
+					<!-- 选择框 -->
+					<div class="item-select">
+						<label class="item-checkbox">
+							<input 
+								type="checkbox" 
+								:checked="item.selected" 
+								@change="toggleSelectItem(item)"
+								class="select-checkbox"
+							/>
+							<span class="checkbox-custom"></span>
+						</label>
+					</div>
+
+					<!-- 商品信息 -->
+					<div class="item-info">
+						<div class="item-image">
+							<img :src="getItemImage(item)" :alt="item.product_name" />
+						</div>
+						<div class="item-details">
+							<h3 class="item-name" :title="item.product_name">{{ item.product_name }}</h3>
+							<!-- 显示规格信息 -->
+							<div v-if="item.spec_combination_id" class="item-specs">
+								<span class="spec-text">{{ getSpecText(item) }}</span>
+							</div>
+							<div class="item-price">¥{{ formatPrice(item.price) }}</div>
+						</div>
+					</div>
+
+					<!-- 数量控制 -->
+					<div class="quantity-control">
+						<button 
+							class="quantity-btn minus" 
+							@click="decreaseQuantity(item)"
+							:disabled="item.quantity <= 1"
+						>
+							<span>-</span>
+						</button>
+						<span class="quantity-display">{{ item.quantity }}</span>
+						<button 
+							class="quantity-btn plus" 
+							@click="increaseQuantity(item)"
+							:disabled="item.quantity >= item.stock"
+						>
+							<span>+</span>
+						</button>
+					</div>
+
+
+				</div>
+			</div>
+
+			<!-- 底部结算区域 -->
+			<div class="cart-footer">
+				<!-- 全选区域 -->
+				<div class="select-all-section">
+					<label class="select-all-label">
+						<input 
+							type="checkbox" 
+							:checked="isAllSelected" 
+							@change="toggleSelectAll"
+							class="select-checkbox"
+						/>
+						<span class="checkbox-custom"></span>
+						<span class="select-text">全选</span>
+					</label>
+				</div>
+				
+				<!-- 合计信息 -->
+				<div class="total-info">
+					<span class="total-label">合计：</span>
+					<span class="total-amount">¥{{ formatPrice(selectedTotalPrice) }}</span>
+					<span class="selected-count">({{ selectedCount }}件)</span>
+				</div>
+				
+				<!-- 结算按钮 -->
+				<div class="checkout-section">
+					<button 
+						class="checkout-btn" 
+						@click="goToPay"
+						:disabled="selectedCount === 0"
+						:class="{ 'disabled': selectedCount === 0 }"
+					>
+						结算 ({{ selectedCount }})
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<!-- 加载状态 -->
+		<div v-if="loading" class="loading-overlay">
+			<div class="loading-spinner"></div>
+			<p>加载中...</p>
+		</div>
+	</div>
 </template>
 
-<script>
-	export default {
-		data() {
-			return {
-				cartList: [], // 购物车列表
-				paymentUrl: ''
-				// userInfo: this.$store.state.user.userInfo 
-			};
-		},
-		
-		computed: {								
-			
-			selectedTotalPrice() {							
-				const selectedItems = this.cartList.filter(item => {
-					// console.log(`Item ${item.id || item.name}: selected=${item.selected}, price=${item.price}, quantity=${item.quantity}`);
-					return item.selected;
-				});
-				const total = this.cartList.reduce((total, item) => {
-					return item.selected ? total + (item.price * item.quantity) : total;
-				}, 0);
-				console.log('Calculating total:', total, 'Cart items:', this.cartList);
-				return total;
-				// return total.toFixed(2);
-			},
-			isAllSelected() {
-				return this.cartList.length > 0 && this.cartList.every(item => item.selected);
-				
-			}
-		},
-		async mounted() {
-			// 获取购物车和订单数据
-			await this.fetchCartList();
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { cartApi } from '@/utils/api.js'
 
-		},
-		methods: {
-			isEmptyObject(obj) {
-				return Object.keys(obj).length === 0;
-			},
-			// 获取购物车列表
-			async fetchCartList() {
-				
-				try {
-					// 优先从本地存储获取用户信息，其次从Vuex获取
-					let userInfo = this.$store.state.user.userInfo 					
-					
-					if (!userInfo || this.isEmptyObject(userInfo)) {
-						uni.showToast({
-							title: '请先登录',
-							icon: 'none',
-						});
-						return;
-					}
-					
-					// 确保有user_id
-					if (!userInfo.user_id) {
-						uni.showToast({
-							title: '用户信息不完整',
-							icon: 'none',
-						});
-						return;
-					}														
+// 响应式数据
+const cartList = ref([])
+const loading = ref(false)
+const longPressTimer = ref(null)
+const longPressItem = ref(null)
 
-					const res = await this.getCartList(userInfo.user_id);
-					console.log(res);
-					
-					if (res.code === 200) {
-						this.cartList = res.data.items.map(item => ({
-							...item,
-							id: item.id,
-							name: item.product_name,
-							price: item.price,
-							quantity: item.quantity,
-							picture: item.product_image || '/static/default-product.png',
-							selected: false // 默认未选中
-						}));
-						console.log('Fetched cart list:', this.cartList);
-					} else if (res.code === 404) {
-						uni.showToast({
-							title: '购物车为空',
-							icon: 'none'
-						});
-						this.cartList = []; // 清空购物车列表
-					} else {
-						uni.showToast({
-							title: res.data.message || '获取购物车失败',
-							icon: 'none'
-						});
-					}
-					
-				} catch (error) {
-					uni.showToast({
-						title: '网络错误，请重试',
-						icon: 'none',
-					});
-					console.error('获取购物车列表失败:', error);				
-				}	
-			},
-			
-			getCartList(user_id) {
-			    return new Promise((resolve, reject) => {
-			        uni.request({
-			            url: '/api/app/cart/',
-			            method: 'GET',
-						params: {							
-							user_id: user_id												
-						},
-						header: {
-							'Content-Type': 'application/json'
-						},
-			            success: (res) => {
-			                if (res.data.code === 200) {
-			                    resolve(res.data);								
-			                } else {
-			                    reject(res.data.message || '获取购物车列表失败');
-			                }
-			            },
-			            fail: (error) => {
-			                reject(error);
-			            }
-			        });
-			    });
-			},
-						
-			// 全选/取消全选
-			toggleSelectAll(e) {
-				// const isSelected = e.detail.value;				
-				// this.cartList.forEach(item => {
-				// 	item.selected = isSelected;
-				// });
-				// 使用map创建新数组确保响应性
-				const newSelectState = !this.isAllSelected;
-				this.cartList = this.cartList.map(item => ({
-				    ...item,
-				    selected: newSelectState
-				}));
-			},
-			// 单选/取消单选
-			// toggleSelectItem(index) {
-			// 	this.cartList[index].selected = !this.cartList[index].selected;
-			// },
-			
-			toggleSelectItem(item) {
-				item.selected = !item.selected
-			},
-			
-			// toggleSelectItem(selectedItem) {
-			//     this.cartList = this.cartList.map(item => 
-			//         item.id === selectedItem.id ? {...item, selected: !item.selected} : item
-			//     );
-			// },
+// 模拟用户信息
+const userInfo = ref({
+	user_id: 1,
+	username: 'test_user'
+})
 
-			// 增加商品数量
-			async increaseQuantity(index) {
-				const item = this.cartList[index];
-				const newQuantity = item.quantity + 1;
-				
-				try {
-					const response = await this.updateCartItemQuantity(item.id, newQuantity);
-					if (response.code === 200) {
-						item.quantity = newQuantity;
-					} else {
-						uni.showToast({
-							title: response.message || '更新失败',
-							icon: 'none'
-						});
-					}
-				} catch (error) {
-					console.error('更新数量失败:', error);
-					uni.showToast({
-						title: '网络错误',
-						icon: 'none'
-					});
-				}
-			},
-			// 减少商品数量
-			// 减少商品数量
-			async decreaseQuantity(index) {
-				const item = this.cartList[index];
-				if (item.quantity > 1) {
-					const newQuantity = item.quantity - 1;
-					
-					try {
-						const response = await this.updateCartItemQuantity(item.id, newQuantity);
-						if (response.code === 200) {
-							item.quantity = newQuantity;
-						} else {
-							uni.showToast({
-								title: response.message || '更新失败',
-								icon: 'none'
-							});
-						}
-					} catch (error) {
-						console.error('更新数量失败:', error);
-						uni.showToast({
-							title: '网络错误',
-							icon: 'none'
-						});
-					}
-				}
-			},
-			
-			async removeFromCart(index) {
-				const item = this.cartList[index];
-				
-				try {
-					const response = await this.deleteCartItem(item.id);
-					if (response.code === 200) {
-						this.cartList.splice(index, 1);
-						uni.showToast({
-							title: '删除成功',
-							icon: 'success'
-						});
-					} else {
-						uni.showToast({
-							title: response.message || '删除失败',
-							icon: 'none'
-						});
-					}
-				} catch (error) {
-					console.error('删除失败:', error);
-					uni.showToast({
-						title: '网络错误',
-						icon: 'none'
-					});
-				}
-			},	
-				
-			deleteFromCart(index) {
-				let userInfo = this.$store.state.user.userInfo;
-				const item = this.cartList[index];
-				if (!item || !userInfo) {
-					return Promise.reject(new Error('无效的商品或用户信息'));
-				}
-				
-			    return new Promise((resolve, reject) => {
-					
-			        uni.request({
-			            url: `https://api.service.sclrkj.com.cn/service3/api/cart/remove/${item.id}`,
-						method: 'DELETE',
-						data: {
-							user_id: userInfo.user_id
-						},
-						header: {
-							'Content-Type': 'application/json',							
-						},
-					
-			            success: (res) => {
-							console.log('res:',res)
-			                // 检查HTTP状态码
-							if (res.statusCode >= 200 && res.statusCode < 300) {
-								// 确保响应数据是JSON格式
-								if (res.data && typeof res.data === 'object') {
-									resolve(res.data);
-								} else {
-									// 如果后端返回空内容，构造标准响应
-									resolve({ code: res.statusCode, message: '删除成功' });
-								}							
-			                } else {
-			                    // 根据HTTP状态码提供更具体的错误信息
-								const errorMsg = res.data?.message || `请求失败，状态码: ${res.statusCode}`;
-								reject(new Error(errorMsg));
-							}
-						},
-			            fail: (error) => {
-			                reject(error);
-			            }
-			        });
-			    });
-						},
-			
-			// 更新购物车商品数量
-			updateCartItemQuantity(itemId, quantity) {
-				return new Promise((resolve, reject) => {
-					uni.request({
-						url: `/api/app/cart/${itemId}`,
-						method: 'PUT',
-						data: {
-							quantity: quantity,
-							user_id: 1 // TODO: 从用户状态获取
-						},
-						header: {
-							'Content-Type': 'application/json'
-						},
-						success: (res) => {
-							if (res.data.code === 200) {
-								resolve(res.data);
-							} else {
-								reject(res.data.message || '更新失败');
-							}
-						},
-						fail: (error) => {
-							reject(error);
-						}
-					});
-				});
-			},
-			
-			// 删除购物车商品API
-			deleteCartItem(itemId) {
-				return new Promise((resolve, reject) => {
-					uni.request({
-						url: `/api/app/cart/${itemId}`,
-						method: 'DELETE',
-						params: {
-							user_id: 1 // TODO: 从用户状态获取
-						},
-						header: {
-							'Content-Type': 'application/json'
-						},
-						success: (res) => {
-							if (res.data.code === 200) {
-								resolve(res.data);
-							} else {
-								reject(res.data.message || '删除失败');
-							}
-						},
-						fail: (error) => {
-							reject(error);
-						}
-					});
-				});
-			},
-			
-			async goToPay() {
-			    try {
-			        // 1. 检查是否有选中商品
-			        const selectedItems = this.cartList.filter(item => item.selected);
-			        if (selectedItems.length === 0) {
-			            uni.showToast({
-			                title: '请选择至少一个商品',
-			                icon: 'none',
-			            });
-			        return;
-			        }
-			
-			        // 2. 计算总金额
-			        const totalAmount = selectedItems.reduce((total, item) => {
-			            return total + (item.price * item.quantity);
-			        }, 0);
-			
-			        // 3. 跳转到支付方式选择页面
-			        const cartItemIds = selectedItems.map(item => item.id).join(',');
-			        this.$router.push({
-			            path: '/payment-method',
-			            query: { 
-			                cart_items: cartItemIds,
-			                total_amount: totalAmount.toFixed(2)
-			            }
-			        });
-			    } catch (error) {
-			        console.error('跳转下单页面失败:', error);
-			        uni.showToast({
-			            title: error.message || '跳转失败',
-			            icon: 'none'
-			        });
-			    }
-			},
+// 路由
+const router = useRouter()
 
-			// 轮询检查支付状态
-			async pollPaymentStatus(orderId) {
-			    const maxRetry = 30; // 最大重试次数，约3分钟(每6秒一次)
-			    
-			    for (let retryCount = 0; retryCount < maxRetry; retryCount++) {
-			        try {
-			            const res = await this.checkOrderStatus(orderId);
-						console.log('pollpayment:',res);
-			            if (res.data.status === 'paid') {
-			                return true; // 支付成功
-			            }			            
-			            // 等待6秒后再次检查
-			            await new Promise(resolve => setTimeout(resolve, 6000));
-			        } catch (error) {
-			            console.error('检查支付状态出错:', error);
-			            // 发生错误也继续重试
-			            await new Promise(resolve => setTimeout(resolve, 6000));
-			        }
-			    }			    
-			    return false; // 超过最大重试次数仍未支付成功
-			},
-								
-			// 创建订单
-			createOrders(selectedItems) {
-				// 清理数据，只保留必要的字段
-				const cleanedItems = selectedItems.map(item => ({
-					id: item.id,
-					category_id: item.categoryId,
-					course_id: item.courseId,
-					course_name: item.name,
-					course_price: item.price,
-					course_quantity: item.quantity,
-					course_picture: item.picture
-				}));
-				const userInfo = this.$store.state.user.userInfo;
-								
-				console.log('Calculated Total Price:', this.selectedTotalPrice);
-				
-			    return new Promise((resolve, reject) => {
-					
-			        uni.request({
-			            url: 'https://api.service.sclrkj.com.cn/service3/api/createOrder',
-			            method: 'POST',
-			            header: {
-			                'Content-Type': 'application/json'
-			            },
-			            data: {
-			                user_id: userInfo.user_id,
-			                items: cleanedItems,
-			                totalPrice: parseFloat(this.selectedTotalPrice),
-			            },
-			            success: (res) => {
-							console.log('res:',res);
-			                if (res.statusCode === 201 && res.data) {
-			                    resolve(res);
-			                } else {
-			                    reject(new Error(res.data.message || '创建订单失败'));
-			                }
-			            },
-			            fail: (err) => {
-			                reject(new Error('网络请求失败'));
-			            }
-			        });
-			    });
-			},
-			
-			// 获取支付参数
-			payOrders(orderId) {
-			    return new Promise((resolve, reject) => {
-			        uni.request({
-			            url: `https://api.service.sclrkj.com.cn/service3/api/getPaymentParams/${orderId}`,
-			            method: 'GET',			            
-			            success: (res) => {
-							console.log('payorders:',res);
-			                if (res.statusCode === 200 && res.data) {
-			                    resolve(res.data);
-			                } else {
-			                    reject(new Error(res.data.message || '获取支付参数失败'));
-			                }
-			            },
-			            fail: (err) => {
-			                reject(new Error('网络请求失败'));
-			            }
-			        });
-			    });
-			},						
-			
-			// payment(paymentParams) {
-			//     return new Promise((resolve, reject) => {
-			//         uni.request({
-			//             url: 'https://api.service.sclrkj.com.cn/service3/api/handlePayment',
-			//             method: 'POST',
-			//             data: paymentParams,
-			//             success: (res) => {
-			// 				console.log('payment res:',res);
-			//                 if (res.statusCode === 200) {
-			// 					resolve(res.data);			                    															
-			// 					// resolve({ errMsg: 'payment:ok' });
-			//                 } else {
-			//                     reject(new Error(res.data.message || '支付处理失败'));
-			//                 }
-			//             },
-			//             fail: (err) => {
-			//                 reject(new Error('网络请求失败'));
-			//             }
-			//         });
-			//     });
-			// },
-			
-			// 检查订单状态
-			checkOrderStatus(orderId) {
-			    return new Promise((resolve, reject) => {
-			        uni.request({
-			            url: `https://api.service.sclrkj.com.cn/service3/api/checkOrderStatus/${orderId}`,
-			            method: 'GET',
-			            success: (res) => {
-							console.log('check res:',res);
-			                if (res.statusCode === 200) {
-			                    resolve(res.data);
-			                } else {
-			                    reject(new Error(res.data.message || '检查订单状态失败'));
-			                }
-			            },
-			            fail: (err) => {
-			                reject(new Error('网络请求失败'));
-			            }
-			        });
-			    });
-			},
-			
-			// 加入我的订单
-			addToOrders(orderId) {
-			    return new Promise((resolve, reject) => {
-			        uni.request({
-			            url: 'https://api.service.sclrkj.com.cn/service3/add_to_my_courses',
-			            method: 'POST',						
-			            header: {			                
-			                'Content-Type': 'application/json'
-			            },
-			            data: {
-			                user_id: this.$store.state.user.userInfo.user_id,
-			                order_id: orderId
-			            },
-			            success: (res) => {
-			                if (res.statusCode === 200 && res.data) {
-			                    resolve(res);
-			                } else {
-			                    reject(new Error(res.data.message || '加入我的课程失败'));
-			                }
-			            },
-			            fail: (err) => {
-			                reject(new Error('网络请求失败'));
-			            }
-			        });
-			    });
-			},
-			
-			// 清空已选商品
-			clearSelectedItems() {
-			    this.cartList.forEach(item => {
-			        item.selected = false;
-			    });
-			    // 如果需要更新到后端，可以在这里调用API
-			}									
-		}		
+// 计算属性
+const selectedCount = computed(() => {
+	return cartList.value.filter(item => item.selected).length
+})
+
+const selectedTotalPrice = computed(() => {
+	return cartList.value.reduce((total, item) => {
+		return item.selected ? total + item.item_total : total
+	}, 0)
+})
+
+const isAllSelected = computed(() => {
+	return cartList.value.length > 0 && cartList.value.every(item => item.selected)
+})
+
+// 方法
+const formatPrice = (price) => {
+	return Number(price).toFixed(2)
+}
+
+// 获取商品图片
+const getItemImage = (item) => {
+	// 如果有规格组合图片，优先使用规格组合图片
+	if (item.spec_combination_id && item.spec_combination_image) {
+		return item.spec_combination_image
 	}
+	// 否则使用商品图片
+	return item.product_image || 'https://via.placeholder.com/80x80/f5f5f5/cccccc?text=商品'
+}
+
+// 获取规格文本
+const getSpecText = (item) => {
+	if (!item.spec_combination_id) return ''
+	
+	// 这里可以根据规格组合ID获取规格文本
+	// 暂时返回规格组合ID，后续可以从商品详情中获取完整规格信息
+	return `规格: ${item.spec_combination_id}`
+}
+
+const showToast = (message) => {
+	alert(message)
+}
+
+// 获取购物车列表
+const fetchCartList = async () => {
+	loading.value = true
+	try {
+		const response = await cartApi.getCart(userInfo.value.user_id)
+		if (response.data.code === 200) {
+			// 为每个商品添加selected属性
+			cartList.value = response.data.data.items.map(item => ({
+				...item,
+				selected: false
+			}))
+		} else {
+			showToast(response.data.message || '获取购物车失败')
+		}
+	} catch (error) {
+		console.error('获取购物车列表失败:', error)
+		showToast('网络错误，请重试')
+	} finally {
+		loading.value = false
+	}
+}
+
+// 全选/取消全选
+const toggleSelectAll = () => {
+	const newSelectState = !isAllSelected.value
+	cartList.value = cartList.value.map(item => ({
+		...item,
+		selected: newSelectState
+	}))
+}
+
+// 单选/取消单选
+const toggleSelectItem = (item) => {
+	item.selected = !item.selected
+}
+
+// 增加商品数量
+const increaseQuantity = async (item) => {
+	if (item.quantity >= item.stock) {
+		showToast('已达到最大库存')
+		return
+	}
+	
+	try {
+		const response = await cartApi.updateCartItem(item.id, {
+			quantity: item.quantity + 1,
+			user_id: userInfo.value.user_id
+		})
+		
+		if (response.data.code === 200) {
+			item.quantity++
+			item.item_total = item.price * item.quantity
+			// showToast('数量更新成功')
+		} else {
+			showToast(response.data.message || '更新数量失败')
+		}
+	} catch (error) {
+		console.error('更新数量失败:', error)
+		showToast('网络错误，请重试')
+	}
+}
+
+// 减少商品数量
+const decreaseQuantity = async (item) => {
+	if (item.quantity <= 1) {
+		return
+	}
+	
+	try {
+		const response = await cartApi.updateCartItem(item.id, {
+			quantity: item.quantity - 1,
+			user_id: userInfo.value.user_id
+		})
+		
+		if (response.data.code === 200) {
+			item.quantity--
+			item.item_total = item.price * item.quantity
+			// showToast('数量更新成功')
+		} else {
+			showToast(response.data.message || '更新数量失败')
+		}
+	} catch (error) {
+		console.error('更新数量失败:', error)
+		// showToast('网络错误，请重试')
+	}
+}
+
+// 删除商品
+const removeFromCart = async (item) => {
+	try {
+		const response = await cartApi.removeCartItem(item.id, userInfo.value.user_id)
+		
+		if (response.data.code === 200) {
+			const index = cartList.value.findIndex(cartItem => cartItem.id === item.id)
+			if (index > -1) {
+				cartList.value.splice(index, 1)
+			}
+			// showToast('删除成功')
+		} else {
+			showToast(response.data.message || '删除失败')
+		}
+	} catch (error) {
+		console.error('删除商品失败:', error)
+		showToast('网络错误，请重试')
+	}
+}
+
+// 清空购物车
+const clearAllItems = async () => {
+	try {
+		const response = await cartApi.clearCart(userInfo.value.user_id)
+		
+		if (response.data.code === 200) {
+			cartList.value = []
+			// showToast('购物车已清空')
+		} else {
+			showToast(response.data.message || '清空购物车失败')
+		}
+	} catch (error) {
+		console.error('清空购物车失败:', error)
+		showToast('网络错误，请重试')
+	}
+}
+
+// 去支付
+const goToPay = () => {
+	const selectedItems = cartList.value.filter(item => item.selected)
+	if (selectedItems.length === 0) {
+		showToast('请选择至少一个商品')
+		return
+	}
+
+	const totalAmount = selectedItems.reduce((total, item) => {
+		return total + item.item_total
+	}, 0)
+
+	const cartItemIds = selectedItems.map(item => item.id).join(',')
+	router.push({
+		path: '/payment-method',
+		query: { 
+			cart_items: cartItemIds,
+			total_amount: totalAmount.toFixed(2),
+			address_id: 1 // 添加默认地址ID，后续可以从用户状态获取
+		}
+	})
+}
+
+// 长按开始
+const startLongPress = (item) => {
+	longPressItem.value = item
+	longPressTimer.value = setTimeout(() => {
+		if (confirm(`确定要删除"${item.product_name}"吗？`)) {
+			removeFromCart(item)
+		}
+	}, 1000) // 1秒长按触发
+}
+
+// 长按结束
+const endLongPress = () => {
+	if (longPressTimer.value) {
+		clearTimeout(longPressTimer.value)
+		longPressTimer.value = null
+	}
+	longPressItem.value = null
+}
+
+// 去购物
+const goToShop = () => {
+	router.push('/shop')
+}
+
+// 生命周期
+onMounted(() => {
+	fetchCartList()
+})
 </script>
 
-<style lang='scss'>
-	.section {
-		display: flex;
-		flex-direction: column;
-		box-sizing: border-box;
-		width: 100%;
-		margin-bottom: 20px;
+<style scoped>
+.cart-container {
+	padding: 20px;
+	max-width: 1200px;
+	margin: 0 auto;
+}
 
-		.title {
-			font-size: 30rpx;
-			font-weight: bold;
-			margin: 10rpx 100rpx;
-		}
+/* 页面头部 */
+.cart-header {
+	background-color: #fff;
+	padding: 20px;
+	border-radius: 8px;
+	box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+	margin-bottom: 20px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
 
-		.shopping-cart {
-			display: flex;
-			flex-direction: column;
-			align-content: space-between;
-			box-sizing: border-box;
-			width: 100%;
-			padding-bottom: 30rpx;
+.page-title {
+	font-size: 24px;
+	font-weight: bold;
+	color: #333;
+	margin: 0;
+}
 
-			.cart-header {
-				display: flex;
-				justify-content: space-between;
-				padding: 10rpx 0;
-				border-bottom: 1rpx solid #eee;
+.item-count {
+	font-size: 14px;
+	color: #666;
+}
 
-				.header-item {
-					flex: 1;
-					font-size: 24rpx;
-					text-align: center;
-				}
-			}
+/* 空购物车状态 */
+.empty-cart {
+	background-color: #fff;
+	border-radius: 8px;
+	box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+	padding: 60px 20px;
+	text-align: center;
+}
 
-			.cart-item {
-				display: flex;
-				width:100%;
-				height:200rpx;
-				flex-direction: row;
-				box-sizing: border-box;
-				align-items: center;
-				justify-content: space-between;
-				padding: 20rpx;
-				border-bottom: 1rpx solid #eee;
+.empty-icon {
+	font-size: 48px;
+	margin-bottom: 20px;
+}
 
-				.select-item {
-					flex: 0 0 15%;
-					text-align: center;					
-				}
+.empty-text {
+	font-size: 16px;
+	color: #666;
+	margin-bottom: 30px;
+}
 
-				.product-image {
-					flex:1;					
-					box-sizing: border-box;
-					height: 100%;
-					width:200rpx;
+.shop-btn {
+	background-color: #e93b3d;
+	color: white;
+	border: none;
+	padding: 12px 30px;
+	border-radius: 20px;
+	font-size: 14px;
+	font-weight: bold;
+	cursor: pointer;
+	transition: background-color 0.3s;
+}
 
-					image {						
-						width: 100%;
-						height: 80%;
-					}
-					.product-name{
-						width: 100%;
-						height: 20%;
-						font-size: 24rpx;
-						text-align: center;
-					}
-				}
+.shop-btn:hover {
+	background-color: #d63333;
+}
 
-				.product-price {
-					flex:1;
-					display: flex;
-					box-sizing: border-box;
-					align-items: center;
-					justify-content: center;
-					height: 100%;
-										
-					text{						
-						display:flex;
-						/* width: 100%; */						
-						text-align: center;
-						font-size: 20rpx;
-						color: #f40;
-					}
-				}
+/* 购物车内容 */
+.cart-content {
+	background-color: #fff;
+	border-radius: 8px;
+	box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+	overflow: hidden;
+}
 
-				.quantity-control {
-					flex:1;					
-					height:100%;
-					align-items: center;
-					justify-content: center;
-					flex-direction: column;
+/* 商品列表 */
+.cart-items {
+	padding: 0;
+}
 
-					button {						
-						width: 30rpx;
-						height: 30rpx;
-						line-height: 30rpx;
-						text-align: center;
-						border: 1rpx solid #ddd;
-						background-color: #f8f8f8;
-					}
+.cart-item {
+	display: flex;
+	align-items: center;
+	padding: 20px;
+	border-bottom: 1px solid #eee;
+	transition: background-color 0.3s;
+	user-select: none;
+	cursor: pointer;
+}
 
-					text {
-						width: 30rpx;
-						height: 15rpx;
-						margin: 0 10rpx;
-						text-align: center;
-						size:10rpx;
-					}
-				}
-			
-				button {
-					flex:0 0 15%;
-					align-items: center;
-					font-size: 20rpx;
-					background-color: blue;
-				}
-			}
-		}
+.cart-item:hover {
+	background-color: #f8f9fa;
+}
 
-		.order-total {
-			display: flex;
-			box-sizing: border-box;
-			flex-direction: row;
-			justify-content: flex-end;
-			width: 100%;
-			height: 30rpx;
-			padding-right: 50rpx;
-			margin-bottom: 50rpx;
-		}
+.cart-item:last-child {
+	border-bottom: none;
+}
+
+.item-selected {
+	background-color: #fff3f3;
+}
+
+.item-select {
+	flex-shrink: 0;
+	margin-right: 15px;
+}
+
+.item-checkbox {
+	display: flex;
+	align-items: center;
+	cursor: pointer;
+}
+
+.select-checkbox {
+	display: none;
+}
+
+.checkbox-custom {
+	width: 18px;
+	height: 18px;
+	border: 2px solid #ddd;
+	border-radius: 3px;
+	position: relative;
+	transition: all 0.3s;
+}
+
+.select-checkbox:checked + .checkbox-custom {
+	background: #e93b3d;
+	border-color: #e93b3d;
+}
+
+.select-checkbox:checked + .checkbox-custom::after {
+	content: '✓';
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	color: white;
+	font-size: 10px;
+	font-weight: bold;
+}
+
+.item-info {
+	display: flex;
+	align-items: center;
+	gap: 15px;
+	flex: 1;
+	min-width: 0;
+}
+
+.item-image {
+	width: 80px;
+	height: 80px;
+	border-radius: 6px;
+	overflow: hidden;
+	flex-shrink: 0;
+}
+
+.item-image img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.item-details {
+	flex: 1;
+	min-width: 0;
+}
+
+.item-name {
+	font-size: 13px;
+	font-weight: 500;
+	color: #333;
+	margin: 0 0 6px 0;
+	line-height: 1.3;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+	word-break: break-word;
+}
+
+.item-price {
+	font-size: 16px;
+	font-weight: bold;
+	color: #e93b3d;
+}
+
+.item-specs {
+	margin: 4px 0;
+}
+
+.spec-text {
+	font-size: 12px;
+	color: #666;
+	background-color: #f5f5f5;
+	padding: 2px 6px;
+	border-radius: 3px;
+}
+
+.quantity-control {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex-shrink: 0;
+	margin: 0 15px;
+}
+
+.quantity-btn {
+	width: 24px;
+	height: 24px;
+	border: 1px solid #ddd;
+	background: white;
+	border-radius: 3px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	transition: all 0.3s;
+	font-size: 12px;
+	font-weight: bold;
+}
+
+.quantity-btn:hover:not(:disabled) {
+	border-color: #e93b3d;
+	color: #e93b3d;
+}
+
+.quantity-btn:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.quantity-display {
+	min-width: 25px;
+	text-align: center;
+	font-size: 12px;
+	font-weight: 500;
+	color: #333;
+}
+
+
+
+/* 底部结算区域 */
+.cart-footer {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 15px 20px;
+	border-top: 1px solid #eee;
+	background-color: #f8f9fa;
+	min-height: 60px;
+}
+
+.select-all-section {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	min-width: 80px;
+}
+
+.select-all-label {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	cursor: pointer;
+}
+
+.select-text {
+	font-size: 14px;
+	color: #333;
+}
+
+.total-info {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 0 15px;
+	justify-content: center;
+	white-space: nowrap;
+}
+
+.total-label {
+	font-size: 14px;
+	color: #333;
+}
+
+.total-amount {
+	font-size: 18px;
+	font-weight: bold;
+	color: #e93b3d;
+}
+
+.selected-count {
+	font-size: 12px;
+	color: #666;
+}
+
+.checkout-section {
+	flex-shrink: 0;
+	min-width: 100px;
+}
+
+.checkout-btn {
+	background-color: #e93b3d;
+	color: white;
+	border: none;
+	padding: 12px 30px;
+	border-radius: 20px;
+	font-size: 14px;
+	font-weight: bold;
+	cursor: pointer;
+	transition: all 0.3s;
+}
+
+.checkout-btn:hover:not(.disabled) {
+	background-color: #d63333;
+}
+
+.checkout-btn.disabled {
+	background-color: #ccc;
+	cursor: not-allowed;
+}
+
+/* 加载状态 */
+.loading-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(255, 255, 255, 0.8);
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	z-index: 1000;
+}
+
+.loading-spinner {
+	width: 40px;
+	height: 40px;
+	border: 4px solid #f3f3f3;
+	border-top: 4px solid #e93b3d;
+	border-radius: 50%;
+	animation: spin 1s linear infinite;
+	margin-bottom: 10px;
+}
+
+@keyframes spin {
+	0% { transform: rotate(0deg); }
+	100% { transform: rotate(360deg); }
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+	.cart-container {
+		padding: 15px;
 	}
+	
+	.cart-header {
+		padding: 15px;
+		margin-bottom: 15px;
+	}
+	
+	.page-title {
+		font-size: 20px;
+	}
+	
+	.cart-item {
+		padding: 15px;
+		flex-wrap: wrap;
+	}
+	
+	.item-info {
+		flex: 1;
+		min-width: 0;
+	}
+	
+	.item-name {
+		font-size: 12px;
+	}
+	
+	.item-price {
+		font-size: 13px;
+	}
+	
+	.quantity-control {
+		margin: 0 8px;
+	}
+	
+	.quantity-btn {
+		width: 22px;
+		height: 22px;
+		font-size: 11px;
+	}
+	
+	.quantity-display {
+		min-width: 22px;
+		font-size: 11px;
+	}
+	
+	.cart-footer {
+		padding: 15px;
+		flex-direction: column;
+		gap: 15px;
+		min-height: auto;
+	}
+	
+	.select-all-section {
+		align-self: flex-start;
+		min-width: auto;
+	}
+	
+	.total-info {
+		align-items: flex-start;
+		margin: 0;
+		justify-content: flex-start;
+	}
+	
+	.checkout-section {
+		min-width: auto;
+	}
+	
+	.checkout-btn {
+		width: 100%;
+		padding: 12px 20px;
+		font-size: 14px;
+	}
+}
 </style>

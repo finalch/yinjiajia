@@ -147,7 +147,8 @@ class OrderService:
                             price=price,
                             quantity=cart_item.quantity,
                             subtotal=price * cart_item.quantity,
-                            spec_combination_id=cart_item.spec_combination_id
+                            spec_combination_id=cart_item.spec_combination_id,
+                            merchant_id=product.merchant_id  # 添加商家ID
                         )
                         db.session.add(order_item)
                         order_items.append(order_item)
@@ -196,7 +197,8 @@ class OrderService:
                     price=price,
                     quantity=quantity,
                     subtotal=price * quantity,
-                    spec_combination_id=spec_combination_id
+                    spec_combination_id=spec_combination_id,
+                    merchant_id=product.merchant_id  # 添加商家ID
                 )
                 db.session.add(order_item)
                 order_items.append(order_item)

@@ -660,18 +660,17 @@ import AddressService from '../services/addressService.js'
 					  }
 					  
 					  const response = await cartApi.addToCart(cartData)
-					  
 					  if (response.data.code === 200) {
-						// 使用更友好的提示
-						this.$message.success('已加入购物车')
-						this.fetchCartCount()
-					  } else {
-						this.$message.error(response.data.message || '加入购物车失败')
-					  }
-				  } catch (error) {
-					  console.error('加入购物车失败:', error)
-					  this.$message.error('网络错误，请重试')
+					// 使用更友好的提示
+					alert('已加入购物车')
+					this.fetchCartCount()
+				  } else {
+					alert(response.data.message || '加入购物车失败')
 				  }
+			  } catch (error) {
+				  console.error('加入购物车失败:', error)
+				  alert('网络错误，请重试')
+			  }
 			  },
 			  
 			  // 跳转到客服页面
