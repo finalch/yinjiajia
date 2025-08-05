@@ -30,8 +30,8 @@ class Merchant(db.Model):
     products = db.relationship('Product', backref='merchant', lazy=True)  # 商家商品
     account = db.relationship('Account', backref='merchant', uselist=False)  # 商家账户
     categories = db.relationship('Category', backref='merchant', lazy=True)  # 商家分类
-    order_items = db.relationship('OrderItem', backref='merchant')
-    order_stats = db.relationship('MerchantOrderStats', backref='merchant')
+    order_items = db.relationship('OrderItem', backref='merchant', lazy=True)  # 商家订单项
+    order_stats = db.relationship('MerchantOrderStats', backref='merchant', lazy=True)  # 商家订单统计
 
 class Category(db.Model):
     __tablename__ = 'categories'
@@ -127,7 +127,7 @@ class OrderItem(db.Model):
     order = db.relationship('Order', backref='items')
     product = db.relationship('Product', backref='order_items')
     spec_combination = db.relationship('ProductSpecCombination', backref='order_items')
-    merchant = db.relationship('Merchant', backref='order_items')
+    # merchant = db.relationship('Merchant', backref='order_items')
 
 class Cart(db.Model):
     __tablename__ = 'cart'
@@ -205,7 +205,7 @@ class MerchantOrderStats(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
     
     # 关联关系
-    merchant = db.relationship('Merchant', backref='order_stats')
+    # merchant = db.relationship('Merchant', backref='order_stats')  # 已在Merchant模型中定义
     
     # 唯一约束
     __table_args__ = (

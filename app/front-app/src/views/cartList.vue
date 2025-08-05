@@ -106,16 +106,14 @@
 					console.log(res);
 					
 					if (res.code === 200) {
-						this.cartList = res.data.map(item => ({
+						this.cartList = res.data.items.map(item => ({
 							...item,
 							id: item.id,
-							categoryId:item.category_id,
-							courseId: item.course_id,
-							name: item.course_name,
-							price: item.course_price,
-							quantity: item.course_quantity,
-							picture: item.course_picture,
-							selected: item.selected || false // 默认未选中
+							name: item.product_name,
+							price: item.price,
+							quantity: item.quantity,
+							picture: item.product_image || '/static/default-product.png',
+							selected: false // 默认未选中
 						}));
 						console.log('Fetched cart list:', this.cartList);
 					} else if (res.code === 404) {
@@ -143,16 +141,16 @@
 			getCartList(user_id) {
 			    return new Promise((resolve, reject) => {
 			        uni.request({
-			            url: 'https://api.service.sclrkj.com.cn/service3/api/cartlist',
-			            method: 'POST',
-						data: {							
-							user_id:user_id // 注意字段名与数据一致												
+			            url: '/api/app/cart/',
+			            method: 'GET',
+						params: {							
+							user_id: user_id												
 						},
 						header: {
 							'Content-Type': 'application/json'
 						},
 			            success: (res) => {
-			                if (res.data.code === 200) { // 根据你的后端返回结构调整
+			                if (res.data.code === 200) {
 			                    resolve(res.data);								
 			                } else {
 			                    reject(res.data.message || '获取购物车列表失败');
@@ -193,44 +191,80 @@
 			//     );
 			// },
 
-			// 增加课程数量
-			increaseQuantity(index) {
-				this.cartList[index].quantity += 1;
+			// 增加商品数量
+			async increaseQuantity(index) {
+				const item = this.cartList[index];
+				const newQuantity = item.quantity + 1;
+				
+				try {
+					const response = await this.updateCartItemQuantity(item.id, newQuantity);
+					if (response.code === 200) {
+						item.quantity = newQuantity;
+					} else {
+						uni.showToast({
+							title: response.message || '更新失败',
+							icon: 'none'
+						});
+					}
+				} catch (error) {
+					console.error('更新数量失败:', error);
+					uni.showToast({
+						title: '网络错误',
+						icon: 'none'
+					});
+				}
 			},
-			// 减少课程数量
-			decreaseQuantity(index) {
-				if (this.cartList[index].quantity > 1) {
-					this.cartList[index].quantity -= 1;
+			// 减少商品数量
+			// 减少商品数量
+			async decreaseQuantity(index) {
+				const item = this.cartList[index];
+				if (item.quantity > 1) {
+					const newQuantity = item.quantity - 1;
+					
+					try {
+						const response = await this.updateCartItemQuantity(item.id, newQuantity);
+						if (response.code === 200) {
+							item.quantity = newQuantity;
+						} else {
+							uni.showToast({
+								title: response.message || '更新失败',
+								icon: 'none'
+							});
+						}
+					} catch (error) {
+						console.error('更新数量失败:', error);
+						uni.showToast({
+							title: '网络错误',
+							icon: 'none'
+						});
+					}
 				}
 			},
 			
 			async removeFromCart(index) {
+				const item = this.cartList[index];
+				
 				try {
-								
-					const res = await this.deleteFromCart(index)
-						
-					console.log('res返回数据:', res)
-					// 检查响应状态
-					if (res.code === 200) {
-						this.cartList.splice(index, 1); // 从本地列表中移除
+					const response = await this.deleteCartItem(item.id);
+					if (response.code === 200) {
+						this.cartList.splice(index, 1);
 						uni.showToast({
 							title: '删除成功',
 							icon: 'success'
-						});					
+						});
 					} else {
 						uni.showToast({
-							title: '删除失败',
+							title: response.message || '删除失败',
 							icon: 'none'
 						});
 					}
 				} catch (error) {
 					console.error('删除失败:', error);
 					uni.showToast({
-						title: '删除失败',
+						title: '网络错误',
 						icon: 'none'
 					});
 				}
-				
 			},	
 				
 			deleteFromCart(index) {
@@ -274,7 +308,60 @@
 			            }
 			        });
 			    });
-			},	
+						},
+			
+			// 更新购物车商品数量
+			updateCartItemQuantity(itemId, quantity) {
+				return new Promise((resolve, reject) => {
+					uni.request({
+						url: `/api/app/cart/${itemId}`,
+						method: 'PUT',
+						data: {
+							quantity: quantity,
+							user_id: 1 // TODO: 从用户状态获取
+						},
+						header: {
+							'Content-Type': 'application/json'
+						},
+						success: (res) => {
+							if (res.data.code === 200) {
+								resolve(res.data);
+							} else {
+								reject(res.data.message || '更新失败');
+							}
+						},
+						fail: (error) => {
+							reject(error);
+						}
+					});
+				});
+			},
+			
+			// 删除购物车商品API
+			deleteCartItem(itemId) {
+				return new Promise((resolve, reject) => {
+					uni.request({
+						url: `/api/app/cart/${itemId}`,
+						method: 'DELETE',
+						params: {
+							user_id: 1 // TODO: 从用户状态获取
+						},
+						header: {
+							'Content-Type': 'application/json'
+						},
+						success: (res) => {
+							if (res.data.code === 200) {
+								resolve(res.data);
+							} else {
+								reject(res.data.message || '删除失败');
+							}
+						},
+						fail: (error) => {
+							reject(error);
+						}
+					});
+				});
+			},
 			
 			async goToPay() {
 			    try {

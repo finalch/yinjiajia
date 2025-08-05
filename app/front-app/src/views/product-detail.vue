@@ -650,7 +650,8 @@ import AddressService from '../services/addressService.js'
 				  try {
 					  const cartData = {
 						  product_id: this.product.id,
-						  quantity: this.quantity
+						  quantity: this.quantity,
+						  user_id: 1 // TODO: 从用户状态获取
 					  }
 					  
 					  // 如果有规格组合，添加规格组合ID
@@ -661,14 +662,15 @@ import AddressService from '../services/addressService.js'
 					  const response = await cartApi.addToCart(cartData)
 					  
 					  if (response.data.code === 200) {
-						  alert('已加入购物车')
-						  this.fetchCartCount()
+						// 使用更友好的提示
+						this.$message.success('已加入购物车')
+						this.fetchCartCount()
 					  } else {
-						  alert(response.data.message || '加入购物车失败')
+						this.$message.error(response.data.message || '加入购物车失败')
 					  }
 				  } catch (error) {
 					  console.error('加入购物车失败:', error)
-					  alert('网络错误')
+					  this.$message.error('网络错误，请重试')
 				  }
 			  },
 			  

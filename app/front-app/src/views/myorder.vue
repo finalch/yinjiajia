@@ -78,7 +78,7 @@
               去支付
             </button>
             <button 
-              v-if="order.status === 'paid'" 
+              v-if="order.status === 'shipped' || order.status === 'delivered'" 
               class="action-btn secondary"
               @click.stop="viewLogistics(order)"
             >
@@ -257,8 +257,13 @@ export default {
 
     // 查看物流
     viewLogistics(order) {
-      // TODO: 跳转到物流详情页面
-      alert('物流功能开发中...')
+      if (order.logistics) {
+        const logistics = order.logistics
+        const message = `物流公司：${logistics.carrier}\n物流单号：${logistics.tracking_number}\n物流状态：${logistics.status_text || logistics.status}`
+        alert(message)
+      } else {
+        alert('暂无物流信息')
+      }
     },
 
     // 去购物

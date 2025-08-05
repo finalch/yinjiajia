@@ -231,11 +231,9 @@ class OrderService:
     @staticmethod
     def get_user_orders(user_id: int, status: str = '', page: int = 1, per_page: int = 20) -> Dict[str, Any]:
         """获取用户订单列表"""
-        from models import Logistics
         
         query = Order.query.filter_by(user_id=user_id)
-        if status:
-            query = query.filter_by(status=status)
+        # 注意：状态筛选现在在应用层处理，因为状态是基于OrderItem计算的
         query = query.order_by(Order.created_at.desc())
         
         pagination = query.paginate(page=page, per_page=per_page, error_out=False)
@@ -257,22 +255,32 @@ class OrderService:
                     'spec_combination_id': item.spec_combination_id
                 })
             
-            logistics = Logistics.query.filter_by(order_id=order.id).first()
+            # 从OrderItem中获取物流信息
             logistics_info = None
-            if logistics:
+            shipped_items = [item for item in order_items if item.shipping_company and item.tracking_number]
+            
+            if shipped_items:
+                # 使用第一个有物流信息的商品作为主要物流信息
+                main_item = shipped_items[0]
                 logistics_info = {
-                    'id': logistics.id,
-                    'tracking_number': logistics.tracking_number,
-                    'carrier': logistics.carrier,
-                    'status': logistics.status,
-                    'updated_at': logistics.updated_at.isoformat() if logistics.updated_at else None
+                    'tracking_number': main_item.tracking_number,
+                    'carrier': main_item.shipping_company,
+                    'status': main_item.item_status,
+                    'updated_at': main_item.shipped_at.isoformat() if main_item.shipped_at else None
                 }
+            
+            # 计算订单的整体状态
+            order_status = OrderService._calculate_order_status(order_items)
+            
+            # 如果指定了状态筛选，检查订单状态是否匹配
+            if status and order_status != status:
+                continue
             
             orders.append({
                 'id': order.id,
                 'order_number': order.order_number,
-                'status': order.status,
-                'status_text': OrderService._get_order_status_text(order.status),
+                'status': order_status,
+                'status_text': OrderService._get_order_status_text(order_status),
                 'total_amount': float(order.total_amount),
                 'items': items,
                 'logistics': logistics_info,
@@ -280,17 +288,50 @@ class OrderService:
                 'updated_at': order.updated_at.isoformat() if order.updated_at else None
             })
         
+        # 重新计算分页信息，因为筛选可能改变了结果数量
+        total_filtered = len(orders)
+        pages = (total_filtered + per_page - 1) // per_page if total_filtered > 0 else 0
+        
         return {
             'list': orders,
             'pagination': {
                 'page': page,
                 'per_page': per_page,
-                'total': pagination.total,
-                'pages': pagination.pages,
-                'has_prev': pagination.has_prev,
-                'has_next': pagination.has_next
+                'total': total_filtered,
+                'pages': pages,
+                'has_prev': page > 1,
+                'has_next': page < pages
             }
         }
+    
+    @staticmethod
+    def _calculate_order_status(order_items: List[OrderItem]) -> str:
+        """根据订单项状态计算订单整体状态"""
+        if not order_items:
+            return 'pending'
+        
+        # 统计各状态的数量
+        status_counts = {}
+        for item in order_items:
+            status = item.item_status
+            status_counts[status] = status_counts.get(status, 0) + 1
+        
+        total_items = len(order_items)
+        
+        # 如果所有商品都已送达，订单状态为已送达
+        if status_counts.get('delivered', 0) == total_items:
+            return 'delivered'
+        
+        # 如果有任何商品已发货，订单状态为已发货
+        if status_counts.get('shipped', 0) > 0 or status_counts.get('delivered', 0) > 0:
+            return 'shipped'
+        
+        # 如果所有商品都是待处理状态，订单状态为已付款
+        if status_counts.get('pending', 0) == total_items:
+            return 'paid'
+        
+        # 默认状态
+        return 'paid'
     
     @staticmethod
     def _get_order_status_text(status: str) -> str:

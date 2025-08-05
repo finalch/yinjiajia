@@ -118,7 +118,7 @@
           <template #default="{ row }">
             <div class="order-info">
               <div class="order-header">
-                <span class="order-no">订单号：{{ row.orderNo }}</span>
+                <span class="order-no">订单号：{{ row.order_number }}</span>
                 <el-tag :type="getStatusType(row.status)" size="small">
                   {{ getStatusText(row.status) }}
                 </el-tag>
@@ -135,9 +135,10 @@
                     fit="cover"
                   />
                   <div class="item-info">
-                    <h4 class="item-name">{{ item.name }}</h4>
-                    <p class="item-specs">{{ item.specs }}</p>
+                    <h4 class="item-name">{{ item.product_name }}</h4>
+                    <p class="item-specs">{{ item.spec_combination_id ? '规格：' + item.spec_combination_id : '' }}</p>
                     <p class="item-price">¥{{ item.price }} × {{ item.quantity }}</p>
+                    <p class="item-status">状态：{{ getItemStatusText(item.item_status) }}</p>
                   </div>
                 </div>
               </div>
@@ -147,29 +148,32 @@
         <el-table-column label="买家信息" width="150">
           <template #default="{ row }">
             <div class="customer-info">
-              <p class="customer-name">{{ row.customerName }}</p>
-              <p class="customer-phone">{{ row.customerPhone }}</p>
+              <p class="customer-name">{{ row.user_name }}</p>
+              <p class="customer-phone">{{ row.user_phone }}</p>
             </div>
           </template>
         </el-table-column>
         <el-table-column label="订单金额" width="120">
           <template #default="{ row }">
             <div class="order-amount">
-              <p class="total-amount">¥{{ row.totalAmount }}</p>
-              <p class="payment-method">{{ row.paymentMethod }}</p>
+              <p class="total-amount">¥{{ row.total_amount }}</p>
+              <p class="payment-method">商家金额</p>
             </div>
           </template>
         </el-table-column>
         <el-table-column label="物流信息" width="150">
           <template #default="{ row }">
-            <div class="logistics-info" v-if="row.logistics">
-              <p class="logistics-company">{{ row.logistics.company }}</p>
-              <p class="logistics-number">{{ row.logistics.number }}</p>
+            <div class="logistics-info" v-if="row.items && row.items.length > 0">
+              <div v-for="item in row.items" :key="item.id" class="logistics-item">
+                <p v-if="item.shipping_company" class="logistics-company">{{ item.shipping_company }}</p>
+                <p v-if="item.tracking_number" class="logistics-number">{{ item.tracking_number }}</p>
+                <p v-else class="no-logistics">暂无物流</p>
+              </div>
             </div>
             <span v-else class="no-logistics">暂无物流</span>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="下单时间" width="180" />
+        <el-table-column prop="created_at" label="下单时间" width="180" />
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button type="text" size="small" @click="viewOrder(row)">
@@ -179,7 +183,7 @@
               type="text" 
               size="small" 
               @click="shipOrder(row)"
-              v-if="row.status === 'pending_shipment'"
+              v-if="row.items && row.items.some(item => item.item_status === 'pending')"
             >
               发货
             </el-button>
@@ -187,7 +191,7 @@
               type="text" 
               size="small" 
               @click="viewLogistics(row)"
-              v-if="row.logistics"
+              v-if="row.items && row.items.some(item => item.shipping_company)"
             >
               查看物流
             </el-button>
@@ -195,7 +199,7 @@
               type="text" 
               size="small" 
               @click="refundOrder(row)"
-              v-if="row.status === 'pending_shipment'"
+              v-if="row.items && row.items.some(item => item.item_status === 'pending')"
               style="color: #f56c6c;"
             >
               同意退款
@@ -250,7 +254,7 @@
 </template>
 
 <script>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
   Download, 
@@ -270,6 +274,12 @@ export default {
     RefreshLeft
   },
   setup() {
+    // 初始化数据
+    onMounted(() => {
+      loadOrders()
+      loadOrderStats()
+    })
+    
     const loading = ref(false)
     const shipDialogVisible = ref(false)
     const shipping = ref(false)
@@ -298,89 +308,73 @@ export default {
     
     // 发货表单
     const shipForm = reactive({
+      orderItemId: null,
       company: '',
       number: ''
     })
     
     // 订单列表
-    const orders = ref([
-      {
-        id: 1,
-        orderNo: 'DD202401150001',
-        status: 'pending_shipment',
-        customerName: '张三',
-        customerPhone: '138****8888',
-        totalAmount: 7999,
-        paymentMethod: '微信支付',
-        createTime: '2024-01-15 14:30:00',
-        items: [
-          {
-            id: 1,
-            name: 'Apple iPhone 15 Pro',
-            specs: '暗紫色 256GB',
-            price: 7999,
-            quantity: 1,
-            image: 'https://img.alicdn.com/imgextra/i1/O1CN01Z5paLz1UyR3MKMFvk_!!6000000002585-0-tps-400-400.jpg'
-          }
-        ]
-      },
-      {
-        id: 2,
-        orderNo: 'DD202401150002',
-        status: 'shipped',
-        customerName: '李四',
-        customerPhone: '139****9999',
-        totalAmount: 14999,
-        paymentMethod: '支付宝',
-        createTime: '2024-01-15 13:20:00',
-        logistics: {
-          company: '顺丰速运',
-          number: 'SF1234567890'
-        },
-        items: [
-          {
-            id: 2,
-            name: 'MacBook Pro 14英寸',
-            specs: 'M2 Pro芯片 16G 512G',
-            price: 14999,
-            quantity: 1,
-            image: 'https://img.alicdn.com/imgextra/i3/O1CN01c26iB51UyR3MKMFvk_!!6000000002585-0-tps-400-400.jpg'
-          }
-        ]
-      },
-      {
-        id: 3,
-        orderNo: 'DD202401150003',
-        status: 'completed',
-        customerName: '王五',
-        customerPhone: '137****7777',
-        totalAmount: 1899,
-        paymentMethod: '微信支付',
-        createTime: '2024-01-15 12:15:00',
-        logistics: {
-          company: '圆通速递',
-          number: 'YT9876543210'
-        },
-        items: [
-          {
-            id: 3,
-            name: 'AirPods Pro',
-            specs: '白色',
-            price: 1899,
-            quantity: 1,
-            image: 'https://img.alicdn.com/imgextra/i4/O1CN01FgolV51UyR3MKMFvk_!!6000000002585-0-tps-400-400.jpg'
-          }
-        ]
-      }
-    ])
+    const orders = ref([])
     
     // 方法
-    const handleSearch = () => {
+    const loadOrders = async () => {
       loading.value = true
-      setTimeout(() => {
+      try {
+        const params = {
+          merchant_id: 1, // 假设商家ID为1，实际应该从登录信息获取
+          page: currentPage.value,
+          per_page: pageSize.value
+        }
+        
+        if (filters.status) {
+          params.status = filters.status
+        }
+        
+        const queryString = new URLSearchParams(params).toString()
+        const response = await fetch(`/api/web/order/?${queryString}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        })
+        
+        const result = await response.json()
+        
+        if (result.code === 200) {
+          orders.value = result.data.list
+          total.value = result.data.pagination.total
+        } else {
+          ElMessage.error(result.message || '获取订单列表失败')
+        }
+      } catch (error) {
+        console.error('获取订单列表失败:', error)
+        ElMessage.error('获取订单列表失败')
+      } finally {
         loading.value = false
-        ElMessage.success('搜索完成')
-      }, 1000)
+      }
+    }
+    
+    const loadOrderStats = async () => {
+      try {
+        const response = await fetch('/api/web/order/statistics?merchant_id=1')
+        const result = await response.json()
+        
+        if (result.code === 200) {
+          orderStats.value = {
+            pending: result.data.status_counts.pending || 0,
+            shipped: result.data.status_counts.shipped || 0,
+            completed: result.data.status_counts.delivered || 0,
+            refund: result.data.status_counts.refunded || 0
+          }
+        }
+      } catch (error) {
+        console.error('获取订单统计失败:', error)
+      }
+    }
+    
+    const handleSearch = () => {
+      currentPage.value = 1
+      loadOrders()
     }
     
     const resetFilters = () => {
@@ -419,11 +413,29 @@ export default {
       return texts[status] || '未知'
     }
     
+    const getItemStatusText = (status) => {
+      const texts = {
+        pending: '待处理',
+        shipped: '已发货',
+        delivered: '已送达',
+        refunded: '已退款'
+      }
+      return texts[status] || '未知'
+    }
+    
     const viewOrder = (order) => {
       ElMessage.info('订单详情功能开发中...')
     }
     
     const shipOrder = (order) => {
+      // 找到第一个待发货的商品
+      const pendingItem = order.items.find(item => item.item_status === 'pending')
+      if (!pendingItem) {
+        ElMessage.warning('该订单没有待发货的商品')
+        return
+      }
+      
+      shipForm.orderItemId = pendingItem.id
       shipForm.company = ''
       shipForm.number = ''
       shipDialogVisible.value = true
@@ -436,11 +448,33 @@ export default {
       }
       
       shipping.value = true
-      setTimeout(() => {
-        ElMessage.success('发货成功')
-        shipDialogVisible.value = false
+      try {
+        const response = await fetch(`/api/web/order/${shipForm.orderItemId}/ship`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            company: shipForm.company,
+            tracking_number: shipForm.number
+          })
+        })
+        
+        const result = await response.json()
+        
+        if (result.code === 200) {
+          ElMessage.success('发货成功')
+          shipDialogVisible.value = false
+          loadOrders() // 重新加载订单列表
+        } else {
+          ElMessage.error(result.message || '发货失败')
+        }
+      } catch (error) {
+        console.error('发货失败:', error)
+        ElMessage.error('发货失败')
+      } finally {
         shipping.value = false
-      }, 1000)
+      }
     }
     
     const viewLogistics = (order) => {
@@ -462,12 +496,12 @@ export default {
     
     const handleSizeChange = (val) => {
       pageSize.value = val
-      // 重新加载数据
+      loadOrders()
     }
     
     const handleCurrentChange = (val) => {
       currentPage.value = val
-      // 重新加载数据
+      loadOrders()
     }
     
     return {
@@ -482,11 +516,14 @@ export default {
       shipDialogVisible,
       shipForm,
       shipping,
+      loadOrders,
+      loadOrderStats,
       handleSearch,
       resetFilters,
       handleSelectionChange,
       getStatusType,
       getStatusText,
+      getItemStatusText,
       viewOrder,
       shipOrder,
       confirmShip,

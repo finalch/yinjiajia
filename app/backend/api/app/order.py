@@ -30,6 +30,34 @@ def get_logistics_status_text(status):
     }
     return status_map.get(status, status)
 
+def calculate_order_status(order_items):
+    """根据订单项状态计算订单整体状态"""
+    if not order_items:
+        return 'pending'
+    
+    # 统计各状态的数量
+    status_counts = {}
+    for item in order_items:
+        status = item.item_status
+        status_counts[status] = status_counts.get(status, 0) + 1
+    
+    total_items = len(order_items)
+    
+    # 如果所有商品都已送达，订单状态为已送达
+    if status_counts.get('delivered', 0) == total_items:
+        return 'delivered'
+    
+    # 如果有任何商品已发货，订单状态为已发货
+    if status_counts.get('shipped', 0) > 0 or status_counts.get('delivered', 0) > 0:
+        return 'shipped'
+    
+    # 如果所有商品都是待处理状态，订单状态为已付款
+    if status_counts.get('pending', 0) == total_items:
+        return 'paid'
+    
+    # 默认状态
+    return 'paid'
+
 @app_order_api.route('/', methods=['GET'])
 def get_orders():
     """APP端-获取用户订单列表"""
@@ -116,23 +144,29 @@ def get_order_detail(order_id):
             'subtotal': float(item.subtotal)
         })
     
-    logistics = Logistics.query.filter_by(order_id=order.id).first()
+    # 从OrderItem中获取物流信息
     logistics_info = None
-    if logistics:
+    shipped_items = [item for item in order_items if item.shipping_company and item.tracking_number]
+    
+    if shipped_items:
+        # 使用第一个有物流信息的商品作为主要物流信息
+        main_item = shipped_items[0]
         logistics_info = {
-            'id': logistics.id,
-            'tracking_number': logistics.tracking_number,
-            'carrier': logistics.carrier,
-            'status': logistics.status,
-            'status_text': get_logistics_status_text(logistics.status),
-            'updated_at': logistics.updated_at.isoformat() if logistics.updated_at else None
+            'tracking_number': main_item.tracking_number,
+            'carrier': main_item.shipping_company,
+            'status': main_item.item_status,
+            'status_text': get_logistics_status_text(main_item.item_status),
+            'updated_at': main_item.shipped_at.isoformat() if main_item.shipped_at else None
         }
+    
+    # 计算订单的整体状态
+    order_status = calculate_order_status(order_items)
     
     data = {
         'id': order.id,
         'order_number': order.order_number,
-        'status': order.status,
-        'status_text': get_order_status_text(order.status),
+        'status': order_status,
+        'status_text': get_order_status_text(order_status),
         'total_amount': float(order.total_amount),
         'created_at': order.created_at.isoformat(),
         'items': items,
