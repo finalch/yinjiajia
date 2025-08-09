@@ -13,7 +13,10 @@
       :class="{ active: selected === 1 }"
       @click="navigateTo('/cart')"
     >
-      <div class="icon">🛒</div>
+      <div class="icon">
+        🛒
+        <span v-if="cartCount > 0" class="badge">{{ cartCount > 99 ? '99+' : cartCount }}</span>
+      </div>
       <div class="label">购物车</div>
     </div>
     <div 
@@ -36,6 +39,8 @@
 </template>
 
 <script>
+import { cartApi } from '@/utils/api.js'
+
 export default {
   name: 'CustomTabbar',
   props: {
@@ -44,10 +49,39 @@ export default {
       default: 0
     }
   },
+  data() {
+    return {
+      cartCount: 0,
+      userId: 1
+    }
+  },
   methods: {
     navigateTo(path) {
       this.$router.push(path);
+    },
+    async fetchCartCount() {
+      try {
+        const response = await cartApi.getCart(this.userId)
+        if (response.data && response.data.code === 200) {
+          const count = response.data.data?.item_count ?? 0
+          this.cartCount = Number.isFinite(count) ? count : 0
+        }
+      } catch (e) {
+        // 忽略错误，保持现有数量
+      }
     }
+  },
+  watch: {
+    $route() {
+      this.fetchCartCount()
+    }
+  },
+  mounted() {
+    this.fetchCartCount()
+    window.addEventListener('focus', this.fetchCartCount)
+  },
+  beforeUnmount() {
+    window.removeEventListener('focus', this.fetchCartCount)
   }
 }
 </script>
@@ -97,11 +131,28 @@ export default {
   font-size: 20px;
   margin-bottom: 2px;
   transition: color 0.2s;
+  position: relative;
 }
 
 .label {
   font-size: 12px;
   color: #666;
   transition: color 0.2s;
+}
+
+.badge {
+  position: absolute;
+  top: -4px;
+  right: -10px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background-color: #e93b3d;
+  color: #fff;
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+  font-weight: 700;
 }
 </style> 

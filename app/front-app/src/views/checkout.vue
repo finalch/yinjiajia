@@ -21,11 +21,11 @@
             {{ selectedAddress.full_address }}
           </div>
         </div>
-        <div class="address-arrow">></div>
+        <div class="address-arrow">›</div>
       </div>
       <div class="no-address" v-else>
         <span>请选择收货地址</span>
-        <div class="address-arrow">></div>
+        <div class="address-arrow">›</div>
       </div>
     </div>
 
@@ -39,11 +39,11 @@
           :key="product.product_id"
         >
           <div class="product-image">
-            <img :src="product.product_image || '/static/default-product.png'" :alt="product.product_name" />
+            <img :src="product.product_image || '/static/default-product.png'" />
           </div>
           <div class="product-info">
             <div class="product-name">{{ product.product_name }}</div>
-            <div class="product-price">¥{{ product.price }}</div>
+            <div class="product-price">¥{{ formatPrice(product.price) }}</div>
           </div>
           <div class="product-quantity">
             ×{{ product.quantity }}
@@ -57,7 +57,7 @@
       <div class="section-title">订单信息</div>
       <div class="info-item">
         <span class="label">商品总价</span>
-        <span class="value">¥{{ totalAmount }}</span>
+        <span class="value">¥{{ formatPrice(totalAmount) }}</span>
       </div>
       <div class="info-item">
         <span class="label">运费</span>
@@ -65,7 +65,40 @@
       </div>
       <div class="info-item total">
         <span class="label">实付金额</span>
-        <span class="value">¥{{ totalAmount }}</span>
+        <span class="value">¥{{ formatPrice(totalAmount) }}</span>
+      </div>
+    </div>
+
+    <!-- 支付方式 -->
+    <div class="payment-method-section">
+      <div class="section-title">选择支付方式</div>
+      <div class="payment-methods">
+        <div 
+          class="payment-item"
+          :class="{ selected: selectedMethod === 'alipay' }"
+          @click="selectedMethod = 'alipay'"
+        >
+          <div class="method-left">
+            <span class="brand-badge alipay">A</span>
+            <span class="method-name">支付宝</span>
+          </div>
+          <div class="method-right">
+            <span class="checkmark" :class="{ active: selectedMethod === 'alipay' }"></span>
+          </div>
+        </div>
+        <div 
+          class="payment-item"
+          :class="{ selected: selectedMethod === 'wechat' }"
+          @click="selectedMethod = 'wechat'"
+        >
+          <div class="method-left">
+            <span class="brand-badge wechat">W</span>
+            <span class="method-name">微信支付</span>
+          </div>
+          <div class="method-right">
+            <span class="checkmark" :class="{ active: selectedMethod === 'wechat' }"></span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -73,10 +106,28 @@
     <div class="bottom-bar">
       <div class="total-info">
         <span>合计：</span>
-        <span class="total-price">¥{{ totalAmount }}</span>
+        <span class="total-price">¥{{ formatPrice(totalAmount) }}</span>
       </div>
-      <div class="submit-btn" @click="submitOrder" :class="{ disabled: !selectedAddress }">
-        提交订单
+      <div class="submit-btn" @click="handleCheckout" :class="{ disabled: !selectedAddress }">
+        去结算
+      </div>
+    </div>
+
+    <!-- 支付确认弹窗（模拟三方支付） -->
+    <div class="payment-modal" v-if="showPaymentModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>确认支付</h3>
+        </div>
+        <div class="modal-body">
+          <p>订单号：{{ currentOrderNumber }}</p>
+          <p>支付金额：¥{{ formatPrice(currentTotalAmount) }}</p>
+          <p>支付方式：{{ selectedMethod === 'wechat' ? '微信支付' : '支付宝' }}</p>
+        </div>
+        <div class="modal-footer">
+          <button class="cancel-btn" @click="cancelPayment" :disabled="isProcessing">取消</button>
+          <button class="confirm-btn" @click="processPayment" :disabled="isProcessing">确认支付</button>
+        </div>
       </div>
     </div>
   </div>
@@ -95,7 +146,13 @@ export default {
       products: [],
       totalAmount: 0,
       cartItemIds: [],
-      directBuyProduct: null
+      directBuyProduct: null,
+      selectedMethod: 'wechat',
+      // 模拟三方支付
+      showPaymentModal: false,
+      isProcessing: false,
+      currentOrderNumber: '',
+      currentTotalAmount: 0
     }
   },
   mounted() {
@@ -104,9 +161,18 @@ export default {
   activated() {
     // 当页面重新激活时（比如从地址选择页面返回），重新加载地址信息
     this.loadAddressInfo()
+    // 若地址选择页选中即返回，这里优先从本地读取回显
+    const cached = AddressService.getSelectedAddress()
+    if (cached) {
+      this.selectedAddress = cached
+    }
   },
 
   methods: {
+    formatPrice(value) {
+      const num = Number(value || 0)
+      return num.toFixed(2)
+    },
     goBack() {
       this.$router.go(-1)
     },
@@ -131,6 +197,11 @@ export default {
             params.spec_combination_id = spec_combination_id
           }
         }
+        // 透传地址（若商品详情弹窗中已选择地址）
+        const { address_id } = this.$route.query
+        if (address_id) {
+          params.address_id = address_id
+        }
         
         // 并行获取商品信息和默认地址
         const [checkoutResponse] = await Promise.all([
@@ -143,8 +214,18 @@ export default {
           this.totalAmount = data.total_amount
         }
         
-        // 使用AddressService获取默认地址
-        this.selectedAddress = await AddressService.getDefaultAddress(this.user_id)
+        // 如果路由透传了地址，则优先使用；否则取默认地址
+        if (address_id) {
+          // 透传仅带了 id，这里仍从缓存/后端加载完整对象
+          const cached = AddressService.getSelectedAddress()
+          if (cached && String(cached.id) === String(address_id)) {
+            this.selectedAddress = cached
+          } else {
+            this.selectedAddress = await AddressService.getDefaultAddress(this.user_id)
+          }
+        } else {
+          this.selectedAddress = await AddressService.getDefaultAddress(this.user_id)
+        }
       } catch (error) {
         console.error('加载下单信息失败:', error)
       }
@@ -164,29 +245,21 @@ export default {
       this.selectedAddress = await AddressService.getDefaultAddress(this.user_id)
     },
     
-    async submitOrder() {
-      console.log('提交订单 - selectedAddress:', this.selectedAddress)
-      
+    // 去结算：创建订单 -> 弹窗模拟支付
+    async handleCheckout() {
       if (!this.selectedAddress) {
         alert('请选择收货地址')
         return
       }
-      
-      if (!this.selectedAddress.id) {
-        console.error('地址ID为空:', this.selectedAddress)
-        alert('收货地址信息不完整，请重新选择')
-        return
-      }
-      
+
       try {
         const orderData = {
           user_id: this.user_id,
-          address_id: this.selectedAddress.id
+          address_id: this.selectedAddress.id,
+          payment_method: this.selectedMethod
         }
-        
-        // 判断是购物车商品还是直接购买
+
         const { cart_items, product_id, quantity, spec_combination_id } = this.$route.query
-        
         if (cart_items) {
           orderData.cart_items = cart_items.split(',').map(id => parseInt(id))
         } else if (product_id) {
@@ -194,32 +267,58 @@ export default {
             product_id: parseInt(product_id),
             quantity: parseInt(quantity) || 1
           }
-          
-          // 如果有规格组合ID，添加到直接购买数据中
           if (spec_combination_id) {
             orderData.direct_buy.spec_combination_id = parseInt(spec_combination_id)
           }
         }
-        
-        console.log('提交订单数据:', orderData)
-        console.log('提交订单数据JSON:', JSON.stringify(orderData))
-        
-        const response = await request.post('/api/app/order/', orderData)
-        
-        if (response.data.code === 200) {
-          // 跳转到支付页面
+
+        const res = await request.post('/api/app/order/', orderData)
+        if (res.data.code !== 200) {
+          throw new Error(res.data.message || '下单失败')
+        }
+
+        this.currentOrderNumber = res.data.data.order_number
+        this.currentTotalAmount = res.data.data.total_amount
+        this.showPaymentModal = true
+      } catch (error) {
+        console.error('去结算失败:', error)
+        alert('去结算失败：' + (error.message || '请稍后重试'))
+      }
+    },
+
+    cancelPayment() {
+      if (this.isProcessing) return
+      this.showPaymentModal = false
+    },
+
+    async processPayment() {
+      if (this.isProcessing) return
+      if (!this.currentOrderNumber) return
+
+      this.isProcessing = true
+      try {
+        const payRes = await request.post(`/api/app/order/${this.currentOrderNumber}/pay-success`, {
+          user_id: this.user_id,
+          payment_method: this.selectedMethod
+        })
+        if (payRes.data.code === 200) {
+          this.showPaymentModal = false
           this.$router.push({
-            path: '/payment',
+            path: '/pay-result',
             query: {
-              order_id: response.data.data.order_id,
-              order_number: response.data.data.order_number,
-              total_amount: response.data.data.total_amount
+              status: 'success',
+              order_number: this.currentOrderNumber,
+              total_amount: this.currentTotalAmount
             }
           })
+        } else {
+          throw new Error(payRes.data.message || '支付失败')
         }
-      } catch (error) {
-        console.error('提交订单失败:', error)
-        alert('提交订单失败，请重试')
+      } catch (err) {
+        console.error('支付失败:', err)
+        alert('支付失败：' + (err.message || '请稍后重试'))
+      } finally {
+        this.isProcessing = false
       }
     }
   }
@@ -230,7 +329,8 @@ export default {
 .checkout-container {
   min-height: 100vh;
   background-color: #f5f5f5;
-  padding-bottom: 80px;
+  padding-bottom: constant(safe-area-inset-bottom, 80px);
+  padding-bottom: env(safe-area-inset-bottom, 80px);
 }
 
 .header {
@@ -258,18 +358,20 @@ export default {
 
 .address-section,
 .products-section,
-.order-info-section {
-  background: white;
-  margin: 10px;
-  border-radius: 8px;
-  padding: 15px;
+.order-info-section,
+.payment-method-section {
+  background: #fff;
+  margin: 12px;
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 
 .section-title {
-  font-size: 16px;
-  font-weight: bold;
-  margin-bottom: 15px;
-  color: #333;
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #222;
 }
 
 .address-content,
@@ -305,8 +407,13 @@ export default {
 }
 
 .address-arrow {
-  color: #ccc;
-  font-size: 16px;
+  color: #cbd5e1;
+  font-size: 14px;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .no-address {
@@ -320,8 +427,8 @@ export default {
 .product-item {
   display: flex;
   align-items: center;
-  padding: 10px 0;
-  border-bottom: 1px solid #f0f0f0;
+  padding: 12px 0;
+  border-bottom: 1px dashed #eee;
 }
 
 .product-item:last-child {
@@ -329,9 +436,9 @@ export default {
 }
 
 .product-image {
-  width: 60px;
-  height: 60px;
-  margin-right: 15px;
+  width: 64px;
+  height: 64px;
+  margin-right: 12px;
 }
 
 .product-image img {
@@ -343,19 +450,25 @@ export default {
 
 .product-info {
   flex: 1;
+  min-width: 0; /* 关键：允许子元素在 flex 容器中收缩，ellipsis 才能生效 */
 }
 
 .product-name {
   font-size: 14px;
-  color: #333;
-  margin-bottom: 5px;
-  line-height: 1.3;
+  color: #1f2d3d;
+  margin-bottom: 4px;
+  line-height: 1.35;
+  display: block; /* 让 ellipsis 更稳定生效 */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
 }
 
 .product-price {
-  font-size: 16px;
-  color: #ff4757;
-  font-weight: bold;
+  font-size: 15px;
+  color: #ff4d4f;
+  font-weight: 600;
 }
 
 .product-quantity {
@@ -371,23 +484,23 @@ export default {
 }
 
 .info-item.total {
-  border-top: 1px solid #f0f0f0;
-  margin-top: 10px;
-  padding-top: 15px;
-  font-weight: bold;
+  border-top: 1px solid #f5f5f5;
+  margin-top: 8px;
+  padding-top: 12px;
+  font-weight: 700;
   font-size: 16px;
 }
 
 .label {
-  color: #666;
+  color: #6b7280;
 }
 
 .value {
-  color: #333;
+  color: #111827;
 }
 
 .total .value {
-  color: #ff4757;
+  color: #ff4d4f;
   font-size: 18px;
 }
 
@@ -397,7 +510,7 @@ export default {
   left: 0;
   right: 0;
   background: white;
-  padding: 15px 20px;
+  padding: 12px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -411,23 +524,167 @@ export default {
 }
 
 .total-price {
-  font-size: 18px;
-  color: #ff4757;
-  font-weight: bold;
+  font-size: 20px;
+  color: #ff4d4f;
+  font-weight: 700;
 }
 
 .submit-btn {
-  background: #ff4757;
+  background: linear-gradient(135deg, #ff7a45, #ff4d4f);
   color: white;
-  padding: 12px 30px;
-  border-radius: 25px;
+  padding: 12px 20px;
+  border-radius: 24px;
   cursor: pointer;
   font-size: 16px;
-  font-weight: bold;
+  font-weight: 700;
+  box-shadow: 0 6px 12px rgba(255,77,79,0.24);
+  transition: transform .06s ease-in-out;
 }
 
 .submit-btn.disabled {
   background: #ccc;
   cursor: not-allowed;
+}
+
+/* 支付确认弹窗样式（与 payment.vue 保持一致风格） */
+.payment-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 400px;
+  overflow: hidden;
+}
+
+.modal-header {
+  padding: 20px;
+  border-bottom: 1px solid #eee;
+  text-align: center;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #333;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.modal-body p {
+  margin: 10px 0;
+  color: #666;
+}
+
+.modal-footer {
+  display: flex;
+  border-top: 1px solid #eee;
+}
+
+.cancel-btn, .confirm-btn {
+  flex: 1;
+  padding: 15px;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.cancel-btn {
+  background: #f5f5f5;
+  color: #666;
+}
+
+.confirm-btn {
+  background: #ff4757;
+  color: white;
+}
+
+/* 支付方式视觉优化 */
+.payment-methods {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.payment-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff;
+  border: 1px solid #f0f0f0;
+  border-radius: 10px;
+  padding: 12px 14px;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.payment-item.selected {
+  border-color: #ff4d4f;
+  box-shadow: 0 0 0 2px rgba(255,77,79,0.12);
+}
+
+.method-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-badge {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.brand-badge.alipay { background: linear-gradient(135deg, #2e7cf6, #1f6fe5); }
+.brand-badge.wechat { background: linear-gradient(135deg, #20c997, #16a34a); }
+
+.method-name {
+  font-size: 14px;
+  color: #111827;
+}
+
+.radio {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid #d1d5db;
+  position: relative;
+}
+
+.radio.active {
+  border-color: #ff4d4f;
+}
+
+.radio.active::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  background: #ff4d4f;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.submit-btn:active {
+  transform: scale(0.98);
 }
 </style> 

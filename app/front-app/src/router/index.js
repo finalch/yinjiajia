@@ -53,8 +53,7 @@ const routes = [
   },
   {
     path: '/payment-method',
-    name: 'PaymentMethod',
-    component: () => import('../views/payment-method.vue')
+    redirect: '/checkout'
   },
   {
     path: '/my-order',

@@ -14,6 +14,7 @@ def get_order_status_text(status):
         'paid': '已付款',
         'shipped': '已发货',
         'delivered': '已送达',
+        'completed': '已完成',
         'cancelled': '已取消',
         'refunded': '已退款'
     }
@@ -51,12 +52,12 @@ def calculate_order_status(order_items):
     if status_counts.get('shipped', 0) > 0 or status_counts.get('delivered', 0) > 0:
         return 'shipped'
     
-    # 如果所有商品都是待处理状态，订单状态为已付款
+    # 所有商品都是待处理，保持为待付款
     if status_counts.get('pending', 0) == total_items:
-        return 'paid'
+        return 'pending'
     
-    # 默认状态
-    return 'paid'
+    # 默认：未发货/未送达，保持待付款
+    return 'pending'
 
 @app_order_api.route('/', methods=['GET'])
 def get_orders():
@@ -159,8 +160,12 @@ def get_order_detail(order_id):
             'updated_at': main_item.shipped_at.isoformat() if main_item.shipped_at else None
         }
     
-    # 计算订单的整体状态
-    order_status = calculate_order_status(order_items)
+    # 计算物流驱动的状态
+    derived_status = calculate_order_status(order_items)
+    # 订单自身状态作为真值，除非物流推进到了更后阶段
+    order_status = order.status
+    if order_status not in ('cancelled', 'refunded', 'completed') and derived_status in ('shipped', 'delivered'):
+        order_status = derived_status
     
     data = {
         'id': order.id,
@@ -178,6 +183,57 @@ def get_order_detail(order_id):
         'message': '获取订单详情成功',
         'data': data
     }), 200
+
+@app_order_api.route('/<int:order_id>/confirm-receipt', methods=['POST'])
+def confirm_receipt(order_id):
+    """APP端-确认收货：将订单项标记为已送达，并将订单状态置为已完成"""
+    data = request.json or {}
+    user_id = data.get('user_id', request.args.get('user_id', 1, type=int))
+
+    order = Order.query.filter_by(id=order_id, user_id=user_id).first()
+    if not order:
+        return jsonify({'code': 404, 'message': '订单不存在'}), 404
+
+    # 仅允许在已发货/已送达但未完成的订单上进行确认
+    # 订单的对外展示状态是由订单项推导的，这里放宽判断，以订单项是否存在已发货为依据
+    order_items = OrderItem.query.filter_by(order_id=order.id).all()
+    if not order_items:
+        return jsonify({'code': 400, 'message': '订单无商品，无法确认收货'}), 400
+
+    try:
+        now = datetime.utcnow()
+        has_shipped_or_delivered = False
+        for item in order_items:
+            if item.item_status in ('shipped', 'in_transit', 'delivered'):
+                has_shipped_or_delivered = True
+                item.item_status = 'delivered'
+                if not item.delivered_at:
+                    item.delivered_at = now
+
+        if not has_shipped_or_delivered:
+            return jsonify({'code': 400, 'message': '订单尚未发货，无法确认收货'}), 400
+
+        # 标记订单完成
+        order.status = 'completed'
+        order.updated_at = now
+
+        db.session.commit()
+
+        logger.info(f"确认收货成功: order_id={order_id}, user_id={user_id}")
+        return jsonify({
+            'code': 200,
+            'message': '确认收货成功',
+            'data': {
+                'order_id': order.id,
+                'order_number': order.order_number,
+                'status': order.status,
+                'status_text': get_order_status_text(order.status)
+            }
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"确认收货失败: {str(e)}, order_id={order_id}, user_id={user_id}", exc_info=True)
+        return jsonify({'code': 500, 'message': f'确认收货失败: {str(e)}'}), 500
 
 @app_order_api.route('/', methods=['POST'])
 def create_order():
@@ -324,7 +380,7 @@ def payment_success(order_number):
         }), 200
     except Exception as e:
         db.session.rollback()
-        logger.error(f"支付成功回调处理失败: {str(e)}, order_id={order_id}, user_id={user_id}", exc_info=True)
+        logger.error(f"支付成功回调处理失败: {str(e)}, order_number={order_number}, user_id={user_id}", exc_info=True)
         return jsonify({
             'code': 500,
             'message': f'支付成功回调处理失败: {str(e)}'

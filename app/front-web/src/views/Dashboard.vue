@@ -165,14 +165,15 @@
 </template>
 
 <script>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { 
-  Money, 
-  Document, 
-  User, 
-  Goods, 
-  TrendCharts, 
+import request from '@/api/request'
+import {
+  Money,
+  Document,
+  User,
+  Goods,
+  TrendCharts,
   PieChart,
   Plus,
   ChatDotRound,
@@ -194,20 +195,20 @@ export default {
   },
   setup() {
     const router = useRouter()
-    
+
     // 统计数据
-    const todaySales = ref(12580.50)
-    const salesChange = ref(12.5)
-    const todayOrders = ref(45)
-    const ordersChange = ref(-3.2)
-    const todayCustomers = ref(128)
-    const customersChange = ref(8.7)
-    const totalProducts = ref(156)
-    const pendingReview = ref(3)
-    
+    const todaySales = ref(0)
+    const salesChange = ref(0)
+    const todayOrders = ref(0)
+    const ordersChange = ref(0)
+    const todayCustomers = ref(0)      // 访客暂用0，后续对接埋点或UV接口
+    const customersChange = ref(0)
+    const totalProducts = ref(0)
+    const pendingReview = ref(0)       // 待审核暂用0，后续对接分类/商品审核统计
+
     // 图表周期
     const salesPeriod = ref('7')
-    
+
     // 待处理事项
     const todoList = ref([
       { id: 1, text: '待发货订单', count: 12, type: 'warning', path: '/orders' },
@@ -215,30 +216,50 @@ export default {
       { id: 3, text: '待回复咨询', count: 8, type: 'primary', path: '/customer-service' },
       { id: 4, text: '待处理退款', count: 2, type: 'danger', path: '/after-sales' }
     ])
-    
-    // 格式化数字
+
+    const currentMerchantId = 1
+    const toPercent = (t, y) => {
+      if (!y) return t > 0 ? 100 : 0
+      return Math.round(((t - y) / y) * 1000) / 10
+    }
+
+    const fetchDashboard = async () => {
+      try {
+        const res = await request.get('/api/web/analytics/dashboard', {
+          params: { merchant_id: currentMerchantId }
+        })
+        if (res.data?.code === 200) {
+          const d = res.data.data || {}
+          const today = d.today || {}
+          const yesterday = d.yesterday || {}
+          const total = d.total || {}
+
+          todaySales.value = Number(today.sales || 0)
+          todayOrders.value = Number(today.orders || 0)
+          totalProducts.value = Number(total.products || 0)
+
+          salesChange.value = toPercent(today.sales || 0, yesterday.sales || 0)
+          ordersChange.value = toPercent(today.orders || 0, yesterday.orders || 0)
+        }
+      } catch (e) {
+        console.error('加载仪表板数据失败', e)
+      }
+    }
+
+    onMounted(() => {
+      fetchDashboard()
+    })
+
+    // 格式化数字/处理待办保持不变
     const formatNumber = (num) => {
       return num.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     }
-    
-    // 处理待办事项
-    const handleTodo = (todo) => {
-      router.push(todo.path)
-    }
-    
+    const handleTodo = (todo) => { router.push(todo.path) }
+
     return {
-      todaySales,
-      salesChange,
-      todayOrders,
-      ordersChange,
-      todayCustomers,
-      customersChange,
-      totalProducts,
-      pendingReview,
-      salesPeriod,
-      todoList,
-      formatNumber,
-      handleTodo
+      todaySales, salesChange, todayOrders, ordersChange,
+      todayCustomers, customersChange, totalProducts, pendingReview,
+      salesPeriod, todoList, formatNumber, handleTodo
     }
   }
 }

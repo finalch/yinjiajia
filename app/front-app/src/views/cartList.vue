@@ -325,14 +325,12 @@ const goToPay = () => {
 	}, 0)
 
 	const cartItemIds = selectedItems.map(item => item.id).join(',')
-	router.push({
-		path: '/payment-method',
-		query: { 
-			cart_items: cartItemIds,
-			total_amount: totalAmount.toFixed(2),
-			address_id: 1 // 添加默认地址ID，后续可以从用户状态获取
-		}
-	})
+  router.push({
+    path: '/checkout',
+    query: { 
+      cart_items: cartItemIds
+    }
+  })
 }
 
 // 长按开始

@@ -84,6 +84,13 @@
             >
               查看物流
             </button>
+            <button
+              v-if="order.status === 'shipped' || order.status === 'delivered'"
+              class="action-btn primary"
+              @click.stop="confirmReceipt(order)"
+            >
+              确认收货
+            </button>
             <button 
               class="action-btn secondary"
               @click.stop="viewOrderDetail(order.id)"
@@ -263,6 +270,28 @@ export default {
         alert(message)
       } else {
         alert('暂无物流信息')
+      }
+    },
+
+    // 确认收货
+    async confirmReceipt(order) {
+      if (!confirm('确认已收到货物吗？')) return
+      try {
+        const res = await request.post(`/api/app/order/${order.id}/confirm-receipt`, {
+          user_id: this.user_id
+        })
+        if (res.data && res.data.code === 200) {
+          alert('确认收货成功')
+          // 刷新订单列表
+          this.currentPage = 1
+          this.orders = []
+          await this.loadOrders()
+        } else {
+          alert(res.data?.message || '确认收货失败')
+        }
+      } catch (e) {
+        console.error('确认收货失败', e)
+        alert('确认收货失败')
       }
     },
 

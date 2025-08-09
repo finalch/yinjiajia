@@ -271,8 +271,11 @@ class OrderService:
                     'updated_at': main_item.shipped_at.isoformat() if main_item.shipped_at else None
                 }
             
-            # 计算订单的整体状态
-            order_status = OrderService._calculate_order_status(order_items)
+            # 计算物流驱动的状态，并与订单自身状态合并
+            derived_status = OrderService._calculate_order_status(order_items)
+            order_status = order.status
+            if order_status not in ('cancelled', 'refunded', 'completed') and derived_status in ('shipped', 'delivered'):
+                order_status = derived_status
             
             # 如果指定了状态筛选，检查订单状态是否匹配
             if status and order_status != status:
@@ -328,12 +331,12 @@ class OrderService:
         if status_counts.get('shipped', 0) > 0 or status_counts.get('delivered', 0) > 0:
             return 'shipped'
         
-        # 如果所有商品都是待处理状态，订单状态为已付款
+        # 如果所有商品都是待处理状态，则保持待付款
         if status_counts.get('pending', 0) == total_items:
-            return 'paid'
+            return 'pending'
         
-        # 默认状态
-        return 'paid'
+        # 默认：未发货/未送达，保持待付款
+        return 'pending'
     
     @staticmethod
     def _get_order_status_text(status: str) -> str:

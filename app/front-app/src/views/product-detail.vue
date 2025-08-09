@@ -51,36 +51,39 @@
 		  <p class="product-subtitle">{{ product.description }}</p>
 		</div>
 		
-		<!-- 物流信息 -->
-		<div class="logistics-info">
-		  <div class="logistics-item">
-			<span class="logistics-icon">🚚</span>
-			<span class="logistics-text">预计3-5日送达至您的收货地址</span>
-		  </div>
-		  <div class="logistics-item">
-			<span class="logistics-icon">✓</span>
-			<span class="logistics-text">正品保证 · 7天无理由退换</span>
-		  </div>
-		</div>
+        
 	  </div>
   
 	    <!-- 商品规格信息 -->
   <div class="spec-info" v-if="product.has_specs && product.specs">
-    <div class="spec-preview" @click="showSpecPopup">
-      <div class="spec-content">
-        <div class="spec-header">
-          <span class="spec-label">规格</span>
-          <span class="spec-price" v-if="selectedCombination">¥{{ selectedCombination.price }}</span>
-        </div>
-        <div class="spec-selection">
-          <span class="spec-value">{{ selectedSpecText || '请选择规格' }}</span>
-          <span class="spec-stock" v-if="selectedCombination">库存{{ selectedCombination.stock }}件</span>
-        </div>
-      </div>
-      <div class="spec-arrow">
-        <span class="arrow-icon">›</span>
-      </div>
+    <div class="spec-preview single-line" @click="showSpecPopup">
+      <span class="spec-label">规格</span>
+      <span class="spec-value-line">{{ selectedSpecText || '请选择规格' }}</span>
+      <span class="spec-qty">数量 {{ quantity }} 件</span>
+      <span class="spec-arrow"><span class="arrow-icon">›</span></span>
     </div>
+  </div>
+
+  <!-- 收货地址预览 -->
+  <div class="address-preview" @click="selectAddress">
+    <div class="address-preview-title">收货地址</div>
+    <div class="address-preview-content" v-if="selectedAddress">
+      <div class="address-preview-text">
+        <div class="address-line">{{ selectedAddress.full_address }}</div>
+        <div class="address-estimate">预计3-5日送达</div>
+      </div>
+      <div class="address-preview-arrow">›</div>
+    </div>
+    <div class="address-preview-empty" v-else>
+      <span>请选择收货地址</span>
+      <div class="address-preview-arrow">›</div>
+    </div>
+  </div>
+
+  <!-- 服务保障独立一行 -->
+  <div class="service-guarantee">
+    <span class="guarantee-icon">✓</span>
+    <span class="guarantee-text">正品保证 · 7天无理由退换</span>
   </div>
   
 	  <!-- 商品评价 -->
@@ -134,8 +137,8 @@
 		  </div>
 		</div>
 		<div class="main-btn">
-		  <div class="add-cart-btn" @click="addToCart">加入购物车</div>
-		  <div class="buy-now-btn" @click="showSpecPopup">立即购买</div>
+          <div class="add-cart-btn" @click="addToCart">加入购物车</div>
+          <div class="buy-now-btn" @click="buyNow">立即购买</div>
 		</div>
 	  </div>
   
@@ -153,44 +156,13 @@
 					¥{{ product.original_price }}
 				  </span>
 				</div>
-				<div class="stock-info">库存 {{ currentStock }} 件</div>
+              
 			  </div>
 			</div>
 			<span class="close-btn" @click="closeSpecPopup">×</span>
 		  </div>
 		  
-		  <div class="spec-content">
-			<!-- 收货地址选择 -->
-			<div class="address-section">
-			  <div class="section-title">
-				<span class="title-text">收货地址</span>
-				<span class="title-tip" @click="selectAddress">选择地址</span>
-			  </div>
-			  <div class="address-content" v-if="selectedAddress">
-				<div class="address-info">
-				  <div class="receiver-info">
-					<span class="receiver-name">{{ selectedAddress.receiver_name }}</span>
-					<span class="receiver-phone">{{ selectedAddress.phone }}</span>
-				  </div>
-				  <div class="address-detail">{{ selectedAddress.full_address }}</div>
-				</div>
-				<div class="address-arrow">></div>
-			  </div>
-			  <div class="no-address" v-else @click="selectAddress">
-				<span>请选择收货地址</span>
-				<div class="address-arrow">></div>
-			  </div>
-			</div>
-
-			<!-- 物流信息 -->
-			<div class="logistics-section" v-if="selectedAddress">
-			  <div class="section-title">
-				<span class="title-text">物流信息</span>
-			  </div>
-			  <div class="logistics-info">
-				<span class="logistics-text">预计 3-5 日送达至 {{ selectedAddress.full_address }}</span>
-			  </div>
-			</div>
+          <div class="spec-content">
 
 			<!-- 规格选择 -->
 			<div class="spec-section" v-if="product.has_specs && product.specs && product.specs.length > 0">
@@ -218,25 +190,21 @@
 				  </div>
 				</div>
 			  </div>
-			  <div class="selected-spec-display" v-if="selectedSpec">
+              <div class="selected-spec-display" v-if="selectedSpec">
 				<div class="selected-header">
 					<span class="selected-label">已选规格</span>
 					<span class="selected-price" v-if="selectedCombination">¥{{ selectedCombination.price }}</span>
 				</div>
 				<div class="selected-text">{{ selectedSpec }}</div>
-				<div class="selected-stock" v-if="selectedCombination">
-					<span class="stock-label">库存：</span>
-					<span class="stock-value">{{ selectedCombination.stock }}件</span>
-				</div>
+                
 			  </div>
 			</div>
 			
 			<!-- 数量选择 -->
 			<div class="quantity-section">
-			  <div class="section-title">
-				<span class="title-text">购买数量</span>
-				<span class="quantity-tip">最多可购买 {{ currentStock }} 件</span>
-			  </div>
+              <div class="section-title">
+                <span class="title-text">购买数量</span>
+              </div>
 			  <div class="quantity-selector">
 				<button class="quantity-btn minus-btn" 
 				  @click="decreaseQuantity" 
@@ -377,7 +345,12 @@ import AddressService from '../services/addressService.js'
 			  this.productId = this.$route.params.id
 			  this.fetchProductDetail()
 			  this.fetchCartCount()
-			  this.loadAddressInfo()
+    this.loadAddressInfo()
+    // 优先回显本地已选地址
+    const cached = AddressService.getSelectedAddress()
+    if (cached) {
+      this.selectedAddress = cached
+    }
 		  },
 		  activated() {
 			  // 当页面重新激活时（比如从地址选择页面返回），重新加载地址信息
@@ -538,6 +511,32 @@ import AddressService from '../services/addressService.js'
 			  closeSpecPopup() {
 				  this.showPopup = false
 			  },
+      
+      // 直接购买：不弹出弹窗，直接跳转结算
+      buyNow() {
+        if (this.product.has_specs && this.product.specs && this.product.specs.length > 0 && !this.selectedCombination) {
+          alert('请选择完整规格')
+          return
+        }
+        if (this.quantity < 1 || this.quantity > this.currentStock) {
+          alert('请选择有效的购买数量')
+          return
+        }
+        if (this.selectedAddress) {
+          AddressService.setSelectedAddress(this.selectedAddress)
+        }
+        const query = {
+          product_id: this.product.id,
+          quantity: this.quantity
+        }
+        if (this.selectedCombination) {
+          query.spec_combination_id = this.selectedCombination.id
+        }
+        if (this.selectedAddress && this.selectedAddress.id) {
+          query.address_id = this.selectedAddress.id
+        }
+        this.$router.push({ path: '/checkout', query })
+      },
 			  
 			  // 选择规格
 			  selectSpec(name, value) {
@@ -733,9 +732,9 @@ import AddressService from '../services/addressService.js'
 			  },
 
 			  // 选择收货地址
-			  selectAddress() {
-				  this.$router.push('/address-list')
-			  },
+      selectAddress() {
+          this.$router.push({ path: '/address-list', query: { from: 'product-detail' } })
+      },
 
 			  // 确认立即购买
 			  confirmDirectBuy() {
@@ -762,17 +761,21 @@ import AddressService from '../services/addressService.js'
 				  
 				  this.closeSpecPopup()
 				  
-				  // 跳转到支付方式选择页面
-				  this.$router.push({
-					  path: '/payment-method',
-					  query: {
-						  product_id: this.product.id,
-						  quantity: this.quantity,
-						  spec_combination_id: this.selectedCombination ? this.selectedCombination.id : null,
-						  address_id: this.selectedAddress.id,
-						  total_amount: (this.currentPrice * this.quantity).toFixed(2)
-					  }
-				  })
+          // 跳转到结算页面
+          const query = {
+            product_id: this.product.id,
+            quantity: this.quantity
+          }
+          if (this.selectedCombination) {
+            query.spec_combination_id = this.selectedCombination.id
+          }
+          if (this.selectedAddress && this.selectedAddress.id) {
+            query.address_id = this.selectedAddress.id
+          }
+          this.$router.push({
+            path: '/checkout',
+            query
+          })
 			  }
 		  }
 	  }
@@ -952,6 +955,50 @@ import AddressService from '../services/addressService.js'
 		  margin-top: 10px;
 		  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 	  }
+
+  /* 收货地址预览 */
+  .address-preview {
+    margin-top: 10px;
+    padding: 12px 16px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    cursor: pointer;
+  }
+  .address-preview-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+  }
+  .address-preview-content,
+  .address-preview-empty {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .address-preview-text {
+    flex: 1;
+    min-width: 0;
+  }
+  .address-line { color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .address-estimate { color: #6b7280; margin-top: 4px; font-size: 13px; }
+  .address-preview-arrow { color: #cbd5e1; padding-left: 8px; }
+
+  .service-guarantee {
+    margin-top: 8px;
+    padding: 10px 16px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .guarantee-icon { color: #10b981; }
+  .guarantee-text { color: #111827; font-size: 15px; }
+
+  .spec-qty { color: #6b7280; font-size: 13px; }
   
 	  .price-section {
 		  display: flex;
@@ -1034,6 +1081,10 @@ import AddressService from '../services/addressService.js'
 		  position: relative;
 	  }
 
+  .spec-preview.single-line {
+      gap: 8px;
+  }
+
 	  .spec-preview:hover {
 		  background-color: #f8f9fa;
 		  border-radius: 8px;
@@ -1071,6 +1122,16 @@ import AddressService from '../services/addressService.js'
 		  justify-content: space-between;
 		  align-items: center;
 	  }
+
+  .spec-value-line {
+      flex: 1;
+      min-width: 0;
+      color: #666;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding: 0 6px;
+  }
 
 	  .spec-value {
 		  font-size: 14px;
@@ -1473,6 +1534,7 @@ import AddressService from '../services/addressService.js'
 		  font-weight: 600;
 		  color: #333;
 		  line-height: 1.4;
+      line-clamp: 2;
 		  display: -webkit-box;
 		  -webkit-line-clamp: 2;
 		  -webkit-box-orient: vertical;
@@ -1498,12 +1560,7 @@ import AddressService from '../services/addressService.js'
 	  }
 
 	  .stock-info {
-		  font-size: 12px;
-		  color: #666;
-		  background-color: #f8f9fa;
-		  padding: 2px 8px;
-		  border-radius: 4px;
-		  display: inline-block;
+      display: none;
 	  }
 
 	  .close-btn {
@@ -1536,9 +1593,7 @@ import AddressService from '../services/addressService.js'
 	  }
 
 	  .address-section {
-		  margin-bottom: 24px;
-		  padding-bottom: 20px;
-		  border-bottom: 1px solid #eee;
+      display: none;
 	  }
 
 	  .section-title {
@@ -1637,9 +1692,7 @@ import AddressService from '../services/addressService.js'
 	  }
 
 	  .logistics-section {
-		  margin-top: 24px;
-		  padding-top: 20px;
-		  border-top: 1px solid #eee;
+      display: none;
 	  }
 
 	  .logistics-info {
@@ -1847,9 +1900,7 @@ import AddressService from '../services/addressService.js'
 	  }
 
 	  .quantity-tip {
-		  font-size: 12px;
-		  color: #999;
-		  margin-top: 8px;
+      display: none;
 	  }
   
 	  	  .popup-footer {

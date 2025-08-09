@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from models import db, Order, Product, Review, Category
+from models import db, Order, OrderItem, Product, Review, Category
 from datetime import datetime, timedelta
 from sqlalchemy import func, and_
 
@@ -18,17 +18,25 @@ def get_dashboard_data():
     this_month_start = today.replace(day=1)
     last_month_start = (this_month_start - timedelta(days=1)).replace(day=1)
     
-    # 今日数据
-    today_orders = Order.query.filter(
-        Order.merchant_id == merchant_id,
-        func.date(Order.created_at) == today
-    ).count()
-    
-    today_sales = db.session.query(func.sum(Order.total_amount)).filter(
-        Order.merchant_id == merchant_id,
-        func.date(Order.created_at) == today,
-        Order.status.in_(['paid', 'shipped', 'delivered'])
-    ).scalar() or 0
+    revenue_statuses = ['paid', 'shipped', 'delivered', 'completed']
+
+    # 今日数据（按商家维度去重订单 + 订单项小计）
+    today_orders = db.session.query(func.count(func.distinct(Order.id))) \
+        .select_from(OrderItem) \
+        .join(Order, Order.id == OrderItem.order_id) \
+        .filter(
+            OrderItem.merchant_id == merchant_id,
+            func.date(Order.created_at) == today
+        ).scalar() or 0
+
+    today_sales = db.session.query(func.sum(OrderItem.subtotal)) \
+        .select_from(OrderItem) \
+        .join(Order, Order.id == OrderItem.order_id) \
+        .filter(
+            OrderItem.merchant_id == merchant_id,
+            func.date(Order.created_at) == today,
+            Order.status.in_(revenue_statuses)
+        ).scalar() or 0
     
     today_products = Product.query.filter(
         Product.merchant_id == merchant_id,
@@ -36,40 +44,58 @@ def get_dashboard_data():
     ).count()
     
     # 昨日数据
-    yesterday_orders = Order.query.filter(
-        Order.merchant_id == merchant_id,
-        func.date(Order.created_at) == yesterday
-    ).count()
-    
-    yesterday_sales = db.session.query(func.sum(Order.total_amount)).filter(
-        Order.merchant_id == merchant_id,
-        func.date(Order.created_at) == yesterday,
-        Order.status.in_(['paid', 'shipped', 'delivered'])
-    ).scalar() or 0
+    yesterday_orders = db.session.query(func.count(func.distinct(Order.id))) \
+        .select_from(OrderItem) \
+        .join(Order, Order.id == OrderItem.order_id) \
+        .filter(
+            OrderItem.merchant_id == merchant_id,
+            func.date(Order.created_at) == yesterday
+        ).scalar() or 0
+
+    yesterday_sales = db.session.query(func.sum(OrderItem.subtotal)) \
+        .select_from(OrderItem) \
+        .join(Order, Order.id == OrderItem.order_id) \
+        .filter(
+            OrderItem.merchant_id == merchant_id,
+            func.date(Order.created_at) == yesterday,
+            Order.status.in_(revenue_statuses)
+        ).scalar() or 0
     
     # 本月数据
-    this_month_orders = Order.query.filter(
-        Order.merchant_id == merchant_id,
-        Order.created_at >= this_month_start
-    ).count()
-    
-    this_month_sales = db.session.query(func.sum(Order.total_amount)).filter(
-        Order.merchant_id == merchant_id,
-        Order.created_at >= this_month_start,
-        Order.status.in_(['paid', 'shipped', 'delivered'])
-    ).scalar() or 0
+    this_month_orders = db.session.query(func.count(func.distinct(Order.id))) \
+        .select_from(OrderItem) \
+        .join(Order, Order.id == OrderItem.order_id) \
+        .filter(
+            OrderItem.merchant_id == merchant_id,
+            Order.created_at >= this_month_start
+        ).scalar() or 0
+
+    this_month_sales = db.session.query(func.sum(OrderItem.subtotal)) \
+        .select_from(OrderItem) \
+        .join(Order, Order.id == OrderItem.order_id) \
+        .filter(
+            OrderItem.merchant_id == merchant_id,
+            Order.created_at >= this_month_start,
+            Order.status.in_(revenue_statuses)
+        ).scalar() or 0
     
     # 总商品数
     total_products = Product.query.filter(Product.merchant_id == merchant_id).count()
     
-    # 总订单数
-    total_orders = Order.query.filter(Order.merchant_id == merchant_id).count()
-    
-    # 总销售额
-    total_sales = db.session.query(func.sum(Order.total_amount)).filter(
-        Order.merchant_id == merchant_id,
-        Order.status.in_(['paid', 'shipped', 'delivered'])
-    ).scalar() or 0
+    # 总订单数（去重）
+    total_orders = db.session.query(func.count(func.distinct(Order.id))) \
+        .select_from(OrderItem) \
+        .join(Order, Order.id == OrderItem.order_id) \
+        .filter(OrderItem.merchant_id == merchant_id).scalar() or 0
+
+    # 总销售额（订单项小计）
+    total_sales = db.session.query(func.sum(OrderItem.subtotal)) \
+        .select_from(OrderItem) \
+        .join(Order, Order.id == OrderItem.order_id) \
+        .filter(
+            OrderItem.merchant_id == merchant_id,
+            Order.status.in_(revenue_statuses)
+        ).scalar() or 0
     
     # 平均评分
     avg_rating = db.session.query(func.avg(Review.rating)).join(

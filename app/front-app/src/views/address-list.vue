@@ -81,10 +81,19 @@ export default {
         
         if (response.data.code === 200) {
           this.addressList = response.data.data
-          // 如果有默认地址，自动选中
-          const defaultAddress = this.addressList.find(addr => addr.is_default)
-          if (defaultAddress) {
-            this.selectedAddressId = defaultAddress.id
+          // 优先勾选本地缓存的已选地址；不存在则回落到默认地址
+          const cached = AddressService.getSelectedAddress()
+          if (cached) {
+            const exist = this.addressList.find(addr => String(addr.id) === String(cached.id))
+            if (exist) {
+              this.selectedAddressId = exist.id
+            }
+          }
+          if (!this.selectedAddressId) {
+            const defaultAddress = this.addressList.find(addr => addr.is_default)
+            if (defaultAddress) {
+              this.selectedAddressId = defaultAddress.id
+            }
           }
         }
       } catch (error) {
@@ -94,6 +103,12 @@ export default {
 
     selectAddress(address) {
       this.selectedAddressId = address.id
+      // 存储到本地
+      AddressService.setSelectedAddress(address)
+      // 若来自 checkout，选中即返回并回显
+      if (this.fromPage === 'checkout' || this.fromPage === 'product-detail') {
+        this.$router.go(-1)
+      }
     },
 
     addAddress() {

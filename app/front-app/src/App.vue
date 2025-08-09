@@ -16,11 +16,13 @@ const getSelectedIndex = computed(() => {
   return 0 // 默认选中商城
 })
 
-// 判断是否显示custom-tabbar（商品详情页和支付相关页面不显示）
+// 判断是否显示custom-tabbar（商品详情页、购物车、结算与支付相关页面不显示）
 const showCustomTabbar = computed(() => {
   const path = route.path
   // 商品详情页不显示custom-tabbar
   if (path.startsWith('/product/')) return false
+  // 购物车与结算页不显示custom-tabbar
+  if (path === '/cart' || path === '/checkout') return false
   // 支付相关页面不显示custom-tabbar
   if (path === '/payment-method' || path === '/payment' || path === '/pay-result') return false
   return true
