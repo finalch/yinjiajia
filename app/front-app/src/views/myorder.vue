@@ -271,9 +271,7 @@ export default {
 
     // 查看订单详情
     viewOrderDetail(orderId) {
-      this.$router.push({
-        path: `/order-detail/${orderId}`
-      })
+      this.$router.push({ path: `/order-detail/${orderId}` })
     },
 
     // 去支付
