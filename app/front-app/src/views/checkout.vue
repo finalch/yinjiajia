@@ -136,12 +136,13 @@
 <script>
 import request from '../utils/request.js'
 import AddressService from '../services/addressService.js'
+import { getUserId } from '@/utils/auth.js'
 
 export default {
   name: 'Checkout',
   data() {
     return {
-      user_id: 1, // TODO: 从用户状态获取
+      user_id: getUserId(),
       selectedAddress: null,
       products: [],
       totalAmount: 0,

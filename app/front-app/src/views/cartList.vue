@@ -45,7 +45,7 @@
 					<!-- 商品信息 -->
 					<div class="item-info">
 						<div class="item-image">
-							<img :src="getItemImage(item)" :alt="item.product_name" />
+							<img :src="getItemImage(item)"/>
 						</div>
 						<div class="item-details">
 							<h3 class="item-name" :title="item.product_name">{{ item.product_name }}</h3>
@@ -129,6 +129,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { cartApi } from '@/utils/api.js'
+import { getUserId } from '@/utils/auth.js'
 
 // 响应式数据
 const cartList = ref([])
@@ -136,10 +137,9 @@ const loading = ref(false)
 const longPressTimer = ref(null)
 const longPressItem = ref(null)
 
-// 模拟用户信息
+// 当前登录用户
 const userInfo = ref({
-	user_id: 1,
-	username: 'test_user'
+    user_id: getUserId(),
 })
 
 // 路由
@@ -192,7 +192,7 @@ const showToast = (message) => {
 const fetchCartList = async () => {
 	loading.value = true
 	try {
-		const response = await cartApi.getCart(userInfo.value.user_id)
+        const response = await cartApi.getCart(userInfo.value.user_id)
 		if (response.data.code === 200) {
 			// 为每个商品添加selected属性
 			cartList.value = response.data.data.items.map(item => ({
@@ -359,7 +359,7 @@ const goToShop = () => {
 
 // 生命周期
 onMounted(() => {
-	fetchCartList()
+    fetchCartList()
 })
 </script>
 

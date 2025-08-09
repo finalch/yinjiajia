@@ -132,6 +132,7 @@
 </template>
 
 <script>
+import { getUserId } from '@/utils/auth.js'
 import request from '../utils/request.js'
 
 export default {
@@ -164,7 +165,7 @@ export default {
     async loadAddresses() {
       try {
         const response = await request.get('/api/app/address/', {
-          params: { user_id: 1 } // TODO: 从用户状态获取
+          params: { user_id: getUserId() }
         })
         if (response.data.code === 200) {
           this.addresses = response.data.data
@@ -224,7 +225,7 @@ export default {
       
       try {
         const data = {
-          user_id: 1, // TODO: 从用户状态获取
+        user_id: getUserId(),
           ...this.addressForm
         }
         

@@ -29,6 +29,8 @@ const showCustomTabbar = computed(() => {
   if (path === '/payment-method' || path === '/payment' || path === '/pay-result') return false
   // 我的订单页不显示custom-tabbar
   if (path === '/my-order') return false
+  // 登录/注册页不显示custom-tabbar
+  if (path === '/login' || path === '/register') return false
   return true
 })
 </script>

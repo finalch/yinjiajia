@@ -119,13 +119,14 @@
 </template>
 
 <script>
+import { getUserId } from '@/utils/auth.js'
 import request from '../utils/request.js'
 
 export default {
   name: 'MyOrder',
   data() {
     return {
-      user_id: 1, // TODO: 从用户状态获取
+      user_id: getUserId(),
       currentStatus: '',
       currentPage: 1,
       perPage: 10,

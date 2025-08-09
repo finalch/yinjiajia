@@ -69,6 +69,7 @@
 </template>
 
 <script>
+import { getUserId } from '@/utils/auth.js'
 import request from '../utils/request.js'
 
 export default {
@@ -137,7 +138,7 @@ export default {
         if (!query.address_id) {
           try {
             const addressResponse = await request.get('/api/app/address/default', {
-              params: { user_id: 1 }
+              params: { user_id: getUserId() }
             })
             if (addressResponse.data.code === 200 && addressResponse.data.data) {
               addressId = addressResponse.data.data.id
@@ -149,7 +150,7 @@ export default {
         
         // 创建订单
         const orderData = {
-          user_id: 1, // TODO: 从用户状态获取
+  user_id: getUserId(),
           payment_method: this.selectedMethod,
           address_id: addressId
         }

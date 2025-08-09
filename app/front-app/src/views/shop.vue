@@ -107,6 +107,7 @@
 
 <script>
   import { productApi, cartApi } from '@/utils/api.js'
+  import { getUserId } from '@/utils/auth.js'
 	
 	export default {
 		name: 'Shop',
@@ -244,12 +245,12 @@
           const specCombinationId = item.has_specs ? item.default_spec_combination_id : undefined
           const res = await cartApi.quickAddToCart({
             productId: item.id,
-            userId: 1,
+            userId: getUserId(),
             quantity: 1,
             specCombinationId
           })
           if (res.data.code === 200) {
-            alert('已加入购物车')
+            // alert('已加入购物车')
           } else {
             alert(res.data.message || '加入购物车失败')
           }

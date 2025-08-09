@@ -52,6 +52,7 @@
 </template>
 
 <script>
+import { getUserId } from '@/utils/auth.js'
 import request from '../utils/request.js'
 import AddressService from '../services/addressService.js'
 
@@ -76,7 +77,7 @@ export default {
     async loadAddressList() {
       try {
         const response = await request.get('/api/app/address/', {
-          params: { user_id: 1 } // TODO: 从用户状态获取
+          params: { user_id: getUserId() }
         })
         
         if (response.data.code === 200) {

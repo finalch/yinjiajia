@@ -43,6 +43,7 @@ def create_app():
     from api.app.product import app_product_api
     from api.app.cart import app_cart_api
     from api.app.address import app_address_api
+    from api.app.auth import app_auth_api
     from api.web.product import web_product_api
     from api.app.order import app_order_api
     from api.web.order import web_order_api
@@ -57,6 +58,7 @@ def create_app():
     app.register_blueprint(app_product_api)
     app.register_blueprint(app_cart_api)
     app.register_blueprint(app_address_api)
+    app.register_blueprint(app_auth_api)
     app.register_blueprint(web_product_api)
     app.register_blueprint(app_order_api)
     app.register_blueprint(web_order_api)

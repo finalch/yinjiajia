@@ -1,4 +1,5 @@
 import request from '../utils/request.js'
+import { getUserId } from '@/utils/auth.js'
 
 /**
  * Address Service - 地址服务
@@ -14,25 +15,26 @@ class AddressService {
   static async getDefaultAddress(userId) {
     try {
       // 1. 优先从localStorage获取选中的地址
-      const cachedAddress = localStorage.getItem('selectedAddress')
+      const uid = userId || getUserId()
+      const cachedAddress = localStorage.getItem(`selectedAddress:${uid}`)
       if (cachedAddress) {
         try {
           return JSON.parse(cachedAddress)
         } catch (e) {
           console.error('解析缓存的地址失败:', e)
-          localStorage.removeItem('selectedAddress')
+          localStorage.removeItem(`selectedAddress:${uid}`)
         }
       }
       
       // 2. 如果localStorage中没有地址，则从后端获取默认地址
       const response = await request.get('/api/app/address/default', { 
-        params: { user_id: userId } 
+        params: { user_id: uid } 
       })
       
       if (response.data.code === 200 && response.data.data) {
         const defaultAddress = response.data.data
         // 3. 缓存默认地址到localStorage
-        localStorage.setItem('selectedAddress', JSON.stringify(defaultAddress))
+        localStorage.setItem(`selectedAddress:${uid}`, JSON.stringify(defaultAddress))
         return defaultAddress
       } else {
         console.error('获取默认地址失败:', response.data.message)
@@ -49,8 +51,9 @@ class AddressService {
    * @param {Object} address - 地址对象
    */
   static setSelectedAddress(address) {
-    if (address) {
-      localStorage.setItem('selectedAddress', JSON.stringify(address))
+    const uid = getUserId()
+    if (address && uid) {
+      localStorage.setItem(`selectedAddress:${uid}`, JSON.stringify(address))
     }
   }
 
@@ -58,7 +61,8 @@ class AddressService {
    * 清除选中的地址缓存
    */
   static clearSelectedAddress() {
-    localStorage.removeItem('selectedAddress')
+    const uid = getUserId()
+    if (uid) localStorage.removeItem(`selectedAddress:${uid}`)
   }
 
   /**
@@ -67,13 +71,15 @@ class AddressService {
    */
   static getSelectedAddress() {
     try {
-      const cachedAddress = localStorage.getItem('selectedAddress')
+      const uid = getUserId()
+      const cachedAddress = uid ? localStorage.getItem(`selectedAddress:${uid}`) : null
       if (cachedAddress) {
         return JSON.parse(cachedAddress)
       }
     } catch (e) {
       console.error('解析缓存的地址失败:', e)
-      localStorage.removeItem('selectedAddress')
+      const uid = getUserId()
+      if (uid) localStorage.removeItem(`selectedAddress:${uid}`)
     }
     return null
   }

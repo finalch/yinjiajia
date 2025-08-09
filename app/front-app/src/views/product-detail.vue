@@ -248,7 +248,8 @@
   </template>
   
   <script>
-	  import { productApi, cartApi } from '@/utils/api.js'
+      import { productApi, cartApi } from '@/utils/api.js'
+import { getUserId } from '@/utils/auth.js'
 import request from '@/utils/request.js'
 import AddressService from '../services/addressService.js'
 	  
@@ -286,7 +287,9 @@ import AddressService from '../services/addressService.js'
 				  selectedSpec: '',
 				  selectedCombination: null,
 				  quantity: 1,
-				  cartCount: 0,
+                  cartCount: 0,
+                  _isFetchingCart: false,
+                  _lastCartFetchAt: 0,
 				  showPopup: false,
 				  loading: false,
 				  selectedAddress: null // 新增：用于存储选中的收货地址
@@ -429,22 +432,29 @@ import AddressService from '../services/addressService.js'
 			  },
 			  
 			  // 获取购物车数量
-			  async fetchCartCount() {
-				  try {
-					  const response = await cartApi.getCart()
-					  
-					  if (response.data.code === 200) {
-						  this.cartCount = response.data.data.length || 0
-					  }
-				  } catch (error) {
-					  console.error('获取购物车数量失败:', error)
-				  }
-			  },
+              async fetchCartCount() {
+                  // 节流：500ms内只请求一次；并发保护
+                  const now = Date.now()
+                  if (this._isFetchingCart || (now - this._lastCartFetchAt) < 500) return
+                  this._isFetchingCart = true
+                  try {
+                      const response = await cartApi.getCart(getUserId())
+                      if (response.data.code === 200) {
+                          const data = response.data.data
+                          this.cartCount = (data && (data.item_count || (data.items?.length ?? 0))) || 0
+                      }
+                  } catch (error) {
+                      console.error('获取购物车数量失败:', error)
+                  } finally {
+                      this._isFetchingCart = false
+                      this._lastCartFetchAt = now
+                  }
+              },
 			  
 			  // 加载地址信息
 			  async loadAddressInfo() {
 				  // 使用AddressService获取默认地址
-				  this.selectedAddress = await AddressService.getDefaultAddress(1)
+                  this.selectedAddress = await AddressService.getDefaultAddress(getUserId())
 			  },
 			  
 			  // 返回上一页
@@ -650,7 +660,7 @@ import AddressService from '../services/addressService.js'
 					  const cartData = {
 						  product_id: this.product.id,
 						  quantity: this.quantity,
-						  user_id: 1 // TODO: 从用户状态获取
+                          user_id: getUserId()
 					  }
 					  
 					  // 如果有规格组合，添加规格组合ID

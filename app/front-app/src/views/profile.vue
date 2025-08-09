@@ -6,8 +6,8 @@
           <div class="avatar-placeholder">👤</div>
         </div>
         <div class="user-details">
-          <div class="username">{{ userInfo.username || '用户' }}</div>
-          <div class="user-id">ID: {{ userInfo.id || '--' }}</div>
+          <div class="username">{{ displayName }}</div>
+          <div class="user-id">ID: {{ userIdDisplay }}</div>
         </div>
         <div class="settings-btn" @click="goToSettings">
           <span>⚙️</span>
@@ -74,15 +74,26 @@
   </template>
   
   <script>
+  import { getUser, clearToken, clearUser } from '@/utils/auth.js'
   export default {
     name: 'Profile',
     data() {
       return {
-        userInfo: {
-          id: 1,
-          username: '测试用户',
-          email: 'test@example.com'
+        userInfo: getUser()
+      }
+    },
+    computed: {
+      displayName() {
+        if (this.userInfo && (this.userInfo.phone || this.userInfo.user_number)) {
+          return this.userInfo.phone || `用户${this.userInfo.user_number}`
         }
+        return '未登录'
+      },
+      userIdDisplay() {
+        if (this.userInfo && (this.userInfo.user_number || this.userInfo.user_id)) {
+          return this.userInfo.user_number || this.userInfo.user_id
+        }
+        return '--'
       }
     },
     methods: {
@@ -105,8 +116,10 @@
       },
       logout() {
         if (confirm('确定要退出登录吗？')) {
-          // TODO: 实现退出登录逻辑
-          alert('退出登录功能开发中...');
+          clearToken()
+          clearUser()
+          this.userInfo = {}
+          this.$router.replace('/login')
         }
       }
     }

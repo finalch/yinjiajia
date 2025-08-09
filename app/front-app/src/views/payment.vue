@@ -89,6 +89,7 @@
 
 <script>
 import request from '../utils/request.js'
+import { getUserId } from '@/utils/auth.js'
 
 export default {
 		data() {
@@ -211,8 +212,8 @@ export default {
 					try {
 						// 调用支付成功接口
 						if (this.orderInfo.orderNo) {
-							const response = await request.post(`/api/app/order/${this.orderInfo.orderNo}/pay-success`, {
-								user_id: 1, // TODO: 从用户状态获取
+              const response = await request.post(`/api/app/order/${this.orderInfo.orderNo}/pay-success`, {
+                user_id: getUserId(),
 								payment_method: this.currentMethod
 							})
 							

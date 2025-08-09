@@ -1,5 +1,6 @@
 // 创建axios实例
 import axios from 'axios'
+import { getToken } from './auth.js'
 
 // 创建axios实例
 const request = axios.create({
@@ -14,6 +15,11 @@ const request = axios.create({
 request.interceptors.request.use(
   config => {
     // 可以在这里添加token等认证信息
+    const token = getToken()
+    if (token) {
+      config.headers = config.headers || {}
+      config.headers['Authorization'] = `Bearer ${token}`
+    }
     console.log('Request:', config.method?.toUpperCase(), config.url)
     return config
   },

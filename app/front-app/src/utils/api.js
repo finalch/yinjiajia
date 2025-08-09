@@ -135,5 +135,30 @@ export const orderApi = {
 export default {
 	productApi,
 	cartApi,
-	orderApi
+  orderApi
 } 
+
+// 认证API
+export const authApi = {
+  register({ phone, password }) {
+    return request({
+      url: '/api/app/auth/register',
+      method: 'POST',
+      data: { phone, password }
+    })
+  },
+  login({ phone, password }) {
+    return request({
+      url: '/api/app/auth/login',
+      method: 'POST',
+      data: { phone, password }
+    })
+  },
+  validate(token) {
+    return request({
+      url: '/api/app/auth/validate',
+      method: 'GET',
+      params: { token }
+    })
+  }
+}

@@ -40,6 +40,7 @@
 
 <script>
 import { cartApi } from '@/utils/api.js'
+import { getUserId } from '@/utils/auth.js'
 
 export default {
   name: 'CustomTabbar',
@@ -52,7 +53,7 @@ export default {
   data() {
     return {
       cartCount: 0,
-      userId: 1
+      userId: getUserId()
     }
   },
   methods: {
@@ -60,8 +61,16 @@ export default {
       this.$router.push(path);
     },
     async fetchCartCount() {
+      // 避免与购物车页重复请求
+      if (this.$route.path === '/cart') return
+      // 获取最新用户ID；未登录则不请求
+      const uid = getUserId()
+      if (!uid) {
+        this.cartCount = 0
+        return
+      }
       try {
-        const response = await cartApi.getCart(this.userId)
+        const response = await cartApi.getCart(uid)
         if (response.data && response.data.code === 200) {
           const count = response.data.data?.item_count ?? 0
           this.cartCount = Number.isFinite(count) ? count : 0
@@ -78,10 +87,11 @@ export default {
   },
   mounted() {
     this.fetchCartCount()
-    window.addEventListener('focus', this.fetchCartCount)
+    // 去掉焦点触发，避免切回详情页与详情页自身拉取产生并发
+    // window.addEventListener('focus', this.fetchCartCount)
   },
   beforeUnmount() {
-    window.removeEventListener('focus', this.fetchCartCount)
+    // window.removeEventListener('focus', this.fetchCartCount)
   }
 }
 </script>
