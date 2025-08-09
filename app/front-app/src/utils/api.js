@@ -50,6 +50,20 @@ export const cartApi = {
 			data
 		})
 	},
+  // 快捷加入购物车（商品页默认选择第一个规格）
+  quickAddToCart({ productId, userId = 1, quantity = 1, specCombinationId }) {
+    const payload = {
+      user_id: userId,
+      product_id: productId,
+      quantity
+    }
+    if (specCombinationId) payload.spec_combination_id = specCombinationId
+    return request({
+      url: '/api/app/cart/',
+      method: 'POST',
+      data: payload
+    })
+  },
 	
 	// 更新购物车商品数量
 	updateCartItem(itemId, data) {

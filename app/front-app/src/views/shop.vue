@@ -63,8 +63,8 @@
 
 		<!-- 商品列表 -->
 		<div class="product-list">
-			<div class="product-item" v-for="item in products" :key="item.id" @click="goToProduct(item.id)">
-				<img class="product-image" :src="item.images && item.images[0] || item.image_url || 'https://via.placeholder.com/300x200?text=商品图片'" />
+        <div class="product-item" v-for="item in products" :key="item.id" @click="goToProduct(item.id)">
+				<img class="product-image" :src="item.images && item.images[0] || item.image_url " />
 				<div class="product-info">
 					<div class="product-title">{{ item.name }}</div>
 					<div class="product-meta">
@@ -83,6 +83,7 @@
 						<span class="review-count">({{ item.review_count || 0 }})</span>
 					</div>
 				</div>
+          <button class="cart-icon-btn" @click.stop="quickAdd(item)" aria-label="加入购物车">+</button>
 			</div>
 			
 			<!-- 加载更多 -->
@@ -105,7 +106,7 @@
 </template>
 
 <script>
-	import { productApi } from '@/utils/api.js'
+  import { productApi, cartApi } from '@/utils/api.js'
 	
 	export default {
 		name: 'Shop',
@@ -236,6 +237,27 @@
 			goToProduct(productId) {
 				this.$router.push(`/product/${productId}`)
 			},
+
+      // 一键加入购物车（若有规格则默认第一个活动规格组合）
+      async quickAdd(item) {
+        try {
+          const specCombinationId = item.has_specs ? item.default_spec_combination_id : undefined
+          const res = await cartApi.quickAddToCart({
+            productId: item.id,
+            userId: 1,
+            quantity: 1,
+            specCombinationId
+          })
+          if (res.data.code === 200) {
+            alert('已加入购物车')
+          } else {
+            alert(res.data.message || '加入购物车失败')
+          }
+        } catch (e) {
+          console.error('加入购物车失败:', e)
+          alert('网络错误，加入购物车失败')
+        }
+      },
 			
 			// 设置滚动监听
 			setupScrollListener() {
@@ -385,9 +407,10 @@
 		box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 		transition: transform 0.3s, box-shadow 0.3s;
 		cursor: pointer;
-		height: 280px;
-		display: flex;
-		flex-direction: column;
+    height: 280px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
 	}
 
 	.product-item:hover {
@@ -454,6 +477,36 @@
 		font-size: 11px;
 		color: #999;
 	}
+
+  .cart-icon-btn {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    width: 22px;
+    height: 22px;
+    border-radius: 11px;
+    border: none;
+    background: #e93b3d;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(233,59,61,0.25);
+    transition: transform .1s ease, box-shadow .2s ease, background .2s ease;
+    font-size: 14px;
+    line-height: 1;
+    font-weight: 700;
+  }
+
+  .cart-icon-btn:hover {
+    background: #d63333;
+    box-shadow: 0 4px 12px rgba(233,59,61,0.35);
+  }
+
+  .cart-icon-btn:active {
+    transform: scale(0.96);
+  }
 
 	.rating-stars {
 		display: flex;

@@ -352,9 +352,9 @@ const endLongPress = () => {
 	longPressItem.value = null
 }
 
-// 去购物
+// 去商城
 const goToShop = () => {
-	router.push('/shop')
+	router.push('/')
 }
 
 // 生命周期

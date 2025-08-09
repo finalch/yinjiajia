@@ -21,10 +21,14 @@ const showCustomTabbar = computed(() => {
   const path = route.path
   // 商品详情页不显示custom-tabbar
   if (path.startsWith('/product/')) return false
-  // 购物车与结算页不显示custom-tabbar
-  if (path === '/cart' || path === '/checkout') return false
+  // 结算页不显示custom-tabbar
+  if (path === '/checkout') return false
+  // 地址相关页面不显示custom-tabbar
+  if (path === '/address' || path === '/address-list') return false
   // 支付相关页面不显示custom-tabbar
   if (path === '/payment-method' || path === '/payment' || path === '/pay-result') return false
+  // 我的订单页不显示custom-tabbar
+  if (path === '/my-order') return false
   return true
 })
 </script>

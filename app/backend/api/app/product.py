@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
-from models import db, Product, Category, ProductSpec, ProductSpecCombination
-from sqlalchemy import or_
+from models import db, Product, Category, ProductSpec, ProductSpecCombination, Order, OrderItem, Review
+from sqlalchemy import or_, func
 import json
 
 app_product_api = Blueprint('app_product_api', __name__, url_prefix='/api/app/product')
@@ -70,9 +70,33 @@ def get_products():
             images = [img.strip() for img in product.image_url.split('$%%$') if img.strip()]
         
         # 如果没有图片，添加默认图片
-        if not images:
-            images = ['https://via.placeholder.com/400x300?text=商品图片']
+        # if not images:
+        #     images = ['https://via.placeholder.com/400x300?text=商品图片']
         
+        # 真实销量：统计已付款及之后状态的订单项数量
+        sales_count = db.session.query(func.coalesce(func.sum(OrderItem.quantity), 0)) \
+            .join(Order, Order.id == OrderItem.order_id) \
+            .filter(
+                OrderItem.product_id == product.id,
+                Order.status.in_(['paid', 'shipped', 'delivered', 'completed'])
+            ).scalar() or 0
+
+        # 评分与评价数
+        rating_avg, review_count = db.session.query(
+            func.coalesce(func.avg(Review.rating), 0.0),
+            func.count(Review.id)
+        ).filter(Review.product_id == product.id).first()
+
+        # 默认规格组合ID（若有规格则取第一个有效规格组合）
+        default_spec_combination_id = None
+        if product.has_specs:
+            first_combo = ProductSpecCombination.query \
+                .filter_by(product_id=product.id, status='active') \
+                .order_by(ProductSpecCombination.id.asc()) \
+                .first()
+            if first_combo:
+                default_spec_combination_id = first_combo.id
+
         products.append({
             'id': product.id,
             'name': product.name,
@@ -88,9 +112,10 @@ def get_products():
             'merchant_id': product.merchant_id,
             'merchant_name': product.merchant.name if product.merchant else '',
             'has_specs': product.has_specs,  # 是否有规格
-            'sales_count': 0,  # TODO: 添加销量统计
-            'rating': 4.5,  # TODO: 添加评分统计
-            'review_count': 0,  # TODO: 添加评价数量统计
+            'sales_count': int(sales_count),
+            'rating': float(rating_avg) if rating_avg else 0.0,
+            'review_count': int(review_count) if review_count else 0,
+            'default_spec_combination_id': default_spec_combination_id,
             'created_at': product.created_at.isoformat() if product.created_at else None,
             'updated_at': product.updated_at.isoformat() if product.updated_at else None
         })
