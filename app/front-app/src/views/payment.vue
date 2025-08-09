@@ -210,22 +210,23 @@ export default {
 				// 模拟支付处理
 				setTimeout(async () => {
 					try {
-						// 调用支付成功接口
-						if (this.orderInfo.orderNo) {
-              const response = await request.post(`/api/app/order/${this.orderInfo.orderNo}/pay-success`, {
-                user_id: getUserId(),
-								payment_method: this.currentMethod
-							})
-							
-							if (response.data.code === 200) {
-								this.hideLoading()
-								this.paymentSuccess()
-							} else {
-								throw new Error(response.data.message || '支付失败')
-							}
-						} else {
-							throw new Error('订单号不存在')
-						}
+        // 支持多个订单号（逗号分隔）批量回调
+        if (this.orderInfo.orderNo) {
+          const orderNos = String(this.orderInfo.orderNo).split(',').filter(Boolean)
+          for (const on of orderNos) {
+            const response = await request.post(`/api/app/order/${on}/pay-success`, {
+              user_id: getUserId(),
+              payment_method: this.currentMethod
+            })
+            if (response.data.code !== 200) {
+              throw new Error(response.data.message || '支付失败')
+            }
+          }
+          this.hideLoading()
+          this.paymentSuccess()
+        } else {
+          throw new Error('订单号不存在')
+        }
 					} catch (error) {
 						console.error('支付处理失败:', error)
 						this.hideLoading()

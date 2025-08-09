@@ -89,7 +89,11 @@ class OrderService:
     @staticmethod
     def create_order(user_id: int, address_id: int, cart_item_ids: List[int] = None, 
                     direct_buy: Dict[str, Any] = None) -> Dict[str, Any]:
-        """创建订单"""
+        """创建订单
+        - 购物车下单：按商家拆单创建多个订单
+        - 直接购买：创建单个订单
+        返回：orders 列表 + total_amount 汇总
+        """
         logger.info(f"开始创建订单: user_id={user_id}, address_id={address_id}, cart_items={cart_item_ids}, direct_buy={direct_buy}")
         
         # 验证地址是否存在且属于该用户
@@ -98,99 +102,114 @@ class OrderService:
             logger.error(f"地址不存在或不属于用户: address_id={address_id}, user_id={user_id}")
             raise ValueError("收货地址不存在")
         
-        # 生成订单号
-        order_number = f"ORD{datetime.now().strftime('%Y%m%d%H%M%S')}{uuid.uuid4().hex[:8].upper()}"
-        logger.info(f"生成订单号: {order_number}")
-        
-        # 创建订单
-        order = Order(
-            user_id=user_id,
-            order_number=order_number,
-            status='pending',
-            total_amount=0
-        )
-        
-        db.session.add(order)
-        db.session.flush()  # 获取order.id
-        
-        total_amount = 0
-        order_items = []
-        
-        # 处理购物车商品
+        created_orders = []
+        total_amount_all = 0.0
+
+        # 处理购物车商品：按商家拆单
         if cart_item_ids:
-            logger.info(f"处理购物车商品: {cart_item_ids}")
+            logger.info(f"处理购物车商品(按商家拆单): {cart_item_ids}")
+            # 先收集购物车项并按商家分组
+            merchant_to_cart_items: Dict[int, List[Cart]] = {}
+            cart_items_found: List[Cart] = []
             for cart_item_id in cart_item_ids:
                 cart_item = Cart.query.filter_by(id=cart_item_id, user_id=user_id).first()
-                if cart_item:
+                if not cart_item:
+                    continue
+                product = Product.query.get(cart_item.product_id)
+                if not product or product.status != 'on_sale':
+                    continue
+                merchant_id = product.merchant_id
+                merchant_to_cart_items.setdefault(merchant_id, []).append(cart_item)
+                cart_items_found.append(cart_item)
+
+            # 为每个商家创建一个订单
+            for merchant_id, grouped_cart_items in merchant_to_cart_items.items():
+                order_number = f"ORD{datetime.now().strftime('%Y%m%d%H%M%S')}{uuid.uuid4().hex[:8].upper()}"
+                order = Order(
+                    user_id=user_id,
+                    order_number=order_number,
+                    status='pending',
+                    total_amount=0
+                )
+                db.session.add(order)
+                db.session.flush()
+
+                order_total = 0.0
+                for cart_item in grouped_cart_items:
                     product = Product.query.get(cart_item.product_id)
-                    if product and product.status == 'on_sale':
-                        # 获取价格和库存信息
-                        price = float(product.price)
-                        stock = product.stock
-                        
-                        # 如果有规格组合，使用规格组合的价格和库存
-                        if cart_item.spec_combination_id:
-                            spec_combo = ProductSpecCombination.query.get(cart_item.spec_combination_id)
-                            if spec_combo and spec_combo.status == 'active':
-                                price = float(spec_combo.price)
-                                stock = spec_combo.stock
-                        
-                        # 检查库存
-                        if stock < cart_item.quantity:
-                            logger.warning(f"商品库存不足: product_id={product.id}, stock={stock}, quantity={cart_item.quantity}")
-                            raise ValueError(f"商品 {product.name} 库存不足")
-                        
-                        # 创建订单项
-                        order_item = OrderItem(
-                            order_id=order.id,
-                            product_id=product.id,
-                            price=price,
-                            quantity=cart_item.quantity,
-                            subtotal=price * cart_item.quantity,
-                            spec_combination_id=cart_item.spec_combination_id,
-                            merchant_id=product.merchant_id  # 添加商家ID
-                        )
-                        db.session.add(order_item)
-                        order_items.append(order_item)
-                        
-                        # 更新库存
-                        if cart_item.spec_combination_id:
-                            spec_combo.stock -= cart_item.quantity
-                        else:
-                            product.stock -= cart_item.quantity
-                        
-                        total_amount += order_item.subtotal
-                        
-                        # 删除购物车项
-                        db.session.delete(cart_item)
-                        logger.info(f"购物车商品处理完成: product_id={product.id}, quantity={cart_item.quantity}, price={price}")
-        
-        # 处理直接购买商品
-        if direct_buy:
+                    if not product or product.status != 'on_sale':
+                        continue
+                    price = float(product.price)
+                    stock = product.stock
+                    spec_combo = None
+                    if cart_item.spec_combination_id:
+                        spec_combo = ProductSpecCombination.query.get(cart_item.spec_combination_id)
+                        if spec_combo and spec_combo.status == 'active':
+                            price = float(spec_combo.price)
+                            stock = spec_combo.stock
+                    # 库存校验
+                    if stock < cart_item.quantity:
+                        raise ValueError(f"商品 {product.name} 库存不足")
+                    # 创建订单项
+                    order_item = OrderItem(
+                        order_id=order.id,
+                        product_id=product.id,
+                        price=price,
+                        quantity=cart_item.quantity,
+                        subtotal=price * cart_item.quantity,
+                        spec_combination_id=cart_item.spec_combination_id,
+                        merchant_id=product.merchant_id
+                    )
+                    db.session.add(order_item)
+                    # 扣减库存
+                    if spec_combo:
+                        spec_combo.stock -= cart_item.quantity
+                    else:
+                        product.stock -= cart_item.quantity
+                    order_total += order_item.subtotal
+                order.total_amount = order_total
+                total_amount_all += order_total
+                created_orders.append({
+                    'order_id': order.id,
+                    'order_number': order.order_number,
+                    'total_amount': order_total
+                })
+
+            # 删除已处理的购物车项
+            for ci in cart_items_found:
+                try:
+                    db.session.delete(ci)
+                except Exception:
+                    pass
+
+        # 处理直接购买（单单）
+        if direct_buy and not cart_item_ids:
             logger.info(f"处理直接购买商品: {direct_buy}")
             product_id = direct_buy['product_id']
             quantity = direct_buy['quantity']
             spec_combination_id = direct_buy.get('spec_combination_id')
-            
+
             product = Product.query.get(product_id)
             if product and product.status == 'on_sale':
-                # 获取价格和库存信息
                 price = float(product.price)
                 stock = product.stock
-                
-                # 如果有规格组合，使用规格组合的价格和库存
+                spec_combo = None
                 if spec_combination_id:
                     spec_combo = ProductSpecCombination.query.get(spec_combination_id)
                     if spec_combo and spec_combo.product_id == product_id and spec_combo.status == 'active':
                         price = float(spec_combo.price)
                         stock = spec_combo.stock
-                
-                # 检查库存
                 if stock < quantity:
-                    logger.warning(f"商品库存不足: product_id={product.id}, stock={stock}, quantity={quantity}")
                     raise ValueError(f"商品 {product.name} 库存不足")
-                
-                # 创建订单项
+                order_number = f"ORD{datetime.now().strftime('%Y%m%d%H%M%S')}{uuid.uuid4().hex[:8].upper()}"
+                order = Order(
+                    user_id=user_id,
+                    order_number=order_number,
+                    status='pending',
+                    total_amount=0
+                )
+                db.session.add(order)
+                db.session.flush()
                 order_item = OrderItem(
                     order_id=order.id,
                     product_id=product.id,
@@ -198,36 +217,31 @@ class OrderService:
                     quantity=quantity,
                     subtotal=price * quantity,
                     spec_combination_id=spec_combination_id,
-                    merchant_id=product.merchant_id  # 添加商家ID
+                    merchant_id=product.merchant_id
                 )
                 db.session.add(order_item)
-                order_items.append(order_item)
-                
-                # 更新库存
-                if spec_combination_id:
+                if spec_combo:
                     spec_combo.stock -= quantity
                 else:
                     product.stock -= quantity
-                
-                total_amount += order_item.subtotal
-                logger.info(f"直接购买商品处理完成: product_id={product.id}, quantity={quantity}, price={price}")
-        
-        # 更新订单总金额
-        order.total_amount = total_amount
-        
+                order.total_amount = order_item.subtotal
+                total_amount_all += order.total_amount
+                created_orders.append({
+                    'order_id': order.id,
+                    'order_number': order.order_number,
+                    'total_amount': order.total_amount
+                })
+
         try:
             db.session.commit()
-            logger.info(f"订单创建成功: order_id={order.id}, order_number={order_number}, total_amount={total_amount}")
         except Exception as e:
             db.session.rollback()
             logger.error(f"订单创建失败: {str(e)}", exc_info=True)
             raise
-        
+
         return {
-            'order_id': order.id,
-            'order_number': order.order_number,
-            'total_amount': total_amount,
-            'items': order_items
+            'orders': created_orders,
+            'total_amount': total_amount_all
         }
     
     @staticmethod
@@ -254,7 +268,9 @@ class OrderService:
                     'price': float(item.price),
                     'quantity': item.quantity,
                     'subtotal': float(item.subtotal),
-                    'spec_combination_id': item.spec_combination_id
+                    'spec_combination_id': item.spec_combination_id,
+                    'merchant_id': item.merchant_id,
+                    'merchant_name': (product.merchant.name if getattr(product, 'merchant', None) else '')
                 })
             
             # 从OrderItem中获取物流信息
@@ -347,6 +363,7 @@ class OrderService:
             'shipped': '已发货',
             'delivered': '已送达',
             'completed': '已完成',
-            'cancelled': '已取消'
+            'cancelled': '已取消',
+            'refunded': '已退款'
         }
         return status_map.get(status, '未知状态') 

@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
 from services.order_service import OrderService
-from models import Order, OrderItem, Product, Logistics, db
+from models import Order, OrderItem, Product, Logistics, db, ProductSpecCombination
 from datetime import datetime
 from config.log import get_logger
 
@@ -142,7 +142,10 @@ def get_order_detail(order_id):
             'product_image': product.image_url if product else '',
             'price': float(item.price),
             'quantity': item.quantity,
-            'subtotal': float(item.subtotal)
+            'subtotal': float(item.subtotal),
+            'spec_combination_id': item.spec_combination_id,
+            'merchant_id': item.merchant_id,
+            'merchant_name': (product.merchant.name if getattr(product, 'merchant', None) else '')
         })
     
     # 从OrderItem中获取物流信息
@@ -272,16 +275,12 @@ def create_order():
             direct_buy=direct_buy
         )
         
-        logger.info(f"订单创建成功: order_id={order_result['order_id']}, user_id={user_id}")
+        # logger.info(f"订单创建成功: order_id={order_result['order_id']}, user_id={user_id}")
         
         return jsonify({
             'code': 200,
             'message': '创建订单成功',
-            'data': {
-                'order_id': order_result['order_id'],
-                'order_number': order_result['order_number'],
-                'total_amount': order_result['total_amount']
-            }
+            'data': order_result
         }), 200
     except ValueError as e:
         logger.warning(f"创建订单失败(业务错误): {str(e)}, user_id={user_id}")
@@ -298,7 +297,10 @@ def create_order():
 
 @app_order_api.route('/<int:order_id>/cancel', methods=['POST'])
 def cancel_order(order_id):
-    """APP端-取消订单"""
+    """APP端-取消订单
+    - 待付款订单：取消 => cancelled
+    - 已付款未发货订单：取消并退款 => refunded
+    """
     user_id = request.args.get('user_id', 1, type=int)
     
     order = Order.query.filter_by(id=order_id, user_id=user_id).first()
@@ -308,18 +310,37 @@ def cancel_order(order_id):
             'message': '订单不存在'
         }), 404
     
-    if order.status != 'pending':
+    if order.status not in ('pending', 'paid'):
         return jsonify({
             'code': 400,
-            'message': '只能取消待付款的订单'
+            'message': '仅待付款或已付款的订单可取消'
         }), 400
     
     try:
-        order.status = 'cancelled'
-        order.updated_at = datetime.utcnow()
+        now = datetime.utcnow()
+        if order.status == 'pending':
+            order.status = 'cancelled'
+            order.updated_at = now
+        elif order.status == 'paid':
+            # 已付款：按未发货处理退款，恢复库存并标记为 refunded
+            order_items = OrderItem.query.filter_by(order_id=order.id).all()
+            for item in order_items:
+                # 恢复库存
+                product = Product.query.get(item.product_id)
+                if item.spec_combination_id:
+                    spec_combo = ProductSpecCombination.query.get(item.spec_combination_id)
+                    if spec_combo:
+                        spec_combo.stock += item.quantity
+                elif product:
+                    product.stock += item.quantity
+                # 标记订单项退款
+                item.item_status = 'refunded'
+                item.refunded_at = now
+            order.status = 'refunded'
+            order.updated_at = now
         db.session.commit()
         
-        logger.info(f"订单取消成功: order_id={order_id}, user_id={user_id}")
+        logger.info(f"订单取消成功: order_id={order_id}, user_id={user_id}, status={order.status}")
         
         return jsonify({
             'code': 200,

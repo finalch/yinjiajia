@@ -29,76 +29,65 @@
         :key="order.id"
         @click="viewOrderDetail(order.id)"
       >
-        <!-- 订单头部 -->
-        <div class="order-header">
-          <div class="order-info">
-            <span class="order-number">订单号：{{ order.order_number }}</span>
-            <span class="order-time">{{ formatDate(order.created_at) }}</span>
-          </div>
-          <div class="order-status" :class="getStatusClass(order.status)">
-            {{ order.status_text }}
-          </div>
-        </div>
-
-        <!-- 商品列表 -->
-        <div class="product-list">
-          <div 
-            class="product-item" 
-            v-for="item in order.items" 
-            :key="item.id"
-          >
-            <div class="product-image">
-              <img :src="item.product_image || '/static/default-product.png'" :alt="item.product_name" />
-            </div>
-            <div class="product-info">
-              <div class="product-name">{{ item.product_name }}</div>
-              <div class="product-spec" v-if="item.spec_combination_id">
-                规格：{{ getSpecText(item.spec_combination_id) }}
+        <!-- 商家分组列表（每个商家显示前2张图 + 件数 + 小计） -->
+        <div class="merchant-groups">
+          <div class="merchant-card" v-for="group in groupItemsByMerchant(order.items)" :key="group.key">
+            <div class="merchant-header">
+              <div class="row-top">
+                <div class="merchant-name">{{ group.merchantName }}</div>
+                <div class="order-status" :class="getStatusClass(order.status)">{{ order.status_text }}</div>
               </div>
-              <div class="product-price">
-                <span class="price">¥{{ item.price }}</span>
-                <span class="quantity">×{{ item.quantity }}</span>
+              <div class="merchant-meta">
+                <span>共{{ group.totalCount }}件</span>
+                <span class="split">|</span>
+                <span>小计 ¥{{ formatPrice(group.totalAmount) }}</span>
+              </div>
+            </div>
+            <div class="merchant-body">
+              <div class="row-preview">
+                <div class="preview-left">
+                <template v-if="group.items.length === 1">
+                  <div class="preview single">
+                    <img :src="group.items[0].product_image || '/static/default-product.png'" />
+                  </div>
+                  <div class="single-info">
+                    <div class="single-name">{{ group.items[0].product_name }}</div>
+                    <div class="single-quantity">×{{ group.items[0].quantity }}</div>
+                  </div>
+                </template>
+                <template v-else>
+                  <div class="preview-images">
+                    <div class="preview" v-for="(img, idx) in group.previewImages" :key="idx">
+                      <img :src="img" />
+                    </div>
+                  </div>
+                </template>
+                </div>
+                <div class="summary">
+                  <div class="count">共{{ group.totalCount }}件</div>
+                  <div class="amount">合计 ¥{{ formatPrice(group.totalAmount) }}</div>
+                </div>
+              </div>
+              <div class="row-actions">
+                <div class="order-actions">
+                  <button v-if="order.status === 'pending'" class="action-btn primary" @click.stop="goPay(order)">去支付</button>
+                  <button v-if="order.status === 'pending' || order.status === 'paid'" class="action-btn secondary" @click.stop="cancelOrder(order)">取消订单</button>
+                  <button v-if="order.status === 'shipped' || order.status === 'delivered'" class="action-btn secondary" @click.stop="viewLogistics(order)">查看物流</button>
+                  <button v-if="order.status === 'shipped' || order.status === 'delivered'" class="action-btn primary" @click.stop="confirmReceipt(order)">确认收货</button>
+                  <button v-if="order.status === 'delivered' || order.status === 'completed'" class="action-btn secondary" @click.stop="afterSales(order)">售后</button>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         <!-- 订单底部 -->
-        <div class="order-footer">
+        <!-- <div class="order-footer">
           <div class="order-total">
             <span>共{{ getTotalQuantity(order.items) }}件商品</span>
             <span class="total-price">合计：¥{{ order.total_amount }}</span>
           </div>
-          <div class="order-actions">
-            <button 
-              v-if="order.status === 'pending'" 
-              class="action-btn primary"
-              @click.stop="goPay(order)"
-            >
-              去支付
-            </button>
-            <button 
-              v-if="order.status === 'shipped' || order.status === 'delivered'" 
-              class="action-btn secondary"
-              @click.stop="viewLogistics(order)"
-            >
-              查看物流
-            </button>
-            <button
-              v-if="order.status === 'shipped' || order.status === 'delivered'"
-              class="action-btn primary"
-              @click.stop="confirmReceipt(order)"
-            >
-              确认收货
-            </button>
-            <button 
-              class="action-btn secondary"
-              @click.stop="viewOrderDetail(order.id)"
-            >
-              查看详情
-            </button>
-          </div>
-        </div>
+        </div> -->
       </div>
     </div>
 
@@ -139,7 +128,8 @@ export default {
         { label: '已付款', value: 'paid' },
         { label: '已发货', value: 'shipped' },
         { label: '已完成', value: 'completed' },
-        { label: '已取消', value: 'cancelled' }
+        { label: '已取消', value: 'cancelled' },
+        { label: '已退款', value: 'refunded' }
       ]
     }
   },
@@ -151,6 +141,39 @@ export default {
     this.loadOrders()
   },
   methods: {
+    // 金额格式化
+    formatPrice(val) {
+      const n = Number(val || 0)
+      return n.toFixed(2)
+    },
+
+    // 根据商家分组；若后端暂未返回商家信息，则聚合为单组
+    groupItemsByMerchant(items = []) {
+      if (!items || items.length === 0) return []
+      const groupsMap = new Map()
+      items.forEach(it => {
+        const key = it.merchant_id || 'unknown'
+        const name = it.merchant_name || '商家'
+        if (!groupsMap.has(key)) {
+          groupsMap.set(key, {
+            key,
+            merchantName: name,
+            items: [],
+            totalAmount: 0,
+            totalCount: 0
+          })
+        }
+        const g = groupsMap.get(key)
+        g.items.push(it)
+        g.totalAmount += Number(it.subtotal || (it.price || 0) * (it.quantity || 0))
+        g.totalCount += Number(it.quantity || 0)
+      })
+      const groups = Array.from(groupsMap.values()).map(g => {
+        const preview = g.items.slice(0, 2).map(x => x.product_image || '/static/default-product.png')
+        return { ...g, previewImages: preview }
+      })
+      return groups
+    },
     // 返回上一页
     goBack() {
       this.$router.go(-1)
@@ -228,7 +251,8 @@ export default {
         'paid': 'status-paid',
         'shipped': 'status-shipped',
         'completed': 'status-completed',
-        'cancelled': 'status-cancelled'
+        'cancelled': 'status-cancelled',
+        'refunded': 'status-refunded'
       }
       return statusClassMap[status] || 'status-default'
     },
@@ -261,6 +285,30 @@ export default {
           total_amount: order.total_amount
         }
       })
+    },
+
+    // 取消订单
+    async cancelOrder(order) {
+      if (!confirm('确定取消该订单吗？')) return
+      try {
+        const res = await request.post(`/api/app/order/${order.id}/cancel`, null, { params: { user_id: this.user_id } })
+        if (res.data && res.data.code === 200) {
+          alert('订单已取消')
+          this.currentPage = 1
+          this.orders = []
+          await this.loadOrders()
+        } else {
+          alert(res.data?.message || '取消失败')
+        }
+      } catch (e) {
+        console.error('取消订单失败', e)
+        alert('取消失败')
+      }
+    },
+
+    // 售后（占位）
+    afterSales(order) {
+      alert('售后功能开发中...')
     },
 
     // 查看物流
@@ -436,71 +484,38 @@ export default {
   color: #721c24;
 }
 
-/* 商品列表样式 */
-.product-list {
-  padding: 15px;
+.status-refunded {
+  background: #e2e3e5;
+  color: #6c757d;
 }
 
-.product-item {
-  display: flex;
-  margin-bottom: 15px;
+/* 商家分组卡片 */
+.merchant-groups { padding: 10px 15px 15px; }
+.merchant-card {
+  background: #fff;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  margin-bottom: 10px;
 }
-
-.product-item:last-child {
-  margin-bottom: 0;
-}
-
-.product-image {
-  width: 60px;
-  height: 60px;
-  border-radius: 4px;
-  overflow: hidden;
-  margin-right: 10px;
-  flex-shrink: 0;
-}
-
-.product-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.product-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-.product-name {
-  font-size: 14px;
-  color: #333;
-  line-height: 1.4;
-  margin-bottom: 4px;
-}
-
-.product-spec {
-  font-size: 12px;
-  color: #999;
-  margin-bottom: 4px;
-}
-
-.product-price {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.price {
-  color: #ff4757;
-  font-weight: bold;
-  font-size: 14px;
-}
-
-.quantity {
-  color: #999;
-  font-size: 12px;
-}
+.merchant-header { padding: 12px 12px 8px; }
+.merchant-header .row-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.merchant-name { font-weight: 600; color: #333; }
+.merchant-meta { color: #666; font-size: 12px; }
+.merchant-meta .split { margin: 0 6px; color: #ddd; }
+.merchant-body { display: flex; flex-direction: column; gap: 8px; padding: 0 12px 12px; }
+.row-preview { display: flex; align-items: center; gap: 12px; }
+.preview-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+.preview-images { display: flex; gap: 8px; }
+.preview { width: 48px; height: 48px; border-radius: 6px; overflow: hidden; background: #f5f5f5; }
+.preview img { width: 100%; height: 100%; object-fit: cover; }
+.single-info { display: flex; flex-direction: column; gap: 6px; }
+.single-name { font-size: 14px; color: #333; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.single-quantity { font-size: 12px; color: #999; }
+.summary { margin-left: auto; text-align: right; }
+.summary .count { font-size: 12px; color: #666; }
+.summary .amount { font-size: 14px; font-weight: 600; color: #ff4757; }
+.row-actions { display: flex; }
+.order-actions { display: flex; gap: 8px; margin-left: auto; }
 
 /* 订单底部样式 */
 .order-footer {

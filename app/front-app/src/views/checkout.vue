@@ -120,7 +120,6 @@
           <h3>确认支付</h3>
         </div>
         <div class="modal-body">
-          <p>订单号：{{ currentOrderNumber }}</p>
           <p>支付金额：¥{{ formatPrice(currentTotalAmount) }}</p>
           <p>支付方式：{{ selectedMethod === 'wechat' ? '微信支付' : '支付宝' }}</p>
         </div>
@@ -152,7 +151,7 @@ export default {
       // 模拟三方支付
       showPaymentModal: false,
       isProcessing: false,
-      currentOrderNumber: '',
+      currentOrderNumbers: [],
       currentTotalAmount: 0
     }
   },
@@ -170,6 +169,12 @@ export default {
   },
 
   methods: {
+    orderNumbersPreview() {
+      if (!this.currentOrderNumbers || this.currentOrderNumbers.length <= 1) return ''
+      const list = this.currentOrderNumbers.slice(0, 2)
+      const more = this.currentOrderNumbers.length - list.length
+      return `${list.join(', ')}${more > 0 ? ` 等${this.currentOrderNumbers.length}单` : ''}`
+    },
     formatPrice(value) {
       const num = Number(value || 0)
       return num.toFixed(2)
@@ -278,8 +283,15 @@ export default {
           throw new Error(res.data.message || '下单失败')
         }
 
-        this.currentOrderNumber = res.data.data.order_number
-        this.currentTotalAmount = res.data.data.total_amount
+        const payload = res.data.data
+        // 兼容老结构与新结构
+        if (payload.orders && Array.isArray(payload.orders)) {
+          this.currentOrderNumbers = payload.orders.map(o => o.order_number)
+          this.currentTotalAmount = payload.total_amount || payload.orders.reduce((s,o)=>s+Number(o.total_amount||0),0)
+        } else {
+          this.currentOrderNumbers = [payload.order_number]
+          this.currentTotalAmount = payload.total_amount
+        }
         this.showPaymentModal = true
       } catch (error) {
         console.error('去结算失败:', error)
@@ -294,26 +306,30 @@ export default {
 
     async processPayment() {
       if (this.isProcessing) return
-      if (!this.currentOrderNumber) return
+      if (!this.currentOrderNumbers || this.currentOrderNumbers.length === 0) return
 
       this.isProcessing = true
       try {
-        const payRes = await request.post(`/api/app/order/${this.currentOrderNumber}/pay-success`, {
-          user_id: this.user_id,
-          payment_method: this.selectedMethod
-        })
-        if (payRes.data.code === 200) {
+        // 逐单支付成功回调（模拟统一支付拆单）
+        for (const on of this.currentOrderNumbers) {
+          const payRes = await request.post(`/api/app/order/${on}/pay-success`, {
+            user_id: this.user_id,
+            payment_method: this.selectedMethod
+          })
+          if (payRes.data.code !== 200) {
+            throw new Error(payRes.data.message || '支付失败')
+          }
+        }
+        {
           this.showPaymentModal = false
           this.$router.push({
             path: '/pay-result',
             query: {
               status: 'success',
-              order_number: this.currentOrderNumber,
+              order_number: this.currentOrderNumbers.join(','),
               total_amount: this.currentTotalAmount
             }
           })
-        } else {
-          throw new Error(payRes.data.message || '支付失败')
         }
       } catch (err) {
         console.error('支付失败:', err)
