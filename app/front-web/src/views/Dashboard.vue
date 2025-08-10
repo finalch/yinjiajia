@@ -1,8 +1,26 @@
 <template>
   <div class="dashboard">
     <div class="page-header">
-      <h1>数据概览</h1>
-      <p>实时监控店铺经营数据</p>
+      <div class="header-left">
+        <h1>数据概览</h1>
+        <p>实时监控店铺经营数据</p>
+      </div>
+      <div class="header-right">
+        <el-dropdown @command="handleCommand">
+          <span class="merchant-info">
+            <el-avatar :size="32" icon="UserFilled" />
+            <span class="merchant-name">{{ merchantInfo?.merchant_number || '商家' }}</span>
+            <el-icon><ArrowDown /></el-icon>
+          </span>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="profile">个人信息</el-dropdown-item>
+              <el-dropdown-item command="settings">设置</el-dropdown-item>
+              <el-dropdown-item divided command="logout">退出登录</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+      </div>
     </div>
 
     <!-- 数据卡片 -->
@@ -165,9 +183,11 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import request from '@/api/request'
+import authService from '../services/authService'
 import {
   Money,
   Document,
@@ -177,8 +197,11 @@ import {
   PieChart,
   Plus,
   ChatDotRound,
-  Wallet
+  Wallet,
+  ArrowDown,
+  UserFilled
 } from '@element-plus/icons-vue'
+import { getMerchantInfo, clearAuth } from '../router/auth'
 
 export default {
   name: 'Dashboard',
@@ -191,10 +214,15 @@ export default {
     PieChart,
     Plus,
     ChatDotRound,
-    Wallet
+    Wallet,
+    ArrowDown,
+    UserFilled
   },
   setup() {
     const router = useRouter()
+
+    // 商家信息
+    const merchantInfo = ref(getMerchantInfo())
 
     // 统计数据
     const todaySales = ref(0)
@@ -217,7 +245,11 @@ export default {
       { id: 4, text: '待处理退款', count: 2, type: 'danger', path: '/after-sales' }
     ])
 
-    const currentMerchantId = 1
+    // 从认证信息中获取商家ID
+    const currentMerchantId = computed(() => {
+      const userInfo = authService.getUserInfo()
+      return userInfo?.merchant_id || userInfo?.id
+    })
     const toPercent = (t, y) => {
       if (!y) return t > 0 ? 100 : 0
       return Math.round(((t - y) / y) * 1000) / 10
@@ -225,11 +257,23 @@ export default {
 
     const fetchDashboard = async () => {
       try {
+        // 检查是否有商家ID
+        if (!currentMerchantId.value) {
+          console.error('❌ 无法获取商家ID，用户信息:', authService.getUserInfo())
+          ElMessage.error('无法获取商家信息，请重新登录')
+          return
+        }
+
+        console.log('🔍 请求仪表板数据，商家ID:', currentMerchantId.value)
+        
         const res = await request.get('/api/web/analytics/dashboard', {
-          params: { merchant_id: currentMerchantId }
+          merchant_id: currentMerchantId.value
         })
-        if (res.data?.code === 200) {
-          const d = res.data.data || {}
+        
+        console.log('📊 仪表板数据响应:', res)
+        
+        if (res.code === 200) {
+          const d = res.data || {}
           const today = d.today || {}
           const yesterday = d.yesterday || {}
           const total = d.total || {}
@@ -240,9 +284,19 @@ export default {
 
           salesChange.value = toPercent(today.sales || 0, yesterday.sales || 0)
           ordersChange.value = toPercent(today.orders || 0, yesterday.orders || 0)
+          
+          console.log('✅ 仪表板数据加载成功:', {
+            todaySales: todaySales.value,
+            todayOrders: todayOrders.value,
+            totalProducts: totalProducts.value
+          })
+        } else {
+          console.error('❌ 仪表板数据响应错误:', res.data)
+          ElMessage.error(res.data?.message || '加载仪表板数据失败')
         }
       } catch (e) {
-        console.error('加载仪表板数据失败', e)
+        console.error('❌ 加载仪表板数据失败:', e)
+        ElMessage.error('加载仪表板数据失败，请重试')
       }
     }
 
@@ -256,10 +310,26 @@ export default {
     }
     const handleTodo = (todo) => { router.push(todo.path) }
 
+    const handleCommand = (command) => {
+      switch (command) {
+        case 'profile':
+          router.push('/profile')
+          break
+        case 'settings':
+          router.push('/settings')
+          break
+        case 'logout':
+          clearAuth()
+          router.push('/login')
+          break
+      }
+    }
+
     return {
+      merchantInfo,
       todaySales, salesChange, todayOrders, ordersChange,
       todayCustomers, customersChange, totalProducts, pendingReview,
-      salesPeriod, todoList, formatNumber, handleTodo
+      salesPeriod, todoList, formatNumber, handleTodo, handleCommand
     }
   }
 }

@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>路由守卫测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .log {
+            background: #f8f9fa;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 3px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+    </style>
+</head>
+<body>
+    <h1>路由守卫测试页面</h1>
+    
+    <div class="test-section">
+        <h3>认证状态测试</h3>
+        <button class="test-button" onclick="checkAuthStatus()">检查认证状态</button>
+        <button class="test-button" onclick="clearAuth()">清除认证</button>
+        <button class="test-button" onclick="setMockAuth()">设置模拟认证</button>
+        <div id="auth-status" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>路由跳转测试</h3>
+        <button class="test-button" onclick="goToLogin()">跳转登录页</button>
+        <button class="test-button" onclick="goToDashboard()">跳转Dashboard</button>
+        <button class="test-button" onclick="goToRoot()">访问根路径</button>
+        <div id="route-log" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>API测试</h3>
+        <button class="test-button" onclick="testValidateAPI()">测试验证API</button>
+        <div id="api-log" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>LocalStorage测试</h3>
+        <button class="test-button" onclick="showLocalStorage()">显示LocalStorage</button>
+        <button class="test-button" onclick="clearLocalStorage()">清除LocalStorage</button>
+        <div id="storage-log" class="log"></div>
+    </div>
+
+    <script>
+        // 模拟认证服务
+        const mockAuthService = {
+            getToken() {
+                return localStorage.getItem('merchant_token')
+            },
+            getUserInfo() {
+                const info = localStorage.getItem('merchant_info')
+                return info ? JSON.parse(info) : null
+            },
+            isLoggedIn() {
+                const token = this.getToken()
+                const userInfo = this.getUserInfo()
+                return !!(token && userInfo)
+            },
+            clearAuth() {
+                localStorage.removeItem('merchant_token')
+                localStorage.removeItem('merchant_info')
+            }
+        }
+
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId)
+            const timestamp = new Date().toLocaleTimeString()
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : ''
+            element.innerHTML += `[${timestamp}] ${message}\n`
+            element.className = `log ${className}`
+        }
+
+        function checkAuthStatus() {
+            const isLoggedIn = mockAuthService.isLoggedIn()
+            const token = mockAuthService.getToken()
+            const userInfo = mockAuthService.getUserInfo()
+            
+            log('auth-status', `认证状态检查:`)
+            log('auth-status', `已登录: ${isLoggedIn}`)
+            log('auth-status', `Token: ${token ? '已设置' : '未设置'}`)
+            log('auth-status', `用户信息: ${userInfo ? JSON.stringify(userInfo, null, 2) : '无'}`)
+        }
+
+        function clearAuth() {
+            mockAuthService.clearAuth()
+            log('auth-status', '认证信息已清除', 'success')
+            checkAuthStatus()
+        }
+
+        function setMockAuth() {
+            const mockToken = 'mock_token_' + Date.now()
+            const mockUserInfo = {
+                merchant_id: 1,
+                phone: '13800138000',
+                expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+            }
+            
+            localStorage.setItem('merchant_token', mockToken)
+            localStorage.setItem('merchant_info', JSON.stringify(mockUserInfo))
+            
+            log('auth-status', '模拟认证信息已设置', 'success')
+            checkAuthStatus()
+        }
+
+        function goToLogin() {
+            log('route-log', '尝试跳转到登录页...')
+            // 模拟路由跳转
+            setTimeout(() => {
+                log('route-log', '✅ 成功跳转到登录页', 'success')
+            }, 100)
+        }
+
+        function goToDashboard() {
+            log('route-log', '尝试跳转到Dashboard...')
+            if (mockAuthService.isLoggedIn()) {
+                log('route-log', '✅ 已登录，成功跳转到Dashboard', 'success')
+            } else {
+                log('route-log', '❌ 未登录，应该被重定向到登录页', 'error')
+            }
+        }
+
+        function goToRoot() {
+            log('route-log', '访问根路径...')
+            log('route-log', '✅ 根路径应该重定向到登录页', 'success')
+        }
+
+        async function testValidateAPI() {
+            log('api-log', '开始测试验证API...')
+            try {
+                const response = await fetch('/api/web/auth/validate?token=test_token')
+                if (response.ok) {
+                    const data = await response.json()
+                    log('api-log', `API响应: ${JSON.stringify(data, null, 2)}`, 'success')
+                } else {
+                    log('api-log', `API错误: ${response.status} ${response.statusText}`, 'error')
+                }
+            } catch (error) {
+                log('api-log', `API请求失败: ${error.message}`, 'error')
+            }
+        }
+
+        function showLocalStorage() {
+            log('storage-log', 'LocalStorage内容:')
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i)
+                const value = localStorage.getItem(key)
+                log('storage-log', `${key}: ${value}`)
+            }
+        }
+
+        function clearLocalStorage() {
+            localStorage.clear()
+            log('storage-log', 'LocalStorage已清除', 'success')
+        }
+
+        // 页面加载时检查认证状态
+        window.onload = function() {
+            log('auth-status', '页面加载完成，检查认证状态...')
+            checkAuthStatus()
+        }
+    </script>
+</body>
+</html>

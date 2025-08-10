@@ -23,7 +23,9 @@ class Merchant(db.Model):
     id = db.Column(db.Integer, primary_key=True)  # 商家ID
     name = db.Column(db.String(128), unique=True, nullable=False)  # 商家名称
     email = db.Column(db.String(120), unique=True)  # 商家邮箱
-    phone = db.Column(db.String(20))  # 商家电话
+    phone = db.Column(db.String(20), unique=True, nullable=False)  # 商家电话（唯一）
+    password = db.Column(db.String(128), nullable=False)  # 密码（加密存储）
+    status = db.Column(db.String(16), default='active')  # 状态：active/inactive
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
     # 关联关系

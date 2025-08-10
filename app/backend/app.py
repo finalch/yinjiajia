@@ -54,6 +54,8 @@ def create_app():
     from api.web.finance import web_finance_api
     from api.web.customer_service import web_customer_service_api
     from api.web.media import web_media_api
+    from api.web.auth import web_auth_api
+    from api.web.health import web_health_api
 
     app.register_blueprint(app_product_api)
     app.register_blueprint(app_cart_api)
@@ -69,6 +71,8 @@ def create_app():
     app.register_blueprint(web_finance_api)
     app.register_blueprint(web_customer_service_api)
     app.register_blueprint(web_media_api)
+    app.register_blueprint(web_auth_api)
+    app.register_blueprint(web_health_api)
 
     logger.info("All blueprints registered successfully")
     return app, logger, Config.LOG_PATH

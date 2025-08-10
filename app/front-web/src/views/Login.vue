@@ -1,96 +1,84 @@
 <template>
-  <div class="login-page">
-    <div class="login-container">
+  <div class="login-container">
+    <div class="login-content">
+      <!-- 左侧登录表单 -->
       <div class="login-form">
-        <div class="form-header">
-          <h2>登录银家家</h2>
-          <p>欢迎回来，请登录您的账户</p>
+        <div class="login-header">
+          <h1>商家登录</h1>
+          <p>欢迎使用银家家商家后台管理系统</p>
         </div>
-        
+
         <el-form
           ref="loginForm"
           :model="loginData"
           :rules="loginRules"
+          class="login-form-content"
           @submit.prevent="handleLogin"
         >
-          <el-form-item prop="username">
+          <el-form-item prop="phone">
             <el-input
-              v-model="loginData.username"
-              placeholder="用户名/手机号/邮箱"
+              v-model="loginData.phone"
+              placeholder="请输入手机号"
               size="large"
-              prefix-icon="User"
+              :prefix-icon="Phone"
             />
           </el-form-item>
-          
+
           <el-form-item prop="password">
             <el-input
               v-model="loginData.password"
               type="password"
-              placeholder="密码"
+              placeholder="请输入密码"
               size="large"
-              prefix-icon="Lock"
+              :prefix-icon="Lock"
               show-password
             />
           </el-form-item>
-          
-          <div class="form-options">
-            <el-checkbox v-model="rememberMe">记住我</el-checkbox>
-            <el-link type="primary" @click="forgotPassword">忘记密码？</el-link>
-          </div>
-          
+
+          <el-form-item>
+            <div class="login-options">
+              <el-checkbox v-model="rememberMe">记住我</el-checkbox>
+              <a href="#" @click.prevent="forgotPassword">忘记密码？</a>
+            </div>
+          </el-form-item>
+
           <el-form-item>
             <el-button
               type="primary"
               size="large"
+              class="login-button"
               :loading="loading"
               @click="handleLogin"
-              class="login-button"
             >
               登录
             </el-button>
           </el-form-item>
+
+          <div class="register-link">
+            还没有账号？
+            <router-link to="/register">立即注册</router-link>
+          </div>
         </el-form>
-        
-        <div class="divider">
-          <span>或</span>
-        </div>
-        
-        <div class="social-login">
-          <el-button
-            v-for="social in socialLogins"
-            :key="social.name"
-            :icon="social.icon"
-            @click="socialLogin(social.name)"
-            class="social-button"
-          >
-            {{ social.label }}
-          </el-button>
-        </div>
-        
-        <div class="register-link">
-          <span>还没有账户？</span>
-          <el-link type="primary" @click="$router.push('/register')">
-            立即注册
-          </el-link>
-        </div>
       </div>
-      
-      <div class="login-banner">
-        <div class="banner-content">
-          <h3>银家家购物平台</h3>
-          <p>享受便捷的购物体验</p>
-          <div class="banner-features">
+
+      <!-- 右侧介绍 -->
+      <div class="login-intro">
+        <div class="intro-content">
+          <h2>银家家商家后台</h2>
+          <p>专业的电商商家管理系统</p>
+          
+          <div class="features">
             <div class="feature-item">
               <el-icon><Check /></el-icon>
-              <span>正品保证</span>
+              <span>商品管理</span>
             </div>
             <div class="feature-item">
-              <el-icon><Truck /></el-icon>
+              <el-icon><Van /></el-icon>
               <span>极速发货</span>
             </div>
             <div class="feature-item">
               <el-icon><Refresh /></el-icon>
-              <span>7天无理由退货</span>
+              <span>实时更新</span>
             </div>
           </div>
         </div>
@@ -100,18 +88,19 @@
 </template>
 
 <script>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { User, Lock, Check, Truck, Refresh } from '@element-plus/icons-vue'
+import { Phone, Lock, Check, Van, Refresh } from '@element-plus/icons-vue'
+import authService from '../services/authService'
 
 export default {
   name: 'Login',
   components: {
-    User,
+    Phone,
     Lock,
     Check,
-    Truck,
+    Van,
     Refresh
   },
   setup() {
@@ -121,37 +110,20 @@ export default {
     const rememberMe = ref(false)
 
     const loginData = reactive({
-      username: '',
+      phone: '',
       password: ''
     })
 
     const loginRules = {
-      username: [
-        { required: true, message: '请输入用户名', trigger: 'blur' }
+      phone: [
+        { required: true, message: '请输入手机号', trigger: 'blur' },
+        { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
       ],
       password: [
         { required: true, message: '请输入密码', trigger: 'blur' },
         { min: 6, message: '密码长度不能少于6位', trigger: 'blur' }
       ]
     }
-
-    const socialLogins = [
-      {
-        name: 'wechat',
-        label: '微信登录',
-        icon: 'ChatDotRound'
-      },
-      {
-        name: 'qq',
-        label: 'QQ登录',
-        icon: 'ChatDotRound'
-      },
-      {
-        name: 'weibo',
-        label: '微博登录',
-        icon: 'ChatDotRound'
-      }
-    ]
 
     const handleLogin = async () => {
       if (!loginForm.value) return
@@ -160,24 +132,48 @@ export default {
         await loginForm.value.validate()
         loading.value = true
         
-        // 模拟登录请求
-        setTimeout(() => {
-          loading.value = false
+        // 使用认证服务登录
+        const result = await authService.login(loginData.phone, loginData.password)
+        
+        if (result.success) {
+          // 如果选择记住我，可以设置更长的过期时间
+          if (rememberMe.value) {
+            // 这里可以设置更长的过期时间或本地存储
+            console.log('记住登录状态')
+          }
+          
           ElMessage.success('登录成功')
-          router.push('/')
-        }, 1500)
+          router.push('/dashboard')
+        } else {
+          ElMessage.error(result.message || '登录失败')
+        }
       } catch (error) {
-        console.log('表单验证失败:', error)
+        console.error('登录失败:', error)
+        if (error.name === 'ValidationError') {
+          ElMessage.error('请检查输入信息')
+        } else {
+          ElMessage.error('登录失败，请重试')
+        }
+      } finally {
+        loading.value = false
       }
-    }
-
-    const socialLogin = (platform) => {
-      ElMessage.info(`${platform} 登录功能开发中...`)
     }
 
     const forgotPassword = () => {
       ElMessage.info('忘记密码功能开发中...')
     }
+
+    // 在组件挂载后检查登录状态
+    onMounted(() => {
+      console.log('🔐 Login组件挂载完成，检查登录状态')
+      // 检查是否已登录，如果已登录则跳转到首页
+      if (authService.isLoggedIn()) {
+        console.log('✅ 检测到已登录状态，跳转到Dashboard')
+        router.push('/dashboard')
+      } else {
+        console.log('❌ 未检测到登录状态，显示登录页面')
+      }
+    })
 
     return {
       loginForm,
@@ -185,9 +181,7 @@ export default {
       loginRules,
       loading,
       rememberMe,
-      socialLogins,
       handleLogin,
-      socialLogin,
       forgotPassword
     }
   }
@@ -195,7 +189,7 @@ export default {
 </script>
 
 <style scoped>
-.login-page {
+.login-container {
   min-height: 100vh;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   display: flex;
@@ -204,116 +198,111 @@ export default {
   padding: 20px;
 }
 
-.login-container {
-  display: flex;
+.login-content {
   background: white;
-  border-radius: 12px;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+  border-radius: 20px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
   overflow: hidden;
-  max-width: 900px;
+  display: flex;
+  max-width: 1000px;
   width: 100%;
+  min-height: 600px;
 }
 
 .login-form {
   flex: 1;
-  padding: 40px;
-  max-width: 400px;
+  padding: 60px 50px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
-.form-header {
+.login-header {
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 40px;
 }
 
-.form-header h2 {
-  font-size: 2rem;
+.login-header h1 {
+  font-size: 32px;
   color: #333;
   margin-bottom: 10px;
+  font-weight: 600;
 }
 
-.form-header p {
+.login-header p {
   color: #666;
-  font-size: 1rem;
+  font-size: 16px;
 }
 
-.form-options {
+.login-form-content {
+  width: 100%;
+}
+
+.login-options {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  width: 100%;
+}
+
+.login-options a {
+  color: #409eff;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.login-options a:hover {
+  text-decoration: underline;
 }
 
 .login-button {
   width: 100%;
   height: 50px;
-  font-size: 1.1rem;
-}
-
-.divider {
-  text-align: center;
-  margin: 30px 0;
-  position: relative;
-}
-
-.divider::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: #eee;
-}
-
-.divider span {
-  background: white;
-  padding: 0 20px;
-  color: #999;
-  font-size: 0.9rem;
-}
-
-.social-login {
-  display: flex;
-  gap: 15px;
-  margin-bottom: 30px;
-}
-
-.social-button {
-  flex: 1;
-  height: 45px;
+  font-size: 16px;
+  font-weight: 500;
 }
 
 .register-link {
   text-align: center;
+  margin-top: 20px;
   color: #666;
+  font-size: 14px;
 }
 
-.login-banner {
+.register-link a {
+  color: #409eff;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.register-link a:hover {
+  text-decoration: underline;
+}
+
+.login-intro {
   flex: 1;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  padding: 60px 40px;
+  padding: 60px 50px;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.banner-content {
   text-align: center;
 }
 
-.banner-content h3 {
-  font-size: 2.5rem;
+.intro-content h2 {
+  font-size: 36px;
   margin-bottom: 20px;
+  font-weight: 600;
 }
 
-.banner-content p {
-  font-size: 1.2rem;
+.intro-content p {
+  font-size: 18px;
   margin-bottom: 40px;
   opacity: 0.9;
 }
 
-.banner-features {
+.features {
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -323,24 +312,36 @@ export default {
   display: flex;
   align-items: center;
   gap: 15px;
-  font-size: 1.1rem;
+  font-size: 16px;
 }
 
 .feature-item .el-icon {
-  font-size: 1.5rem;
+  font-size: 20px;
+  color: #ffd700;
 }
 
+/* 响应式设计 */
 @media (max-width: 768px) {
-  .login-container {
+  .login-content {
     flex-direction: column;
-  }
-  
-  .login-banner {
-    display: none;
+    max-width: 100%;
+    border-radius: 0;
   }
   
   .login-form {
-    max-width: none;
+    padding: 40px 30px;
+  }
+  
+  .login-intro {
+    padding: 40px 30px;
+  }
+  
+  .login-header h1 {
+    font-size: 28px;
+  }
+  
+  .intro-content h2 {
+    font-size: 30px;
   }
 }
 </style> 
