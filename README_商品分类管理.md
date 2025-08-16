@@ -30,7 +30,7 @@ yinjiajia/
 │   ├── backend/                 # 后端项目
 │   │   ├── api/
 │   │   │   └── web/
-│   │   │       └── category.py  # 分类API接口
+│   │   │       └── group.py  # 分组API接口
 │   │   ├── models.py            # 数据模型（已更新）
 │   │   └── app.py               # 主应用（已注册蓝图）
 │   └── front-web/               # 前端项目
@@ -101,7 +101,7 @@ http://localhost:5000
 
 ### 1. 获取分类列表
 ```http
-GET /categories?merchant_id=1&status=active&page=1&per_page=10
+GET /groups?merchant_id=1&status=active&page=1&per_page=10
 ```
 
 **响应示例：**
@@ -136,7 +136,7 @@ GET /categories?merchant_id=1&status=active&page=1&per_page=10
 
 ### 2. 创建分类
 ```http
-POST /categories
+POST /groups
 Content-Type: application/json
 
 {
@@ -151,7 +151,7 @@ Content-Type: application/json
 
 ### 3. 更新分类
 ```http
-PUT /categories/{id}
+PUT /groups/{id}
 Content-Type: application/json
 
 {
@@ -164,22 +164,22 @@ Content-Type: application/json
 
 ### 4. 删除分类
 ```http
-DELETE /categories/{id}
+DELETE /groups/{id}
 ```
 
 ### 5. 批量删除分类
 ```http
-DELETE /categories/batch
+DELETE /groups/batch
 Content-Type: application/json
 
 {
-  "category_ids": [1, 2, 3]
+  "group_ids": [1, 2, 3]
 }
 ```
 
 ## 数据库表结构
 
-### categories 表
+### groups 表
 | 字段名 | 类型 | 说明 |
 |--------|------|------|
 | id | INT | 主键，自增 |

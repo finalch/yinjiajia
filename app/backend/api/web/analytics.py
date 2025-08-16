@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from models import db, Order, OrderItem, Product, Review, Category
+from models import db, Order, OrderItem, Product, Review, Group
 from datetime import datetime, timedelta
 from sqlalchemy import func, and_
 
@@ -237,19 +237,19 @@ def get_product_analytics():
         func.avg(Review.rating).desc()
     ).limit(limit).all()
     
-    # 分类销售统计
-    category_sales = db.session.query(
-        Category.name,
+    # 分组销售统计
+    group_sales = db.session.query(
+        Group.name,
         func.count(Order.id).label('order_count'),
         func.sum(Order.total_amount).label('total_sales')
     ).join(
-        Product, Category.id == Product.category_id
+        Product, Group.id == Product.group_id
     ).join(
         Order, Product.id == Order.id  # 需要根据实际关联关系调整
     ).filter(
-        Category.merchant_id == merchant_id,
+        Group.merchant_id == merchant_id,
         Order.status.in_(['paid', 'shipped', 'delivered'])
-    ).group_by(Category.id).all()
+    ).group_by(Group.id).all()
     
     return jsonify({
         "code": 200,
@@ -273,12 +273,12 @@ def get_product_analytics():
                     'review_count': item.review_count
                 } for item in product_reviews
             ],
-            "category_sales": [
+            "group_sales": [
                 {
                     'name': item.name,
                     'order_count': item.order_count,
                     'total_sales': float(item.total_sales or 0)
-                } for item in category_sales
+                } for item in group_sales
             ]
         }
     }), 200

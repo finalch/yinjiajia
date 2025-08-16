@@ -19,8 +19,14 @@
           <el-input v-model="form.description" type="textarea" :rows="4" placeholder="请输入商品描述" />
         </el-form-item>
         
-        <el-form-item label="商品分类" required>
-          <el-select v-model="form.category_id" placeholder="请选择分类">
+        <el-form-item label="商品分组" required>
+          <el-select v-model="form.group_id" placeholder="请选择分组">
+            <el-option v-for="cat in groups" :key="cat.id" :label="cat.name" :value="cat.id" />
+          </el-select>
+        </el-form-item>
+        
+        <el-form-item label="商品品类" required>
+          <el-select v-model="form.category_uuid" placeholder="请选择品类">
             <el-option v-for="cat in categories" :key="cat.id" :label="cat.name" :value="cat.id" />
           </el-select>
         </el-form-item>
@@ -225,6 +231,8 @@ import { Picture } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import '@wangeditor/editor/dist/css/style.css'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
+import authService from '../services/authService'
+import { getMerchantInfo, clearAuth } from '../router/auth'
 
 const form = reactive({
   name: '',
@@ -232,7 +240,8 @@ const form = reactive({
   detail: '',
   price: '',
   stock: '',
-  category_id: '',
+  group_id: '',
+  category_uuid: '',
   main_image: '',
   images: [],
   videos: [],
@@ -240,7 +249,14 @@ const form = reactive({
   specs: [],
   spec_combinations: []
 })
+// 商家信息
+// const merchantInfo = ref(getMerchantInfo())
+const currentMerchantId = computed(() => {
+      const userInfo = authService.getUserInfo()
+      return userInfo?.merchant_id || userInfo?.id
+    })
 
+const groups = ref([])
 const categories = ref([])
 const submitting = ref(false)
 
@@ -267,9 +283,49 @@ const videoFileList = computed(() => {
 })
 
 onMounted(async () => {
-  // 获取分类列表
-  const res = await axios.get('/api/web/categories?merchant_id=1&status=active')
-  categories.value = (res.data.data && res.data.data.list) ? res.data.data.list : []
+  console.log('组件挂载，当前商家ID:', currentMerchantId.value)
+  
+  // 检查登录状态
+  if (!authService.isLoggedIn()) {
+    console.warn('用户未登录，使用默认商家ID')
+    // 可以在这里跳转到登录页面或者使用默认值
+  }
+  
+  // 获取分组列表
+  try {
+    const merchantId = currentMerchantId.value || 1 // 如果没有商家ID，使用默认值1
+    console.log('使用商家ID:', merchantId)
+    
+    // 先测试不带参数的请求
+    console.log('测试分组接口...')
+    const testRes = await axios.get('/api/web/groups')
+    console.log('分组接口测试响应:', testRes)
+    
+    const res = await axios.get('/api/web/groups', {
+      params: {
+        merchant_id: merchantId,
+        status: 'active'
+      }
+    })
+    console.log('分组接口响应:', res)
+    groups.value = (res.data && res.data.data && res.data.data.list) ? res.data.data.list : []
+    console.log('分组数据设置完成:', groups.value)
+  } catch (error) {
+    console.error('获取分组列表失败:', error)
+    groups.value = []
+  }
+  
+  // 获取品类列表
+  try {
+    console.log('测试品类接口...')
+    const categoryRes = await axios.get('/api/g/category')
+    console.log('品类接口响应:', categoryRes)
+    categories.value = (categoryRes.data && categoryRes.data.data && categoryRes.data.data.list) ? categoryRes.data.data.list : []
+    console.log('品类数据设置完成:', categories.value)
+  } catch (error) {
+    console.error('获取品类列表失败:', error)
+    categories.value = []
+  }
 })
 
 // 组件销毁时销毁编辑器
@@ -320,7 +376,7 @@ const uploadMainImage = async (option) => {
     
     console.log('主图上传响应:', res.data)
     
-    if (res.data.code === 200) {
+    if (res.code === 200) {
       form.main_image = res.data.url
       console.log('主图上传成功:', form.main_image)
       ElMessage.success('主图上传成功')
@@ -346,7 +402,7 @@ const uploadImage = async (option) => {
     
     console.log('图片上传响应:', res.data)
     
-    if (res.data.code === 200) {
+    if (res.code === 200) {
       // 添加到图片列表
       form.images.push({
         name: option.file.name,
@@ -596,8 +652,13 @@ const validateForm = () => {
     return false
   }
   
-  if (!form.category_id) {
-    alert('请选择商品分类')
+  if (!form.group_id) {
+    alert('请选择商品分组')
+    return false
+  }
+  
+  if (!form.category_uuid) {
+    alert('请选择商品品类')
     return false
   }
   
@@ -672,7 +733,8 @@ const onSubmit = async () => {
       name: form.name,
       description: form.description,
       detail: form.detail,
-      category_id: form.category_id,
+      group_id: form.group_id,
+      category_uuid: form.category_uuid,
       main_image: form.main_image,
       images: form.images.map(img => img.url),
       videos: form.videos.map(video => video.url),

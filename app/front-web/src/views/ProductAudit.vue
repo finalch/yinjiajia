@@ -19,17 +19,17 @@
               @keyup.enter="handleSearch"
             />
           </el-form-item>
-          <el-form-item label="商品分类">
+                      <el-form-item label="商品分组">
             <el-select
-              v-model="filterForm.category_id"
+              v-model="filterForm.group_id"
               placeholder="请选择分类"
               clearable
             >
               <el-option
-                v-for="category in categories"
-                :key="category.id"
-                :label="category.name"
-                :value="category.id"
+                v-for="group in groups"
+                :key="group.id"
+                :label="group.name"
+                :value="group.id"
               />
             </el-select>
           </el-form-item>
@@ -91,7 +91,7 @@
               />
               <div class="product-details">
                 <div class="product-name">{{ row.name }}</div>
-                <div class="product-category">{{ row.category_name }}</div>
+                <div class="product-group">{{ row.category_name }}</div>
                 <div class="product-price">¥{{ row.price }}</div>
               </div>
             </div>
@@ -234,7 +234,7 @@ export default {
   setup() {
     const loading = ref(false)
     const products = ref([])
-    const categories = ref([])
+    const groups = ref([])
     const selectedProducts = ref([])
 
     const pagination = reactive({
@@ -246,7 +246,7 @@ export default {
 
     const filterForm = reactive({
       name: '',
-      category_id: '',
+              group_id: '',
       status: ''  // 默认为空，显示所有状态
     })
 
@@ -279,7 +279,7 @@ export default {
         
         // 添加筛选条件
         if (filterForm.name) params.name = filterForm.name
-        if (filterForm.category_id) params.category_id = filterForm.category_id
+        if (filterForm.group_id) params.group_id = filterForm.group_id
         if (filterForm.status) params.status = filterForm.status
         
         console.log('请求参数:', params)
@@ -307,18 +307,18 @@ export default {
       }
     }
 
-    // 获取分类列表
+    // 获取分组列表
     const getCategories = async () => {
       try {
-        const response = await axios.get('/api/web/categories', {
+        const response = await axios.get('/api/web/groups', {
           params: { merchant_id: 1, status: 'active' }
         })
         
         if (response.data.code === 200) {
-          categories.value = response.data.data.list
+          groups.value = response.data.data.list
         }
       } catch (error) {
-        console.error('获取分类列表失败:', error)
+        console.error('获取分组列表失败:', error)
       }
     }
 
@@ -332,7 +332,7 @@ export default {
     const resetFilter = () => {
       Object.assign(filterForm, {
         name: '',
-        category_id: '',
+        group_id: '',
         status: ''
       })
       handleSearch()
@@ -473,7 +473,7 @@ export default {
     return {
       loading,
       products,
-      categories,
+      groups,
       selectedProducts,
       pagination,
       filterForm,
@@ -554,7 +554,7 @@ export default {
   margin-bottom: 5px;
 }
 
-.product-category {
+.product-group {
   font-size: 12px;
   color: #666;
   margin-bottom: 3px;

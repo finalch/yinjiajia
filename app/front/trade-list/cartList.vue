@@ -109,7 +109,7 @@
 						this.cartList = res.data.map(item => ({
 							...item,
 							id: item.id,
-							categoryId:item.category_id,
+							groupId:item.group_id,
 							courseId: item.course_id,
 							name: item.course_name,
 							price: item.course_price,
@@ -378,7 +378,7 @@
 				// 清理数据，只保留必要的字段
 				const cleanedItems = selectedItems.map(item => ({
 					id: item.id,
-					category_id: item.categoryId,
+					group_id: item.groupId,
 					course_id: item.courseId,
 					course_name: item.name,
 					course_price: item.price,

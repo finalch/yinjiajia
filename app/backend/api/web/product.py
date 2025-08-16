@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from models import db, Product, Category, Merchant, ProductSpec, ProductSpecCombination
+from models import db, Product, Group, Merchant, ProductSpec, ProductSpecCombination
 from datetime import datetime
 from sqlalchemy import func
 import json
@@ -11,7 +11,7 @@ def get_products():
     """WEB端-获取商品列表，支持条件筛选"""
     query = Product.query
     name = request.args.get('name', type=str)
-    category_id = request.args.get('category_id', type=int)
+    group_id = request.args.get('group_id', type=int)
     status = request.args.get('status', type=str)
     merchant_id = request.args.get('merchant_id', type=int)
     page = request.args.get('page', 1, type=int)
@@ -19,8 +19,8 @@ def get_products():
 
     if name:
         query = query.filter(Product.name.like(f"%{name}%"))
-    if category_id:
-        query = query.filter(Product.category_id == category_id)
+    if group_id:
+        query = query.filter(Product.group_id == group_id)
     if merchant_id:
         query = query.filter(Product.merchant_id == merchant_id)
     if status:
@@ -33,8 +33,8 @@ def get_products():
     
     products_data = []
     for product in pagination.items:
-        # 获取分类信息
-        category = Category.query.get(product.category_id)
+        # 获取分组信息
+        group = Group.query.get(product.group_id)
         # 获取商家信息
         merchant = Merchant.query.get(product.merchant_id)
         
@@ -46,9 +46,9 @@ def get_products():
             'stock': product.stock,
             'image_url': product.image_url,
             'video_url': product.video_url,
-            'category': product.category,
-            'category_id': product.category_id,
-            'category_name': category.name if category else '',
+            # 'group': product.group,
+            'group_id': product.group_id,
+            'group_name': group.name if group else '',
             'merchant_id': product.merchant_id,
             'merchant_name': merchant.name if merchant else '',
             'has_specs': product.has_specs,  # 是否有规格
@@ -78,8 +78,8 @@ def get_product_detail(product_id):
     """WEB端-获取商品详情"""
     product = Product.query.get_or_404(product_id)
     
-    # 获取分类信息
-    category = Category.query.get(product.category_id)
+    # 获取分组信息
+    group = Group.query.get(product.group_id)
     # 获取商家信息
     merchant = Merchant.query.get(product.merchant_id)
     
@@ -92,9 +92,9 @@ def get_product_detail(product_id):
         'stock': product.stock,
         'image_url': product.image_url,
         'video_url': product.video_url,
-        'category': product.category,
-        'category_id': product.category_id,
-        'category_name': category.name if category else '',
+        'group': product.group,
+        'group_id': product.group_id,
+        'group_name': group.name if group else '',
         'merchant_id': product.merchant_id,
         'merchant_name': merchant.name if merchant else '',
         'has_specs': product.has_specs,  # 是否有规格
@@ -154,15 +154,15 @@ def create_product():
     """WEB端-创建商品"""
     data = request.json
     
-    required_fields = ['name', 'category_id', 'merchant_id']
+    required_fields = ['name', 'group_id', 'merchant_id']
     for field in required_fields:
         if not data.get(field):
             return jsonify({"code": 400, "message": f"{field} 不能为空"}), 400
     
-    # 校验分类和商家是否存在
-    category = Category.query.get(data['category_id'])
-    if not category:
-        return jsonify({"code": 404, "message": "分类不存在"}), 404
+    # 校验分组和商家是否存在
+    group = Group.query.get(data['group_id'])
+    if not group:
+        return jsonify({"code": 404, "message": "分组不存在"}), 404
     
     merchant = Merchant.query.get(data['merchant_id'])
     if not merchant:
@@ -215,7 +215,7 @@ def create_product():
             stock=stock,
             image_url=image_url,
             video_url=video_url,
-            category_id=data['category_id'],
+            group_id=data['group_id'],
             merchant_id=data['merchant_id'],
             has_specs=False,
             status='pending'  # 新商品默认为待审核状态
@@ -277,7 +277,7 @@ def create_product():
             stock=total_stock,  # 使用总库存
             image_url=image_url,
             video_url=video_url,
-            category_id=data['category_id'],
+            group_id=data['group_id'],
             merchant_id=data['merchant_id'],
             has_specs=True,
             status='pending'  # 新商品默认为待审核状态
@@ -344,11 +344,11 @@ def update_product(product_id):
         product.description = data['description']
     if 'detail' in data:
         product.detail = data['detail']
-    if 'category_id' in data:
-        category = Category.query.get(data['category_id'])
-        if not category:
-            return jsonify({"code": 404, "message": "分类不存在"}), 404
-        product.category_id = data['category_id']
+    if 'group_id' in data:
+        group = Group.query.get(data['group_id'])
+        if not group:
+            return jsonify({"code": 404, "message": "分组不存在"}), 404
+        product.group_id = data['group_id']
     if 'main_image' in data or 'images' in data or 'videos' in data:
         # 处理图片和视频
         main_image = data.get('main_image', '')
@@ -652,8 +652,8 @@ def get_pending_audit_products():
     
     products_data = []
     for product in pagination.items:
-        # 获取分类信息
-        category = Category.query.get(product.category_id)
+        # 获取分组信息
+        group = Group.query.get(product.group_id)
         # 获取商家信息
         merchant = Merchant.query.get(product.merchant_id)
         
@@ -665,7 +665,7 @@ def get_pending_audit_products():
             'stock': product.stock,
             'image_url': product.image_url,
             'video_url': product.video_url,
-            'category_name': category.name if category else '',
+            'group_name': group.name if group else '',
             'merchant_name': merchant.name if merchant else '',
             'status': product.status,
             'status_text': get_status_text(product.status),

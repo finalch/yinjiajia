@@ -14,13 +14,13 @@
         <el-form-item label="商品名称">
           <el-input v-model="filters.name" placeholder="请输入商品名称" clearable />
         </el-form-item>
-        <el-form-item label="商品分类">
-          <el-select v-model="filters.category" placeholder="选择分类" clearable>
+                  <el-form-item label="商品分组">
+          <el-select v-model="filters.group" placeholder="选择分组" clearable>
             <el-option
-              v-for="category in categories"
-              :key="category.id"
-              :label="category.name"
-              :value="category.id"
+              v-for="grp in groups"
+              :key="grp.id"
+              :label="grp.name"
+              :value="grp.id"
             />
           </el-select>
         </el-form-item>
@@ -89,7 +89,7 @@
               <div class="product-details">
                 <h4 class="product-name">{{ row.name }}</h4>
                 <p class="product-specs">{{ row.specs }}</p>
-                <p class="product-category">{{ row.categoryName }}</p>
+                <p class="product-group">{{ row.categoryName }}</p>
               </div>
             </div>
           </template>
@@ -172,6 +172,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import axios from '@/api/request'
 import dayjs from 'dayjs'
+import authService from '../services/authService'
 
 export default {
   name: 'Products',
@@ -179,6 +180,12 @@ export default {
     Plus
   },
   setup() {
+
+    const currentMerchantId = computed(() => {
+      const userInfo = authService.getUserInfo()
+      return userInfo?.merchant_id || userInfo?.id
+    })
+
     const router = useRouter()
     const loading = ref(false)
     const selectAll = ref(false)
@@ -187,7 +194,7 @@ export default {
     // 筛选条件
     const filters = reactive({
       name: '',
-      category: '',
+      group: '',
       status: ''  // 默认为空，显示所有状态
     })
     
@@ -196,8 +203,8 @@ export default {
     const pageSize = ref(20)
     const total = ref(156)
     
-    // 商品分类
-    const categories = ref([])
+    // 商品分组
+    const groups = ref([])
     
     // 商品列表
     const products = ref([])
@@ -225,9 +232,9 @@ export default {
           per_page: pageSize.value
         }
         if (filters.name) params.name = filters.name
-        if (filters.category) params.category_id = filters.category
+        if (filters.group) params.group_id = filters.group
         if (filters.status) params.status = filters.status
-        params.merchant_id = 1 // 示例
+        params.merchant_id = currentMerchantId.value // 示例
 
         const res = await axios.get('/api/web/product/', { params })
         
@@ -260,23 +267,26 @@ export default {
         loading.value = false
       }
     }
-    // 获取分类列表
-    const fetchCategories = async () => {
+    // 获取分组列表
+    const fetchGroups = async () => {
       try {
-        const res = await axios.get('/api/web/categories?merchant_id=1&status=active')
-        if (res.data.code === 200) {
-          categories.value = res.data.data.list || []
+        const res = await axios.get('/api/web/groups', {
+          merchant_id: currentMerchantId.value,
+          status: 'active'
+        })
+        if (res.code === 200) {
+          groups.value = res.data.list || []
         } else {
-          categories.value = []
+          groups.value = []
         }
       } catch (e) {
-        console.error('获取分类列表失败:', e)
-        categories.value = []
+        console.error('获取分组列表失败:', e)
+        groups.value = []
       }
     }
     // 页面加载时获取数据
     fetchProducts()
-    fetchCategories()
+    fetchGroups()
     
     // 方法
     const handleSearch = () => {
@@ -286,7 +296,7 @@ export default {
     
     const resetFilters = () => {
       filters.name = ''
-      filters.category = ''
+              filters.group = ''
       filters.status = ''
       handleSearch()
     }
@@ -482,7 +492,7 @@ export default {
     return {
       loading,
       filters,
-      categories,
+      groups,
       products,
       selectAll,
       selectedProducts,
@@ -507,7 +517,7 @@ export default {
       handleSizeChange,
       handleCurrentChange,
       fetchProducts,
-      fetchCategories,
+      fetchGroups,
       statusOptions
     }
   }
@@ -580,7 +590,7 @@ export default {
   font-size: 0.9rem;
 }
 
-.product-category {
+.product-group {
   margin: 0;
   color: #999;
   font-size: 0.8rem;

@@ -50,7 +50,7 @@ const getBreadcrumbName = (path) => {
     'add': '发布商品',
     'edit': '编辑商品',
     'audit': '商品审核',
-    'categories': '商品分类',
+    'groups': '商品分类',
     'logistics': '物流管理',
     'after-sales': '售后处理',
     'reviews': '评价管理'
@@ -176,7 +176,7 @@ onUnmounted(() => {
               <el-menu-item index="/products">商品列表</el-menu-item>
               <el-menu-item index="/products/add">发布商品</el-menu-item>
               <el-menu-item index="/products/audit">商品审核</el-menu-item>
-              <el-menu-item index="/categories">商品分类</el-menu-item>
+              <el-menu-item index="/groups">商品分类</el-menu-item>
             </el-sub-menu>
             
             <el-sub-menu index="orders">

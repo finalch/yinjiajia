@@ -14,10 +14,10 @@
 		</view>
 
 		<!-- 分类标签栏 -->
-		<scroll-view class="category-tabs" scroll-x>
-			<view v-for="(category, index) in categories" :key="category.id" class="tab-item"
+		<scroll-view class="group-tabs" scroll-x>
+			<view v-for="(group, index) in groups" :key="group.id" class="tab-item"
 				:class="{ active: activeCategory === index }" @click="changeCategory(index)">
-				{{ category.name }}
+				{{ group.name }}
 			</view>
 		</scroll-view>
 
@@ -80,7 +80,7 @@
 				selectedTabIndex: 1,
 				activeCategory: 0,
 				// 添加模拟分类数据
-				categories: [{
+				groups: [{
 						id: 1,
 						name: "推荐"
 					},
@@ -147,17 +147,17 @@
 				try {
 					// 注释掉API请求，直接使用模拟数据
 					// const res = await uni.request({
-					// 	url: 'http://your-api-domain.com/api/categories',
+					// 	url: 'http://your-api-domain.com/api/groups',
 					// 	method: 'GET'
 					// })
 					// if (res[1].data.code === 200) {
-					// 	this.categories = res[1].data.data
+					// 	this.groups = res[1].data.data
 					// 	// 默认加载第一个分类的商品
-					// 	this.fetchProducts(this.categories[0].id)
+					// 	this.fetchProducts(this.groups[0].id)
 					// }
 
 					// 使用模拟数据后直接加载第一个分类的商品
-					this.fetchProducts(this.categories[0].id)
+					this.fetchProducts(this.groups[0].id)
 				} catch (error) {
 					console.error('获取分类失败:', error)
 				}
@@ -273,7 +273,7 @@
 			},
 			changeCategory(index) {
 				this.activeCategory = index
-				const categoryId = this.categories[index].id
+				const categoryId = this.groups[index].id
 				this.fetchProducts(categoryId)
 			},
 			goToDetail(productId) {
@@ -313,7 +313,7 @@
 			},
 			onReachBottomHandler() {
 				if (!this.noMore && !this.loading) {
-					const categoryId = this.categories[this.activeCategory].id
+					const categoryId = this.groups[this.activeCategory].id
 					this.fetchProducts(categoryId, true)
 				}
 			}
@@ -385,13 +385,13 @@
 		padding: 0 4px;
 	}
 
-	.category-tabs {
+	.group-tabs {
 		white-space: nowrap;
 		margin-bottom: 10px;
 	}
 	
 	/* 添加以下样式来移除分类标签栏的黑色横线 */
-	.category-tabs ::v-deep ::-webkit-scrollbar {
+	.group-tabs ::v-deep ::-webkit-scrollbar {
 		display: none;
 		width: 0 !important;
 		height: 0 !important;

@@ -13,11 +13,11 @@
 			</view>
 		</view>
 
-		<!-- 分类标签栏 -->
-		<scroll-view class="category-tabs" scroll-x>
-			<view v-for="(category, index) in categories" :key="category.id" class="tab-item"
-				:class="{ active: activeCategory === index }" @click="changeCategory(index)">
-				{{ category.name }}
+		<!-- 分组标签栏 -->
+		<scroll-view class="group-tabs" scroll-x>
+			<view v-for="(group, index) in groups" :key="group.id" class="tab-item"
+				:class="{ active: activeGroup === index }" @click="changeGroup(index)">
+				{{ group.name }}
 			</view>
 		</scroll-view>
 
@@ -78,9 +78,9 @@
 		data() {
 			return {
 				selectedTabIndex: 1,
-				activeCategory: 0,
-				// 添加模拟分类数据
-				categories: [{
+				activeGroup: 0,
+				// 添加模拟分组数据
+				groups: [{
 						id: 1,
 						name: "推荐"
 					},
@@ -143,26 +143,26 @@
 					}
 				})
 			},
-			async fetchCategories() {
+			async fetchGroups() {
 				try {
 					// 注释掉API请求，直接使用模拟数据
 					// const res = await uni.request({
-					// 	url: 'http://your-api-domain.com/api/categories',
+					// 	url: 'http://your-api-domain.com/api/groups',
 					// 	method: 'GET'
 					// })
 					// if (res[1].data.code === 200) {
-					// 	this.categories = res[1].data.data
-					// 	// 默认加载第一个分类的商品
-					// 	this.fetchProducts(this.categories[0].id)
+					// 	this.groups = res[1].data.data
+					// 	// 默认加载第一个分组的商品
+					// 	this.fetchProducts(this.groups[0].id)
 					// }
 
-					// 使用模拟数据后直接加载第一个分类的商品
-					this.fetchProducts(this.categories[0].id)
+					// 使用模拟数据后直接加载第一个分组的商品
+					this.fetchProducts(this.groups[0].id)
 				} catch (error) {
-					console.error('获取分类失败:', error)
+					console.error('获取分组失败:', error)
 				}
 			},
-			async fetchProducts(categoryId, isLoadMore = false) {
+			async fetchProducts(groupId, isLoadMore = false) {
 				if (this.loading) return
 				this.loading = true
 
@@ -188,7 +188,7 @@
 					// })
 
 					// 模拟API返回结构
-					const mockProducts = this.generateMockProducts(categoryId)
+					const mockProducts = this.generateMockProducts(groupId)
 					const newProducts = mockProducts.data.items
 
 					this.distributeProducts(newProducts)
@@ -210,8 +210,8 @@
 				}
 			},
 			// 添加生成模拟商品数据的方法
-			generateMockProducts(categoryId) {
-				const categoryMap = {
+			generateMockProducts(groupId) {
+				const groupMap = {
 					1: ["推荐商品", "red"],
 					2: ["手机", "digital"],
 					3: ["家电", "appliance"],
@@ -221,7 +221,7 @@
 					7: ["家居", "home"]
 				}
 
-				const [categoryName, type] = categoryMap[categoryId] || ["商品", "product"]
+				const [groupName, type] = groupMap[groupId] || ["商品", "product"]
 				const mockImages = [
 					"https://img.yzcdn.cn/vant/apple-1.jpg",
 					"https://img.yzcdn.cn/vant/apple-2.jpg",
@@ -239,8 +239,8 @@
 					const originalPrice = (parseFloat(price) + Math.random() * 50).toFixed(2)
 
 					products.push({
-						id: `${categoryId}_${this.page}_${i}`,
-						title: `${categoryName}${i+1} ${this.getRandomProductDesc(type)}`,
+						id: `${groupId}_${this.page}_${i}`,
+						title: `${groupName}${i+1} ${this.getRandomProductDesc(type)}`,
 						price: price,
 						original_price: Math.random() > 0.3 ? originalPrice : null,
 						sales: Math.floor(Math.random() * 1000),
@@ -271,10 +271,10 @@
 				const descs = descMap[type] || descMap.product
 				return descs[Math.floor(Math.random() * descs.length)]
 			},
-			changeCategory(index) {
-				this.activeCategory = index
-				const categoryId = this.categories[index].id
-				this.fetchProducts(categoryId)
+			changeGroup(index) {
+				this.activeGroup = index
+				const groupId = this.groups[index].id
+				this.fetchProducts(groupId)
 			},
 			goToDetail(productId) {
 				uni.navigateTo({
@@ -313,13 +313,13 @@
 			},
 			onReachBottomHandler() {
 				if (!this.noMore && !this.loading) {
-					const categoryId = this.categories[this.activeCategory].id
-					this.fetchProducts(categoryId, true)
+					const groupId = this.groups[this.activeGroup].id
+					this.fetchProducts(groupId, true)
 				}
 			}
 		},
 		mounted() {
-			this.fetchCategories()
+			this.fetchGroups()
 			this.fetchCartCount()
 		},
 		onReachBottom() {
@@ -385,13 +385,13 @@
 		padding: 0 4px;
 	}
 
-	.category-tabs {
+	.group-tabs {
 		white-space: nowrap;
 		margin-bottom: 10px;
 	}
 	
-	/* 添加以下样式来移除分类标签栏的黑色横线 */
-	.category-tabs ::v-deep ::-webkit-scrollbar {
+	/* 添加以下样式来移除分组标签栏的黑色横线 */
+	.group-tabs ::v-deep ::-webkit-scrollbar {
 		display: none;
 		width: 0 !important;
 		height: 0 !important;

@@ -15,16 +15,16 @@
     </el-carousel>
 
     <!-- 商品分类 -->
-    <div class="categories">
+    <div class="groups">
       <h2 class="section-title">商品分类</h2>
       <el-row :gutter="20">
-        <el-col :span="6" v-for="category in categories" :key="category.id">
-          <el-card class="category-card" @click="goToCategory(category.id)">
-            <div class="category-icon">
-              <i :class="category.icon"></i>
+        <el-col :span="6" v-for="group in groups" :key="group.id">
+          <el-card class="group-card" @click="goToCategory(group.id)">
+            <div class="group-icon">
+              <i :class="group.icon"></i>
             </div>
-            <h3>{{ category.name }}</h3>
-            <p>{{ category.description }}</p>
+            <h3>{{ group.name }}</h3>
+            <p>{{ group.description }}</p>
           </el-card>
         </el-col>
       </el-row>
@@ -101,7 +101,7 @@ export default {
     ])
 
     // 商品分类
-    const categories = ref([
+    const groups = ref([
       {
         id: 1,
         name: '手机数码',
@@ -189,7 +189,7 @@ export default {
     }
 
     const goToCategory = (categoryId) => {
-      router.push(`/shop?category=${categoryId}`)
+      router.push(`/shop?group=${categoryId}`)
     }
 
     const goToProduct = (productId) => {
@@ -202,7 +202,7 @@ export default {
 
     return {
       banners,
-      categories,
+      groups,
       hotProducts,
       newProducts,
       handleBannerClick,
@@ -257,32 +257,32 @@ export default {
   color: #333;
 }
 
-.categories {
+.groups {
   margin-bottom: 40px;
 }
 
-.category-card {
+.group-card {
   text-align: center;
   cursor: pointer;
   transition: transform 0.3s;
 }
 
-.category-card:hover {
+.group-card:hover {
   transform: translateY(-5px);
 }
 
-.category-icon {
+.group-icon {
   font-size: 3rem;
   color: #409eff;
   margin-bottom: 15px;
 }
 
-.category-card h3 {
+.group-card h3 {
   margin-bottom: 10px;
   color: #333;
 }
 
-.category-card p {
+.group-card p {
   color: #666;
 }
 

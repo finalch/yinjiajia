@@ -29,7 +29,7 @@
 
 #### 1.1 获取分类列表
 ```http
-GET /api/web/categories?merchant_id=1&status=active&page=1&per_page=10
+GET /api/web/groups?merchant_id=1&status=active&page=1&per_page=10
 ```
 
 **参数说明:**
@@ -70,7 +70,7 @@ GET /api/web/categories?merchant_id=1&status=active&page=1&per_page=10
 
 #### 1.2 创建分类
 ```http
-POST /api/web/categories
+POST /api/web/groups
 Content-Type: application/json
 
 {
@@ -85,7 +85,7 @@ Content-Type: application/json
 
 #### 1.3 更新分类
 ```http
-PUT /api/web/categories/{id}
+PUT /api/web/groups/{id}
 Content-Type: application/json
 
 {
@@ -98,7 +98,7 @@ Content-Type: application/json
 
 #### 1.4 删除分类
 ```http
-DELETE /api/web/categories/{id}
+DELETE /api/web/groups/{id}
 ```
 
 ### 2. 商品管理
@@ -123,7 +123,7 @@ Content-Type: application/json
   "description": "商品描述",
   "price": 999.00,
   "stock": 100,
-  "category_id": 1,
+  "group_id": 1,
   "merchant_id": 1,
   "image_url": "https://example.com/image.jpg"
 }
@@ -384,7 +384,7 @@ Content-Type: application/json
 
 #### 7.4 获取快捷回复
 ```http
-GET /api/web/customer_service/quick-replies?category=greeting
+GET /api/web/customer_service/quick-replies?group=greeting
 ```
 
 #### 7.5 添加快捷回复
@@ -394,7 +394,7 @@ Content-Type: application/json
 
 {
   "content": "感谢您的咨询",
-  "category": "thanks"
+  "group": "thanks"
 }
 ```
 
@@ -437,7 +437,7 @@ Content-Type: application/json
 {
   "question": "如何查询订单物流？",
   "answer": "您可以在订单详情页面查看物流信息",
-  "category": "order"
+  "group": "order"
 }
 ```
 
@@ -447,7 +447,7 @@ Content-Type: application/json
 
 #### 1.1 获取商品列表
 ```http
-GET /api/app/product/?category_id=1&page=1&per_page=10
+GET /api/app/product/?group_id=1&page=1&per_page=10
 ```
 
 #### 1.2 获取商品详情
@@ -485,7 +485,7 @@ GET /api/app/review/?product_id=1&page=1&per_page=10
 
 1. **users** - 用户表
 2. **merchants** - 商家表
-3. **categories** - 分类表
+3. **groups** - 分类表
 4. **products** - 商品表
 5. **orders** - 订单表
 6. **reviews** - 评价表

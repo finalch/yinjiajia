@@ -196,10 +196,10 @@
       <el-table :data="quickReplies" border>
         <el-table-column prop="title" label="短语标题" width="200" />
         <el-table-column prop="content" label="短语内容" />
-        <el-table-column prop="category" label="分类" width="120">
+        <el-table-column prop="group" label="分类" width="120">
           <template #default="{ row }">
-            <el-tag :type="getCategoryType(row.category)">
-              {{ getCategoryText(row.category) }}
+            <el-tag :type="getCategoryType(row.group)">
+              {{ getCategoryText(row.group) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -235,8 +235,8 @@
             placeholder="请输入短语内容"
           />
         </el-form-item>
-        <el-form-item label="分类" prop="category">
-          <el-select v-model="quickReplyForm.category" placeholder="选择分类">
+        <el-form-item label="分类" prop="group">
+          <el-select v-model="quickReplyForm.group" placeholder="选择分类">
             <el-option label="问候语" value="greeting" />
             <el-option label="商品咨询" value="product" />
             <el-option label="订单问题" value="order" />
@@ -300,28 +300,28 @@ export default {
         id: 1,
         title: '欢迎语',
         content: '您好！欢迎咨询，我是客服小助手，很高兴为您服务！',
-        category: 'greeting',
+        group: 'greeting',
         useCount: 25
       },
       {
         id: 2,
         title: '商品介绍',
         content: '这款商品是我们店铺的热销产品，质量有保证，价格实惠，您可以放心购买。',
-        category: 'product',
+        group: 'product',
         useCount: 18
       },
       {
         id: 3,
         title: '发货说明',
         content: '我们会在24小时内为您发货，发货后会及时更新物流信息，请您耐心等待。',
-        category: 'order',
+        group: 'order',
         useCount: 12
       },
       {
         id: 4,
         title: '退换货政策',
         content: '我们支持7天无理由退换货，商品有质量问题可以申请退换货，我们会及时处理。',
-        category: 'service',
+        group: 'service',
         useCount: 8
       }
     ])
@@ -392,7 +392,7 @@ export default {
     const quickReplyForm = reactive({
       title: '',
       content: '',
-      category: ''
+      group: ''
     })
     
     const quickReplyRules = {
@@ -402,7 +402,7 @@ export default {
       content: [
         { required: true, message: '请输入短语内容', trigger: 'blur' }
       ],
-      category: [
+      group: [
         { required: true, message: '请选择分类', trigger: 'change' }
       ]
     }
@@ -479,7 +479,7 @@ export default {
       editingQuickReply.value = false
       quickReplyForm.title = ''
       quickReplyForm.content = ''
-      quickReplyForm.category = ''
+      quickReplyForm.group = ''
       quickReplyDialogVisible.value = true
     }
     
@@ -487,7 +487,7 @@ export default {
       editingQuickReply.value = true
       quickReplyForm.title = reply.title
       quickReplyForm.content = reply.content
-      quickReplyForm.category = reply.category
+      quickReplyForm.group = reply.group
       quickReplyDialogVisible.value = true
     }
     
@@ -534,7 +534,7 @@ export default {
       return texts[status] || '未知'
     }
     
-    const getCategoryType = (category) => {
+    const getCategoryType = (group) => {
       const types = {
         greeting: 'success',
         product: 'primary',
@@ -542,10 +542,10 @@ export default {
         service: 'info',
         other: 'default'
       }
-      return types[category] || 'default'
+      return types[group] || 'default'
     }
     
-    const getCategoryText = (category) => {
+    const getCategoryText = (group) => {
       const texts = {
         greeting: '问候语',
         product: '商品咨询',
@@ -553,7 +553,7 @@ export default {
         service: '售后服务',
         other: '其他'
       }
-      return texts[category] || '未知'
+      return texts[group] || '未知'
     }
     
     return {

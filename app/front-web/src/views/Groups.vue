@@ -1,17 +1,17 @@
 <template>
-  <div class="categories">
+  <div class="groups">
     <div class="page-header">
-      <h1>商品分类</h1>
+      <h1>商品分组</h1>
       <div class="header-actions">
         <el-button type="primary" @click="showAddDialog">
           <el-icon><Plus /></el-icon>
-          添加分类
+          添加分组
         </el-button>
       </div>
     </div>
 
-    <!-- 分类统计 -->
-    <el-row :gutter="20" class="category-stats">
+    <!-- 分组统计 -->
+    <el-row :gutter="20" class="group-stats">
       <el-col :span="6">
         <el-card class="stat-card">
           <div class="stat-content">
@@ -69,12 +69,12 @@
       </el-col>
     </el-row>
 
-    <!-- 分类列表 -->
+    <!-- 分组列表 -->
     <el-card>
-      <el-table :data="categories" v-loading="loading" row-key="id">
+      <el-table :data="groups" v-loading="loading" row-key="id">
         <el-table-column type="selection" width="55" />
-        <el-table-column prop="name" label="分类名称" min-width="150" />
-        <el-table-column prop="description" label="分类描述" min-width="200" />
+        <el-table-column prop="name" label="分组名称" min-width="150" />
+        <el-table-column prop="description" label="分组描述" min-width="200" />
         <el-table-column prop="sort" label="排序" width="100" />
         <el-table-column prop="productCount" label="商品数量" width="120" />
         <el-table-column prop="status" label="状态" width="100">
@@ -87,12 +87,11 @@
         <el-table-column prop="createTime" label="创建时间" width="180" />
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
-            <el-button type="text" size="small" @click="editCategory(row)">
+            <el-button type="text" size="small" @click="editGroup(row)">
               编辑
             </el-button>
             <el-button 
-              type="text" 
-              size="small" 
+              type="text" size="small" 
               @click="toggleStatus(row)"
             >
               {{ row.status === 'active' ? '禁用' : '启用' }}
@@ -100,7 +99,7 @@
             <el-button 
               type="text" 
               size="small" 
-              @click="deleteCategory(row)"
+              @click="deleteGroup(row)"
               style="color: #f56c6c;"
             >
               删除
@@ -110,39 +109,39 @@
       </el-table>
     </el-card>
 
-    <!-- 添加/编辑分类对话框 -->
+    <!-- 添加/编辑分组对话框 -->
     <el-dialog
       v-model="dialogVisible"
-      :title="editingCategory ? '编辑分类' : '添加分类'"
+      :title="editingGroup ? '编辑分组' : '添加分组'"
       width="600px"
     >
-      <el-form :model="categoryForm" :rules="categoryRules" ref="categoryFormRef" label-width="100px">
-        <el-form-item label="分类名称" prop="name">
-          <el-input v-model="categoryForm.name" placeholder="请输入分类名称" />
+      <el-form :model="groupForm" :rules="groupRules" ref="groupFormRef" label-width="100px">
+        <el-form-item label="分组名称" prop="name">
+          <el-input v-model="groupForm.name" placeholder="请输入分组名称" />
         </el-form-item>
-        <el-form-item label="分类描述" prop="description">
+        <el-form-item label="分组描述" prop="description">
           <el-input
-            v-model="categoryForm.description"
+            v-model="groupForm.description"
             type="textarea"
             :rows="3"
-            placeholder="请输入分类描述"
+            placeholder="请输入分组描述"
           />
         </el-form-item>
         <el-form-item label="排序权重" prop="sort_order">
           <el-input-number 
-            v-model="categoryForm.sort_order" 
+            v-model="groupForm.sort_order" 
             :min="0" 
             :step="1"
             style="width: 100%"
           />
         </el-form-item>
-        <el-form-item label="分类状态" prop="status">
-          <el-radio-group v-model="categoryForm.status">
+        <el-form-item label="分组状态" prop="status">
+          <el-radio-group v-model="groupForm.status">
             <el-radio label="active">启用</el-radio>
             <el-radio label="inactive">禁用</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="分类图标">
+        <el-form-item label="分组图标">
           <el-upload
             class="icon-upload"
             :action="uploadAction"
@@ -150,12 +149,12 @@
             :on-success="handleIconSuccess"
             :before-upload="beforeIconUpload"
           >
-            <div class="upload-area" v-if="!categoryForm.icon_url">
+            <div class="upload-area" v-if="!groupForm.icon_url">
               <el-icon size="48" color="#ddd"><Picture /></el-icon>
               <p>点击上传图标</p>
             </div>
             <div class="icon-preview" v-else>
-              <el-image :src="categoryForm.icon_url" fit="cover" />
+              <el-image :src="groupForm.icon_url" fit="cover" />
               <div class="icon-actions">
                 <el-button type="text" @click="removeIcon">删除</el-button>
               </div>
@@ -165,8 +164,8 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitCategory" :loading="submitting">
-          {{ editingCategory ? '更新' : '添加' }}
+        <el-button type="primary" @click="submitGroup" :loading="submitting">
+          {{ editingGroup ? '更新' : '添加' }}
         </el-button>
       </template>
     </el-dialog>
@@ -174,7 +173,7 @@
 </template>
 
 <script>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
   Plus, 
@@ -186,10 +185,11 @@ import {
 } from '@element-plus/icons-vue'
 import request from '@/api/request'
 
+import authService from '../services/authService'
 // API基础URL已由全局request统一配置
 
 export default {
-  name: 'Categories',
+  name: 'Groups',
   components: {
     Plus,
     Folder,
@@ -202,8 +202,8 @@ export default {
     const loading = ref(false)
     const dialogVisible = ref(false)
     const submitting = ref(false)
-    const editingCategory = ref(false)
-    const categoryFormRef = ref()
+    const editingGroup = ref(false)
+    const groupFormRef = ref()
     
     // 统计数据
     const stats = ref({
@@ -213,35 +213,38 @@ export default {
       sales: 0
     })
     
-    // 分类列表
-    const categories = ref([])
+    // 分组列表
+    const groups = ref([])
     
     // 当前商家ID（实际项目中应该从登录状态获取）
-    const currentMerchantId = 1
+    const currentMerchantId = computed(() => {
+      const userInfo = authService.getUserInfo()
+      return userInfo?.merchant_id || userInfo?.id
+    })
     
-    // 分类表单
-    const categoryForm = reactive({
+    // 分组表单
+    const groupForm = reactive({
       name: '',
       description: '',
       sort_order: 0,
-      status: 'active',
+      status: '',
       icon_url: ''
     })
     
-    const categoryRules = {
+    const groupRules = {
       name: [
-        { required: true, message: '请输入分类名称', trigger: 'blur' },
-        { min: 2, max: 20, message: '分类名称长度在 2 到 20 个字符', trigger: 'blur' }
+        { required: true, message: '请输入分组名称', trigger: 'blur' },
+        { min: 2, max: 20, message: '分组名称长度在 2 到 20 个字符', trigger: 'blur' }
       ],
       description: [
-        { required: true, message: '请输入分类描述', trigger: 'blur' },
-        { max: 200, message: '分类描述不能超过 200 个字符', trigger: 'blur' }
+        { required: true, message: '请输入分组描述', trigger: 'blur' },
+        { max: 200, message: '分组描述不能超过 200 个字符', trigger: 'blur' }
       ],
       sort_order: [
         { required: true, message: '请输入排序权重', trigger: 'blur' }
       ],
       status: [
-        { required: true, message: '请选择分类状态', trigger: 'change' }
+        { required: true, message: '请选择分组状态', trigger: 'change' }
       ]
     }
     
@@ -249,35 +252,38 @@ export default {
     const uploadAction = 'https://jsonplaceholder.typicode.com/posts/'
     
     // API方法
-    const fetchCategories = async () => {
+    const fetchGroups = async () => {
       try {
         loading.value = true
-        const response = await request.get('/api/web/categories', {
-          params: {
-            merchant_id: currentMerchantId
-          }
+        const response = await request.get('/api/web/groups', {
+            merchant_id: currentMerchantId.value
         })
         
-        if (response.data.code === 200) {
-          categories.value = response.data.data.list.map(item => ({
+        // 调试：查看响应结构
+        console.log('API Response:', response)
+        console.log('Response data:', response.data)
+        console.log('Response data structure:', JSON.stringify(response.data, null, 2))
+        
+        if (response.code === 200) {
+          groups.value = response.data.list.map(item => ({
             id: item.id,
             name: item.name,
             description: item.description,
             sort: item.sort_order,
-            productCount: item.product_count,
+            productCount: item.product_count || 0,
             status: item.status,
             icon: item.icon_url,
             createTime: item.created_at
           }))
           
           // 更新统计数据
-          stats.value.total = response.data.data.pagination.total
-          stats.value.active = categories.value.filter(cat => cat.status === 'active').length
-          stats.value.products = categories.value.reduce((sum, cat) => sum + cat.productCount, 0)
+          stats.value.total = response.data.pagination.total
+          stats.value.active = groups.value.filter(grp => grp.status === 'active').length
+          stats.value.products = groups.value.reduce((sum, grp) => sum + grp.productCount, 0)
         }
       } catch (error) {
-        console.error('获取分类列表失败:', error)
-        ElMessage.error('获取分类列表失败')
+        console.error('获取分组列表失败:', error)
+        ElMessage.error('获取分组列表失败')
       } finally {
         loading.value = false
       }
@@ -285,75 +291,75 @@ export default {
     
     // 方法
     const showAddDialog = () => {
-      editingCategory.value = false
-      categoryForm.name = ''
-      categoryForm.description = ''
-      categoryForm.sort_order = 0
-      categoryForm.status = 'active'
-      categoryForm.icon_url = ''
+      editingGroup.value = false
+      groupForm.name = ''
+      groupForm.description = ''
+      groupForm.sort_order = 0
+      groupForm.status = 'active'
+      groupForm.icon_url = ''
       dialogVisible.value = true
     }
     
-    const editCategory = (category) => {
-      editingCategory.value = category.id
-      categoryForm.name = category.name
-      categoryForm.description = category.description
-      categoryForm.sort_order = category.sort
-      categoryForm.status = category.status
-      categoryForm.icon_url = category.icon
+    const editGroup = (group) => {
+      editingGroup.value = group.id
+      groupForm.name = group.name
+      groupForm.description = group.description
+      groupForm.sort_order = group.sort
+      groupForm.status = group.status
+      groupForm.icon_url = group.icon
       dialogVisible.value = true
     }
     
-    const submitCategory = async () => {
+    const submitGroup = async () => {
       try {
-        await categoryFormRef.value.validate()
+        await groupFormRef.value.validate()
         submitting.value = true
         
         const requestData = {
-          name: categoryForm.name,
-          description: categoryForm.description,
-          sort_order: categoryForm.sort_order,
-          status: categoryForm.status,
-          icon_url: categoryForm.icon_url,
+          name: groupForm.name,
+          description: groupForm.description,
+          sort_order: groupForm.sort_order,
+          status: groupForm.status,
+          icon_url: groupForm.icon_url,
           merchant_id: currentMerchantId
         }
         
         let response
-        if (editingCategory.value) {
-          // 更新分类
-          response = await request.put(`/categories/${editingCategory.value}`, requestData)
+        if (editingGroup.value) {
+          // 更新分组
+          response = await request.put(`/api/web/groups/${editingGroup.value}`, requestData)
         } else {
-          // 创建分类
-          response = await request.post('/categories', requestData)
+          // 创建分组
+          response = await request.post('/api/web/groups', requestData)
         }
         
-        if (response.data.code === 200) {
-          ElMessage.success(editingCategory.value ? '分类更新成功' : '分类添加成功')
+        if (response.code === 200) {
+          ElMessage.success(editingGroup.value ? '分组更新成功' : '分组添加成功')
           dialogVisible.value = false
-          fetchCategories() // 重新获取列表
+          fetchGroups() // 重新获取列表
         } else {
           ElMessage.error(response.data.message || '操作失败')
         }
       } catch (error) {
-        console.error('提交分类失败:', error)
+        console.error('提交分组失败:', error)
         ElMessage.error(error.response?.data?.message || '操作失败')
       } finally {
         submitting.value = false
       }
     }
     
-    const toggleStatus = async (category) => {
-      const action = category.status === 'active' ? '禁用' : '启用'
+    const toggleStatus = async (group) => {
+      const action = group.status === 'active' ? '禁用' : '启用'
       try {
-        await ElMessageBox.confirm(`确定要${action}分类"${category.name}"吗？`, '确认操作')
+        await ElMessageBox.confirm(`确定要${action}分组"${group.name}"吗？`, '确认操作')
         
-        const response = await request.put(`/categories/${category.id}`, {
-          status: category.status === 'active' ? 'inactive' : 'active'
+        const response = await request.put(`/api/web/groups/${group.id}`, {
+          status: group.status === 'active' ? 'inactive' : 'active'
         })
         
-        if (response.data.code === 200) {
+        if (response.code === 200) {
           ElMessage.success(`${action}成功`)
-          fetchCategories() // 重新获取列表
+          fetchGroups() // 重新获取列表
         } else {
           ElMessage.error(response.data.message || '操作失败')
         }
@@ -365,23 +371,23 @@ export default {
       }
     }
     
-    const deleteCategory = async (category) => {
+    const deleteGroup = async (group) => {
       try {
-        await ElMessageBox.confirm(`确定要删除分类"${category.name}"吗？此操作不可恢复！`, '确认删除', {
+        await ElMessageBox.confirm(`确定要删除分组"${group.name}"吗？此操作不可恢复！`, '确认删除', {
           type: 'warning'
         })
         
-        const response = await request.delete(`/categories/${category.id}`)
+        const response = await request.delete(`/api/web/groups/${group.id}`)
         
-        if (response.data.code === 200) {
+        if (response.code === 200) {
           ElMessage.success('删除成功')
-          fetchCategories() // 重新获取列表
+          fetchGroups() // 重新获取列表
         } else {
           ElMessage.error(response.data.message || '删除失败')
         }
       } catch (error) {
         if (error !== 'cancel') {
-          console.error('删除分类失败:', error)
+          console.error('删除分组失败:', error)
           ElMessage.error(error.response?.data?.message || '删除失败')
         }
       }
@@ -404,36 +410,36 @@ export default {
     
     const handleIconSuccess = (response, file) => {
       // 模拟上传成功
-      categoryForm.icon_url = URL.createObjectURL(file.raw)
+      groupForm.icon_url = URL.createObjectURL(file.raw)
       ElMessage.success('图标上传成功')
     }
     
     const removeIcon = () => {
-      categoryForm.icon_url = ''
+      groupForm.icon_url = ''
     }
     
     // 生命周期钩子
     onMounted(() => {
-      fetchCategories()
+      fetchGroups()
     })
     
     return {
       loading,
       dialogVisible,
       submitting,
-      editingCategory,
-      categoryFormRef,
+      editingGroup,
+      groupFormRef,
       stats,
-      categories,
-      categoryForm,
-      categoryRules,
+      groups,
+      groupForm,
+      groupRules,
       uploadAction,
-      fetchCategories,
+      fetchGroups,
       showAddDialog,
-      editCategory,
-      submitCategory,
+      editGroup,
+      submitGroup,
       toggleStatus,
-      deleteCategory,
+      deleteGroup,
       beforeIconUpload,
       handleIconSuccess,
       removeIcon
@@ -443,7 +449,7 @@ export default {
 </script>
 
 <style scoped>
-.categories {
+.groups {
   max-width: 1200px;
   margin: 0 auto;
 }
@@ -461,7 +467,7 @@ export default {
   margin: 0;
 }
 
-.category-stats {
+.group-stats {
   margin-bottom: 20px;
 }
 

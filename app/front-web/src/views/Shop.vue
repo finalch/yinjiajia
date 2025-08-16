@@ -4,12 +4,12 @@
     <div class="filter-bar">
       <el-row :gutter="20">
         <el-col :span="6">
-          <el-select v-model="filters.category" placeholder="选择分类" clearable>
+          <el-select v-model="filters.group" placeholder="选择分类" clearable>
             <el-option
-              v-for="category in categories"
-              :key="category.id"
-              :label="category.name"
-              :value="category.id"
+              v-for="group in groups"
+              :key="group.id"
+              :label="group.name"
+              :value="group.id"
             />
           </el-select>
         </el-col>
@@ -101,7 +101,7 @@ export default {
 
     // 筛选条件
     const filters = reactive({
-      category: '',
+      group: '',
       sort: 'default',
       priceRange: ''
     })
@@ -112,7 +112,7 @@ export default {
     const total = ref(100)
 
     // 商品分类
-    const categories = ref([
+    const groups = ref([
       { id: 1, name: '手机数码' },
       { id: 2, name: '服装配饰' },
       { id: 3, name: '家居生活' },
@@ -131,7 +131,7 @@ export default {
         image: 'https://img.alicdn.com/imgextra/i1/O1CN01Z5paLz1UyR3MKMFvk_!!6000000002585-0-tps-400-400.jpg',
         sales: 2500,
         rating: 4.8,
-        category: 1
+        group: 1
       },
       {
         id: 1002,
@@ -141,7 +141,7 @@ export default {
         image: 'https://img.alicdn.com/imgextra/i3/O1CN01c26iB51UyR3MKMFvk_!!6000000002585-0-tps-400-400.jpg',
         sales: 1200,
         rating: 4.9,
-        category: 1
+        group: 1
       },
       {
         id: 1003,
@@ -151,7 +151,7 @@ export default {
         image: 'https://img.alicdn.com/imgextra/i4/O1CN01FgolV51UyR3MKMFvk_!!6000000002585-0-tps-400-400.jpg',
         sales: 5000,
         rating: 4.7,
-        category: 1
+        group: 1
       },
       {
         id: 1004,
@@ -161,7 +161,7 @@ export default {
         image: 'https://img.alicdn.com/imgextra/i2/O1CN01Z5paLz1UyR3MKMFvk_!!6000000002585-0-tps-400-400.jpg',
         sales: 1800,
         rating: 4.6,
-        category: 1
+        group: 1
       },
       {
         id: 2001,
@@ -171,7 +171,7 @@ export default {
         image: 'https://img.alicdn.com/imgextra/i1/O1CN01c26iB51UyR3MKMFvk_!!6000000002585-0-tps-400-400.jpg',
         sales: 3200,
         rating: 4.5,
-        category: 2
+        group: 2
       },
       {
         id: 2002,
@@ -181,7 +181,7 @@ export default {
         image: 'https://img.alicdn.com/imgextra/i3/O1CN01FgolV51UyR3MKMFvk_!!6000000002585-0-tps-400-400.jpg',
         sales: 2100,
         rating: 4.7,
-        category: 2
+        group: 2
       },
       {
         id: 3001,
@@ -191,7 +191,7 @@ export default {
         image: 'https://img.alicdn.com/imgextra/i4/O1CN01Z5paLz1UyR3MKMFvk_!!6000000002585-0-tps-400-400.jpg',
         sales: 4500,
         rating: 4.4,
-        category: 3
+        group: 3
       },
       {
         id: 3002,
@@ -201,7 +201,7 @@ export default {
         image: 'https://img.alicdn.com/imgextra/i2/O1CN01c26iB51UyR3MKMFvk_!!6000000002585-0-tps-400-400.jpg',
         sales: 800,
         rating: 4.8,
-        category: 3
+        group: 3
       }
     ])
 
@@ -214,7 +214,7 @@ export default {
 
     // 重置筛选
     const resetFilters = () => {
-      filters.category = ''
+      filters.group = ''
       filters.sort = 'default'
       filters.priceRange = ''
       applyFilters()
@@ -248,14 +248,14 @@ export default {
 
     onMounted(() => {
       // 从URL参数获取分类筛选
-      if (route.query.category) {
-        filters.category = parseInt(route.query.category)
+      if (route.query.group) {
+        filters.group = parseInt(route.query.group)
       }
     })
 
     return {
       filters,
-      categories,
+      groups,
       products,
       currentPage,
       pageSize,

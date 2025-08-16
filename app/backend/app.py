@@ -49,13 +49,17 @@ def create_app():
     from api.web.order import web_order_api
     from api.app.review import app_review_api
     from api.web.review import web_review_api
-    from api.web.category import category_bp
+    from api.web.group import web_group_api
     from api.web.analytics import web_analytics_api
     from api.web.finance import web_finance_api
     from api.web.customer_service import web_customer_service_api
     from api.web.media import web_media_api
     from api.web.auth import web_auth_api
     from api.web.health import web_health_api
+
+    # 全局接口
+    from category import category_api
+    app.register_blueprint(category_api)
 
     app.register_blueprint(app_product_api)
     app.register_blueprint(app_cart_api)
@@ -66,7 +70,7 @@ def create_app():
     app.register_blueprint(web_order_api)
     app.register_blueprint(app_review_api)
     app.register_blueprint(web_review_api)
-    app.register_blueprint(category_bp)
+    app.register_blueprint(web_group_api)
     app.register_blueprint(web_analytics_api)
     app.register_blueprint(web_finance_api)
     app.register_blueprint(web_customer_service_api)
@@ -74,10 +78,12 @@ def create_app():
     app.register_blueprint(web_auth_api)
     app.register_blueprint(web_health_api)
 
+
+
     logger.info("All blueprints registered successfully")
     return app, logger, Config.LOG_PATH
 
 if __name__ == '__main__':
     app, logger, LOG_PATH = create_app()
     logger.info(f"Starting Flask app, log file: {LOG_PATH}")
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)

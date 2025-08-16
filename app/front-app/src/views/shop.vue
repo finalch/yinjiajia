@@ -14,23 +14,23 @@
 		</div>
 
 		<!-- 分类筛选 -->
-		<div class="category-filter">
-			<div class="category-scroll">
+		<div class="group-filter">
+			<div class="group-scroll">
 				<div 
-					class="category-item" 
+					class="group-item" 
 					:class="{ active: selectedCategory === '' }"
 					@click="selectCategory('')"
 				>
 					全部
 				</div>
 				<div 
-					v-for="category in categories" 
-					:key="category.id"
-					class="category-item" 
-					:class="{ active: selectedCategory === category.id }"
-					@click="selectCategory(category.id)"
+					v-for="group in groups" 
+					:key="group.id"
+					class="group-item" 
+					:class="{ active: selectedCategory === group.id }"
+					@click="selectCategory(group.id)"
 				>
-					{{ category.name }}
+					{{ group.name }}
 				</div>
 			</div>
 		</div>
@@ -68,7 +68,7 @@
 				<div class="product-info">
 					<div class="product-title">{{ item.name }}</div>
 					<div class="product-meta">
-						<span class="category-name">{{ item.category_name }}</span>
+						<span class="group-name">{{ item.category_name }}</span>
 						<span class="sales-count">已售{{ item.sales_count || 0 }}件</span>
 					</div>
 					<div class="price-section">
@@ -114,7 +114,7 @@
 		data() {
 			return {
 				products: [],
-				categories: [],
+				groups: [],
 				selectedCategory: '',
 				searchKeyword: '',
 				sortBy: 'created_at',
@@ -143,7 +143,7 @@
 					const response = await productApi.getCategories()
 					
 					if (response.data.code === 200) {
-						this.categories = response.data.data
+						this.groups = response.data.data
 					}
 				} catch (error) {
 					console.error('获取分类失败:', error)
@@ -329,18 +329,18 @@
 		background: transparent;
 	}
 
-	.category-filter {
+	.group-filter {
 		margin-bottom: 20px;
 	}
 
-	.category-scroll {
+	.group-scroll {
 		display: flex;
 		overflow-x: auto;
 		gap: 10px;
 		padding: 10px 0;
 	}
 
-	.category-item {
+	.group-item {
 		padding: 8px 15px;
 		font-size: 14px;
 		color: #666;
@@ -351,11 +351,11 @@
 		transition: all 0.3s;
 	}
 
-	.category-item:hover {
+	.group-item:hover {
 		background-color: #e0e0e0;
 	}
 
-	.category-item.active {
+	.group-item.active {
 		background-color: #e93b3d;
 		color: #fff;
 		font-weight: bold;

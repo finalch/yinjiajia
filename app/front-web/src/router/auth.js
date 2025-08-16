@@ -6,7 +6,7 @@ import authService from '../services/authService'
 const protectedRoutes = [
   '/dashboard',
   '/products',
-  '/categories',
+  '/groups',
   '/orders',
   '/logistics',
   '/analytics',

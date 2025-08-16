@@ -22,10 +22,10 @@ export const productApi = {
 		})
 	},
 	
-	// 获取商品分类
-	getCategories() {
+	// 获取商品分组
+	getGroups() {
 		return request({
-			url: '/api/app/product/categories',
+			url: '/api/app/product/groups',
 			method: 'GET'
 		})
 	}
@@ -135,7 +135,7 @@ export const orderApi = {
 export default {
 	productApi,
 	cartApi,
-  orderApi
+  	orderApi
 } 
 
 // 认证API

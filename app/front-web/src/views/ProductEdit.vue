@@ -30,13 +30,28 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="商品分类" prop="categoryId">
-              <el-select v-model="form.categoryId" placeholder="选择商品分类" style="width: 100%">
+            <el-form-item label="商品分组" prop="groupId">
+              <el-select v-model="form.groupId" placeholder="选择商品分组" style="width: 100%">
                 <el-option
-                  v-for="category in categories"
-                  :key="category.id"
-                  :label="category.name"
-                  :value="category.id"
+                  v-for="group in groups"
+                  :key="group.id"
+                  :label="group.name"
+                  :value="group.id"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="商品品类" prop="categoryUuid">
+              <el-select v-model="form.categoryUuid" placeholder="选择商品品类" style="width: 100%">
+                <el-option
+                  v-for="cat in categories"
+                  :key="cat.uuid"
+                  :label="cat.name"
+                  :value="cat.uuid"
                 />
               </el-select>
             </el-form-item>
@@ -277,8 +292,8 @@ export default {
     const formRef = ref()
     const saving = ref(false)
     
-    // 商品分类
-    const categories = ref([
+    // 商品分组
+    const groups = ref([
       { id: 1, name: '手机数码' },
       { id: 2, name: '服装配饰' },
       { id: 3, name: '家居生活' },
@@ -286,10 +301,14 @@ export default {
       { id: 5, name: '运动户外' }
     ])
     
+    // 商品品类
+    const categories = ref([])
+    
     // 表单数据
     const form = reactive({
       name: '',
-      categoryId: '',
+      groupId: '',
+      categoryUuid: '',
       price: 0,
       stock: 0,
       description: '',
@@ -308,8 +327,11 @@ export default {
         { required: true, message: '请输入商品名称', trigger: 'blur' },
         { min: 2, max: 100, message: '商品名称长度在 2 到 100 个字符', trigger: 'blur' }
       ],
-      categoryId: [
-        { required: true, message: '请选择商品分类', trigger: 'change' }
+      groupId: [
+        { required: true, message: '请选择商品分组', trigger: 'change' }
+      ],
+      categoryUuid: [
+        { required: true, message: '请选择商品品类', trigger: 'change' }
       ],
       price: [
         { required: true, message: '请输入商品价格', trigger: 'blur' },
@@ -344,7 +366,8 @@ export default {
           
           // 填充基本信息
           form.name = product.name
-          form.categoryId = product.category_id
+          form.groupId = product.group_id
+          form.categoryUuid = product.category_uuid || ''
           form.description = product.description || ''
           form.detail = product.detail || ''
           form.hasSpecs = product.has_specs || false
@@ -408,7 +431,8 @@ export default {
           name: form.name,
           description: form.description,
           detail: form.detail,
-          category_id: form.categoryId,
+          group_id: form.groupId,
+          category_uuid: form.categoryUuid,
           main_image: form.mainImage,
           images: form.images.map(img => img.url),
           videos: form.videos.map(video => video.url),
@@ -685,6 +709,14 @@ export default {
     
     // 页面加载时获取商品数据
     onMounted(async () => {
+      // 获取品类列表
+      try {
+        const categoryRes = await axios.get('/api/g/category')
+        categories.value = (categoryRes.data && categoryRes.data.data) ? categoryRes.data : []
+      } catch (error) {
+        console.error('获取品类列表失败:', error)
+      }
+      
       await loadProductData()
     })
     
@@ -698,6 +730,7 @@ export default {
     return {
       formRef,
       saving,
+      groups,
       categories,
       form,
       rules,

@@ -31,26 +31,42 @@ class Merchant(db.Model):
     # 关联关系
     products = db.relationship('Product', backref='merchant', lazy=True)  # 商家商品
     account = db.relationship('Account', backref='merchant', uselist=False)  # 商家账户
-    categories = db.relationship('Category', backref='merchant', lazy=True)  # 商家分类
+    # 商家分组（非外键模式，不定义关系）
+    # groups = db.relationship('Group', primaryjoin='Merchant.id == foreign(Group.merchant_id)', lazy=True)
     order_items = db.relationship('OrderItem', backref='merchant', lazy=True)  # 商家订单项
     order_stats = db.relationship('MerchantOrderStats', backref='merchant', lazy=True)  # 商家订单统计
 
+class Group(db.Model):
+    __tablename__ = 'groups'
+    id = db.Column(db.Integer, primary_key=True)  # 分组ID
+    name = db.Column(db.String(64), nullable=False)  # 分组名称
+    description = db.Column(db.String(256))  # 分组描述
+    icon_url = db.Column(db.String(256))  # 分组图标URL
+    sort_order = db.Column(db.Integer, default=0)  # 排序权重
+    status = db.Column(db.String(16), default='active')  # 状态：active/inactive
+    merchant_id = db.Column(db.Integer, nullable=False)  # 所属商家ID（非外键）
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
+    # 分组下的商品（非外键关系）
+    # products = db.relationship('Product', backref='group_rel', lazy=True)
+# 整个平台通用的全局商品分类
 class Category(db.Model):
-    __tablename__ = 'categories'
+    __tablename__ = 'global_categories'
     id = db.Column(db.Integer, primary_key=True)  # 分类ID
+    uuid = db.Column(db.String(64), nullable=False)  # 分类UUID
     name = db.Column(db.String(64), nullable=False)  # 分类名称
     description = db.Column(db.String(256))  # 分类描述
     icon_url = db.Column(db.String(256))  # 分类图标URL
     sort_order = db.Column(db.Integer, default=0)  # 排序权重
     status = db.Column(db.String(16), default='active')  # 状态：active/inactive
-    merchant_id = db.Column(db.Integer, db.ForeignKey('merchants.id'), nullable=False)  # 所属商家ID
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
-    products = db.relationship('Product', backref='category_rel', lazy=True)  # 分类下的商品
+    #  products = db.relationship('Product', backref='global_category_rel', lazy=True)  # 分类下的商品
 
 class Product(db.Model):
     __tablename__ = 'products'
     id = db.Column(db.Integer, primary_key=True)  # 商品ID
+    category_uuid = db.Column(db.String(64))  # 品类UUID
     name = db.Column(db.String(128), nullable=False)  # 商品名称
     description = db.Column(db.Text)  # 商品描述
     detail = db.Column(db.Text)  # 商品详情（富文本）
@@ -59,8 +75,8 @@ class Product(db.Model):
     stock = db.Column(db.Integer, default=0)  # 总库存数量
     image_url = db.Column(db.String(256))  # 商品图片URL
     video_url = db.Column(db.String(256))  # 商品视频URL
-    category = db.Column(db.String(64))  # 商品分类（兼容旧字段）
-    category_id = db.Column(db.Integer, db.ForeignKey('categories.id'))  # 分类ID（新字段）
+    # group = db.Column(db.String(64))  # 商品分组（兼容旧字段）
+    group_id = db.Column(db.Integer)  # 分组ID（非外键）
     merchant_id = db.Column(db.Integer, db.ForeignKey('merchants.id'), nullable=False)  # 所属商家ID
     status = db.Column(db.String(16), default='pending')  # 商品状态：pending(审核中)/on_sale(已上架)/off_sale(已下架)/rejected(审核失败)
     has_specs = db.Column(db.Boolean, default=False)  # 是否有规格

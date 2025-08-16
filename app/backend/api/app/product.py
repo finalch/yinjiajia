@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from models import db, Product, Category, ProductSpec, ProductSpecCombination, Order, OrderItem, Review
+from models import db, Product, Group, ProductSpec, ProductSpecCombination, Order, OrderItem, Review
 from sqlalchemy import or_, func
 import json
 
@@ -11,7 +11,7 @@ def get_products():
     # 获取查询参数
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
-    category_id = request.args.get('category_id', type=int)
+    group_id = request.args.get('group_id', type=int)
     search = request.args.get('search', '')
     min_price = request.args.get('min_price', type=float)
     max_price = request.args.get('max_price', type=float)
@@ -21,9 +21,9 @@ def get_products():
     # 构建查询
     query = Product.query.filter(Product.status == 'on_sale')  # 只显示已上架商品
     
-    # 分类筛选
-    if category_id:
-        query = query.filter(Product.category_id == category_id)
+    # 分组筛选
+    if group_id:
+        query = query.filter(Product.group_id == group_id)
     
     # 搜索
     if search:
@@ -107,8 +107,8 @@ def get_products():
             'images': images,  # 改为images数组
             'image_url': product.image_url,  # 保留原字段
             'video_url': product.video_url,
-            'category_id': product.category_id,
-            'category_name': product.category.name if product.category else '',
+            'group_id': product.group_id,
+            'group_name': product.group.name if product.group else '',
             'merchant_id': product.merchant_id,
             'merchant_name': product.merchant.name if product.merchant else '',
             'has_specs': product.has_specs,  # 是否有规格
@@ -146,9 +146,9 @@ def get_product_detail(product_id):
             'message': '商品不存在或已下架'
         }), 404
     
-    # 获取相关商品（同分类）
+    # 获取相关商品（同分组）
     related_products = Product.query.filter(
-        Product.category_id == product.category_id,
+        Product.group_id == product.group_id,
         Product.id != product.id,
         Product.status == 'on_sale'
     ).limit(6).all()
@@ -224,8 +224,8 @@ def get_product_detail(product_id):
         'images': images,  # 改为images数组
         'image_url': product.image_url,  # 保留原字段
         'video_url': product.video_url,
-        'category_id': product.category_id,
-        'category_name': product.category.name if product.category else '',
+        'group_id': product.group_id,
+        'group_name': product.group.name if product.group else '',
         'merchant_id': product.merchant_id,
         'merchant_name': product.merchant.name if product.merchant else '',
         'has_specs': product.has_specs,  # 是否有规格
@@ -245,30 +245,30 @@ def get_product_detail(product_id):
         'data': data
     }), 200
 
-@app_product_api.route('/categories', methods=['GET'])
-def get_categories():
-    """APP端-获取商品分类"""
-    categories = Category.query.all()
+@app_product_api.route('/groups', methods=['GET'])
+def get_groups():
+    """APP端-获取商品分组"""
+    groups = Group.query.all()
     
     data = []
-    for category in categories:
-        # 统计该分类下的商品数量
+    for group in groups:
+        # 统计该分组下的商品数量
         product_count = Product.query.filter(
-            Product.category_id == category.id,
+            Product.group_id == group.id,
             Product.status == 'on_sale'
         ).count()
         
         data.append({
-            'id': category.id,
-            'name': category.name,
-            'description': category.description,
-            'icon_url': category.icon_url,
+            'id': group.id,
+            'name': group.name,
+            'description': group.description,
+            'icon_url': group.icon_url,
             'product_count': product_count,
-            'created_at': category.created_at.isoformat() if category.created_at else None
+            'created_at': group.created_at.isoformat() if group.created_at else None
         })
     
     return jsonify({
         'code': 200,
-        'message': '获取分类列表成功',
+        'message': '获取分组列表成功',
         'data': data
     }), 200

@@ -8,11 +8,11 @@ web_customer_service_api = Blueprint('web_customer_service_api', __name__, url_p
 # 模拟客服消息数据（实际应该创建数据库表）
 customer_messages = []
 quick_replies = [
-    {"id": 1, "content": "您好，请问有什么可以帮助您的吗？", "category": "greeting"},
-    {"id": 2, "content": "感谢您的咨询，我们会尽快为您处理。", "category": "thanks"},
-    {"id": 3, "content": "关于发货时间，我们会在24小时内发出。", "category": "shipping"},
-    {"id": 4, "content": "如果商品有质量问题，我们支持7天无理由退换。", "category": "return"},
-    {"id": 5, "content": "您可以通过订单号查询物流信息。", "category": "logistics"}
+    {"id": 1, "content": "您好，请问有什么可以帮助您的吗？", "group": "greeting"},
+    {"id": 2, "content": "感谢您的咨询，我们会尽快为您处理。", "group": "thanks"},
+    {"id": 3, "content": "关于发货时间，我们会在24小时内发出。", "group": "shipping"},
+    {"id": 4, "content": "如果商品有质量问题，我们支持7天无理由退换。", "group": "return"},
+    {"id": 5, "content": "您可以通过订单号查询物流信息。", "group": "logistics"}
 ]
 
 @web_customer_service_api.route('/messages', methods=['GET'])
@@ -129,10 +129,10 @@ def reply_message(message_id):
 @web_customer_service_api.route('/quick-replies', methods=['GET'])
 def get_quick_replies():
     """WEB端-获取快捷回复列表"""
-    category = request.args.get('category', type=str)
+    group = request.args.get('group', type=str)
     
-    if category:
-        filtered_replies = [reply for reply in quick_replies if reply['category'] == category]
+    if group:
+        filtered_replies = [reply for reply in quick_replies if reply['group'] == group]
     else:
         filtered_replies = quick_replies
     
@@ -153,7 +153,7 @@ def add_quick_reply():
     new_reply = {
         'id': len(quick_replies) + 1,
         'content': data['content'],
-        'category': data.get('category', 'custom')
+        'group': data.get('group', 'custom')
     }
     
     quick_replies.append(new_reply)
@@ -249,25 +249,25 @@ def get_common_questions():
             'id': 1,
             'question': '如何查询订单物流？',
             'answer': '您可以在订单详情页面查看物流信息，或者联系客服提供订单号查询。',
-            'category': 'order'
+            'group': 'order'
         },
         {
             'id': 2,
             'question': '支持哪些支付方式？',
             'answer': '我们支持微信支付、支付宝、银行卡等多种支付方式。',
-            'category': 'payment'
+            'group': 'payment'
         },
         {
             'id': 3,
             'question': '退换货政策是什么？',
             'answer': '我们支持7天无理由退换货，商品质量问题支持15天退换。',
-            'category': 'return'
+            'group': 'return'
         },
         {
             'id': 4,
             'question': '发货时间是多长？',
             'answer': '正常情况下，我们会在24小时内发货，偏远地区可能需要2-3天。',
-            'category': 'shipping'
+            'group': 'shipping'
         }
     ]
     
@@ -289,7 +289,7 @@ def add_common_question():
         'id': 5,  # 模拟ID
         'question': data['question'],
         'answer': data['answer'],
-        'category': data.get('category', 'other')
+        'group': data.get('group', 'other')
     }
     
     return jsonify({
