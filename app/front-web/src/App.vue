@@ -189,10 +189,10 @@ onUnmounted(() => {
               <el-menu-item index="/after-sales">售后处理</el-menu-item>
             </el-sub-menu>
             
-            <el-menu-item index="/analytics">
-              <el-icon><TrendCharts /></el-icon>
-              <span>数据分析</span>
-            </el-menu-item>
+<!--            <el-menu-item index="/analytics">-->
+<!--              <el-icon><TrendCharts /></el-icon>-->
+<!--              <span>数据分析</span>-->
+<!--            </el-menu-item>-->
             
             <el-menu-item index="/finance">
               <el-icon><Money /></el-icon>

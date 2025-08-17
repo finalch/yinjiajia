@@ -355,3 +355,180 @@ def get_revenue_analytics():
             "daily_revenue": revenue_data
         }
     }), 200
+
+@web_analytics_api.route('/trends', methods=['GET'])
+def get_trends_analytics():
+    """WEB端-获取趋势分析数据（销售额、订单数）"""
+    merchant_id = g.merchant_id
+    period = request.args.get('period', '7d')  # 7d, 30d, 90d
+    
+    if not merchant_id:
+        return jsonify({"code": 400, "message": "商家ID不能为空"}), 400
+
+    today = datetime.utcnow().date()
+    
+    # 根据period确定天数
+    if period == '7d':
+        days = 7
+    elif period == '30d':
+        days = 30
+    elif period == '90d':
+        days = 90
+    else:
+        days = 7
+    
+    start_date = today - timedelta(days=days-1)  # 包含今天，所以减days-1
+    
+    # 定义有效的订单状态
+    valid_statuses = ['paid', 'shipped', 'delivered', 'completed']
+    
+    # 查询每日的销售额和订单数
+    daily_stats = db.session.query(
+        func.date(Order.created_at).label('date'),
+        func.count(func.distinct(Order.id)).label('order_count'),
+        func.sum(OrderItem.subtotal).label('sales_amount')
+    ).select_from(OrderItem).join(
+        Order, Order.id == OrderItem.order_id
+    ).filter(
+        OrderItem.merchant_id == merchant_id,
+        Order.created_at >= start_date,
+        Order.status.in_(valid_statuses)
+    ).group_by(
+        func.date(Order.created_at)
+    ).all()
+    
+    # 创建日期到数据的映射
+    stats_map = {item.date: {'orders': item.order_count, 'sales': item.sales_amount or 0} for item in daily_stats}
+    
+    # 填充完整的日期范围数据
+    trends_data = []
+    total_orders = 0
+    total_sales = 0.0
+    
+    for i in range(days):
+        current_date = start_date + timedelta(days=i)
+        date_str = current_date.strftime('%Y-%m-%d')
+        
+        if current_date in stats_map:
+            daily_orders = stats_map[current_date]['orders']
+            daily_sales = float(stats_map[current_date]['sales'])
+        else:
+            daily_orders = 0
+            daily_sales = 0.0
+        
+        trends_data.append({
+            'date': date_str,
+            'orders': daily_orders,
+            'sales': daily_sales
+        })
+        
+        total_orders += daily_orders
+        total_sales += daily_sales
+    
+    # # 计算平均值
+    # avg_orders = total_orders / days if days > 0 else 0
+    # avg_sales = total_sales / days if days > 0 else 0
+    
+    # # 计算增长率（与上一个周期比较）
+    # if period == '7d':
+    #     prev_period_days = 7
+    # elif period == '30d':
+    #     prev_period_days = 30
+    # elif period == '90d':
+    #     prev_period_days = 90
+    # else:
+    #     prev_period_days = 7
+    
+    # prev_start_date = start_date - timedelta(days=prev_period_days)
+    
+    # # 查询上一个周期的数据
+    # prev_period_stats = db.session.query(
+    #     func.count(func.distinct(Order.id)).label('order_count'),
+    #     func.sum(OrderItem.subtotal).label('sales_amount')
+    # ).select_from(OrderItem).join(
+    #     Order, Order.id == OrderItem.order_id
+    # ).filter(
+    #     OrderItem.merchant_id == merchant_id,
+    #     Order.created_at >= prev_start_date,
+    #     Order.created_at < start_date,
+    #     Order.status.in_(valid_statuses)
+    # ).first()
+    
+    # prev_orders = prev_period_stats.order_count or 0
+    # prev_sales = float(prev_period_stats.sales_amount or 0)
+    
+    # # 计算增长率
+    # order_growth_rate = 0
+    # sales_growth_rate = 0
+    
+    # if prev_orders > 0:
+    #     order_growth_rate = ((total_orders - prev_orders) / prev_orders) * 100
+    
+    # if prev_sales > 0:
+    #     sales_growth_rate = ((total_sales - prev_sales) / prev_sales) * 100
+    
+    return jsonify({
+        "code": 200,
+        "message": "获取趋势分析数据成功",
+        "data": {
+            "period": period,
+            # "summary": {
+            #     "total_orders": total_orders,
+            #     "total_sales": round(total_sales, 2),
+            #     "avg_orders": round(avg_orders, 2),
+            #     "avg_sales": round(avg_sales, 2),
+            #     "order_growth_rate": round(order_growth_rate, 2),
+            #     "sales_growth_rate": round(sales_growth_rate, 2)
+            # },
+            "trends": trends_data
+        }
+    }), 200
+
+@web_analytics_api.route('/trends/compare', methods=['GET'])
+def get_trends_comparison():
+    """WEB端-获取多周期趋势对比数据"""
+    merchant_id = g.merchant_id
+    
+    if not merchant_id:
+        return jsonify({"code": 400, "message": "商家ID不能为空"}), 400
+
+    today = datetime.utcnow().date()
+    valid_statuses = ['paid', 'shipped', 'delivered', 'completed']
+    
+    # 定义要比较的周期
+    periods = [
+        {'name': '7d', 'days': 7},
+        {'name': '30d', 'days': 30},
+        {'name': '90d', 'days': 90}
+    ]
+    
+    comparison_data = {}
+    
+    for period in periods:
+        days = period['days']
+        start_date = today - timedelta(days=days-1)
+        
+        # 查询该周期的统计数据
+        stats = db.session.query(
+            func.count(func.distinct(Order.id)).label('order_count'),
+            func.sum(OrderItem.subtotal).label('sales_amount')
+        ).select_from(OrderItem).join(
+            Order, Order.id == OrderItem.order_id
+        ).filter(
+            OrderItem.merchant_id == merchant_id,
+            Order.created_at >= start_date,
+            Order.status.in_(valid_statuses)
+        ).first()
+        
+        comparison_data[period['name']] = {
+            'orders': stats.order_count or 0,
+            'sales': float(stats.sales_amount or 0),
+            'avg_orders': round((stats.order_count or 0) / days, 2),
+            'avg_sales': round(float(stats.sales_amount or 0) / days, 2)
+        }
+    
+    return jsonify({
+        "code": 200,
+        "message": "获取趋势对比数据成功",
+        "data": comparison_data
+    }), 200

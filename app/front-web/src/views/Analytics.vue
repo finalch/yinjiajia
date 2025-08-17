@@ -111,33 +111,14 @@
           </div>
         </el-card>
       </el-col>
-      
       <el-col :span="8">
-        <el-card class="chart-card">
-          <template #header>
-            <span>商品分类占比</span>
-          </template>
-          <div class="chart-container">
-            <div class="chart-placeholder">
-              <el-icon size="48" color="#ddd"><PieChart /></el-icon>
-              <p>饼图</p>
-              <p class="chart-desc">展示各商品分类的销售占比</p>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
-
-    <!-- 商品分析 -->
-    <el-row :gutter="20" class="product-analysis">
-      <el-col :span="12">
         <el-card class="analysis-card">
           <template #header>
             <span>热销商品 TOP 10</span>
           </template>
           <div class="product-list">
-            <div 
-              v-for="(product, index) in hotProducts" 
+            <div
+              v-for="(product, index) in hotProducts"
               :key="product.id"
               class="product-item"
             >
@@ -156,70 +137,7 @@
           </div>
         </el-card>
       </el-col>
-      
-      <el-col :span="12">
-        <el-card class="analysis-card">
-          <template #header>
-            <span>客户分析</span>
-          </template>
-          <div class="customer-stats">
-            <div class="stat-item">
-              <div class="stat-number">{{ newCustomers }}</div>
-              <div class="stat-label">新增客户</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-number">{{ activeCustomers }}</div>
-              <div class="stat-label">活跃客户</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-number">{{ repeatCustomers }}</div>
-              <div class="stat-label">复购客户</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-number">{{ avgOrderValue }}</div>
-              <div class="stat-label">客单价</div>
-            </div>
-          </div>
-          
-          <div class="customer-chart">
-            <div class="chart-placeholder">
-              <el-icon size="48" color="#ddd"><User /></el-icon>
-              <p>客户分析图表</p>
-              <p class="chart-desc">展示客户增长和活跃度分析</p>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
     </el-row>
-
-    <!-- 地域分析 -->
-    <el-card class="region-analysis">
-      <template #header>
-        <span>地域销售分析</span>
-      </template>
-      <el-table :data="regionData" border>
-        <el-table-column prop="region" label="地区" width="150" />
-        <el-table-column prop="orders" label="订单数" width="120" />
-        <el-table-column prop="revenue" label="销售额" width="150">
-          <template #default="{ row }">
-            ¥{{ formatNumber(row.revenue) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="customers" label="客户数" width="120" />
-        <el-table-column prop="avgOrder" label="平均订单金额" width="150">
-          <template #default="{ row }">
-            ¥{{ formatNumber(row.avgOrder) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="growth" label="增长率" width="120">
-          <template #default="{ row }">
-            <span :class="{ positive: row.growth > 0, negative: row.growth < 0 }">
-              {{ row.growth > 0 ? '+' : '' }}{{ row.growth }}%
-            </span>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
   </div>
 </template>
 
@@ -253,20 +171,20 @@ export default {
     const salesChartType = ref('revenue')
     
     // 核心指标
-    const totalRevenue = ref(125680.50)
-    const revenueChange = ref(12.5)
-    const totalOrders = ref(456)
-    const ordersChange = ref(-3.2)
-    const totalCustomers = ref(89)
-    const customersChange = ref(8.7)
-    const conversionRate = ref(3.2)
-    const conversionChange = ref(1.5)
+    const totalRevenue = ref(0)
+    const revenueChange = ref(0)
+    const totalOrders = ref(0)
+    const ordersChange = ref(0)
+    const totalCustomers = ref(0)
+    const customersChange = ref(0)
+    const conversionRate = ref(0)
+    const conversionChange = ref(0)
     
     // 客户分析
-    const newCustomers = ref(89)
-    const activeCustomers = ref(234)
-    const repeatCustomers = ref(67)
-    const avgOrderValue = ref(275.6)
+    const newCustomers = ref(0)
+    const activeCustomers = ref(0)
+    const repeatCustomers = ref(0)
+    const avgOrderValue = ref(0)
     
     // 热销商品
     const hotProducts = ref([
@@ -306,16 +224,7 @@ export default {
         image: 'https://img.alicdn.com/imgextra/i2/O1CN01Z5paLz1UyR3MKMFvk_!!6000000002585-0-tps-400-400.jpg'
       }
     ])
-    
-    // 地域数据
-    const regionData = ref([
-      { region: '北京市', orders: 89, revenue: 45678, customers: 67, avgOrder: 513.2, growth: 15.2 },
-      { region: '上海市', orders: 76, revenue: 39876, customers: 54, avgOrder: 524.7, growth: 8.7 },
-      { region: '广东省', orders: 65, revenue: 34567, customers: 48, avgOrder: 531.8, growth: 12.3 },
-      { region: '江苏省', orders: 54, revenue: 28765, customers: 39, avgOrder: 532.7, growth: -2.1 },
-      { region: '浙江省', orders: 43, revenue: 23456, customers: 32, avgOrder: 545.5, growth: 6.8 }
-    ])
-    
+
     // 方法
     const formatNumber = (num) => {
       return num.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -345,7 +254,7 @@ export default {
       repeatCustomers,
       avgOrderValue,
       hotProducts,
-      regionData,
+      // regionData,
       formatNumber,
       handleDateChange,
       exportReport
@@ -457,7 +366,7 @@ export default {
 }
 
 .chart-card {
-  height: 400px;
+  height: 500px;
 }
 
 .chart-container {
