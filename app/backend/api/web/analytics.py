@@ -1,23 +1,25 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, g
 from models import db, Order, OrderItem, Product, Review, Group
 from datetime import datetime, timedelta
 from sqlalchemy import func, and_
+from config.log import get_logger
 
 web_analytics_api = Blueprint('web_analytics_api', __name__, url_prefix='/api/web/analytics')
-
+logger = get_logger(__name__)
 @web_analytics_api.route('/dashboard', methods=['GET'])
 def get_dashboard_data():
     """WEB端-获取仪表板数据"""
-    merchant_id = request.args.get('merchant_id', type=int)
-    
+    # merchant_id = request.args.get('merchant_id', type=int)
+            # logger.error(f"merchant_id:", type(g.merchant_id))
+    merchant_id = g.merchant_id
     if not merchant_id:
         return jsonify({"code": 400, "message": "商家ID不能为空"}), 400
-    
+
     today = datetime.utcnow().date()
     yesterday = today - timedelta(days=1)
     this_month_start = today.replace(day=1)
     last_month_start = (this_month_start - timedelta(days=1)).replace(day=1)
-    
+
     revenue_statuses = ['paid', 'shipped', 'delivered', 'completed']
 
     # 今日数据（按商家维度去重订单 + 订单项小计）
@@ -37,12 +39,12 @@ def get_dashboard_data():
             func.date(Order.created_at) == today,
             Order.status.in_(revenue_statuses)
         ).scalar() or 0
-    
+
     today_products = Product.query.filter(
         Product.merchant_id == merchant_id,
         func.date(Product.created_at) == today
     ).count()
-    
+
     # 昨日数据
     yesterday_orders = db.session.query(func.count(func.distinct(Order.id))) \
         .select_from(OrderItem) \
@@ -60,7 +62,7 @@ def get_dashboard_data():
             func.date(Order.created_at) == yesterday,
             Order.status.in_(revenue_statuses)
         ).scalar() or 0
-    
+
     # 本月数据
     this_month_orders = db.session.query(func.count(func.distinct(Order.id))) \
         .select_from(OrderItem) \
@@ -78,10 +80,10 @@ def get_dashboard_data():
             Order.created_at >= this_month_start,
             Order.status.in_(revenue_statuses)
         ).scalar() or 0
-    
+
     # 总商品数
     total_products = Product.query.filter(Product.merchant_id == merchant_id).count()
-    
+
     # 总订单数（去重）
     total_orders = db.session.query(func.count(func.distinct(Order.id))) \
         .select_from(OrderItem) \
@@ -96,12 +98,12 @@ def get_dashboard_data():
             OrderItem.merchant_id == merchant_id,
             Order.status.in_(revenue_statuses)
         ).scalar() or 0
-    
+
     # 平均评分
     avg_rating = db.session.query(func.avg(Review.rating)).join(
         Product, Review.product_id == Product.id
     ).filter(Product.merchant_id == merchant_id).scalar() or 0
-    
+
     return jsonify({
         "code": 200,
         "message": "获取仪表板数据成功",
@@ -133,12 +135,12 @@ def get_sales_analytics():
     """WEB端-获取销售分析数据"""
     merchant_id = request.args.get('merchant_id', type=int)
     period = request.args.get('period', '7d')  # 7d, 30d, 90d
-    
+
     if not merchant_id:
         return jsonify({"code": 400, "message": "商家ID不能为空"}), 400
-    
+
     today = datetime.utcnow().date()
-    
+
     if period == '7d':
         days = 7
     elif period == '30d':
@@ -147,9 +149,9 @@ def get_sales_analytics():
         days = 90
     else:
         days = 7
-    
+
     start_date = today - timedelta(days=days)
-    
+
     # 每日销售数据
     daily_sales = db.session.query(
         func.date(Order.created_at).label('date'),
@@ -160,13 +162,13 @@ def get_sales_analytics():
         Order.created_at >= start_date,
         Order.status.in_(['paid', 'shipped', 'delivered'])
     ).group_by(func.date(Order.created_at)).all()
-    
+
     # 填充缺失的日期
     sales_data = []
     for i in range(days):
         date = start_date + timedelta(days=i)
         daily_data = next((item for item in daily_sales if item.date == date), None)
-        
+
         if daily_data:
             sales_data.append({
                 'date': date.strftime('%Y-%m-%d'),
@@ -179,12 +181,12 @@ def get_sales_analytics():
                 'orders': 0,
                 'sales': 0.0
             })
-    
+
     # 销售统计
     total_sales = sum(item['sales'] for item in sales_data)
     total_orders = sum(item['orders'] for item in sales_data)
     avg_order_value = total_sales / total_orders if total_orders > 0 else 0
-    
+
     return jsonify({
         "code": 200,
         "message": "获取销售分析成功",
@@ -202,10 +204,10 @@ def get_product_analytics():
     """WEB端-获取商品分析数据"""
     merchant_id = request.args.get('merchant_id', type=int)
     limit = request.args.get('limit', 10, type=int)
-    
+
     if not merchant_id:
         return jsonify({"code": 400, "message": "商家ID不能为空"}), 400
-    
+
     # 商品销量排行
     product_sales = db.session.query(
         Product.id,
@@ -221,7 +223,7 @@ def get_product_analytics():
     ).group_by(Product.id).order_by(
         func.count(Order.id).desc()
     ).limit(limit).all()
-    
+
     # 商品评价排行
     product_reviews = db.session.query(
         Product.id,
@@ -236,7 +238,7 @@ def get_product_analytics():
     ).group_by(Product.id).order_by(
         func.avg(Review.rating).desc()
     ).limit(limit).all()
-    
+
     # 分组销售统计
     group_sales = db.session.query(
         Group.name,
@@ -250,7 +252,7 @@ def get_product_analytics():
         Group.merchant_id == merchant_id,
         Order.status.in_(['paid', 'shipped', 'delivered'])
     ).group_by(Group.id).all()
-    
+
     return jsonify({
         "code": 200,
         "message": "获取商品分析成功",
@@ -287,21 +289,21 @@ def get_product_analytics():
 def get_revenue_analytics():
     """WEB端-获取收入分析数据"""
     merchant_id = request.args.get('merchant_id', type=int)
-    
+
     if not merchant_id:
         return jsonify({"code": 400, "message": "商家ID不能为空"}), 400
-    
+
     today = datetime.utcnow().date()
     this_month_start = today.replace(day=1)
     last_month_start = (this_month_start - timedelta(days=1)).replace(day=1)
-    
+
     # 本月收入
     this_month_revenue = db.session.query(func.sum(Order.total_amount)).filter(
         Order.merchant_id == merchant_id,
         Order.created_at >= this_month_start,
         Order.status.in_(['paid', 'shipped', 'delivered'])
     ).scalar() or 0
-    
+
     # 上月收入
     last_month_revenue = db.session.query(func.sum(Order.total_amount)).filter(
         Order.merchant_id == merchant_id,
@@ -309,12 +311,12 @@ def get_revenue_analytics():
         Order.created_at < this_month_start,
         Order.status.in_(['paid', 'shipped', 'delivered'])
     ).scalar() or 0
-    
+
     # 收入增长率
     growth_rate = 0
     if last_month_revenue > 0:
         growth_rate = ((this_month_revenue - last_month_revenue) / last_month_revenue) * 100
-    
+
     # 每日收入趋势（最近30天）
     thirty_days_ago = today - timedelta(days=30)
     daily_revenue = db.session.query(
@@ -325,13 +327,13 @@ def get_revenue_analytics():
         Order.created_at >= thirty_days_ago,
         Order.status.in_(['paid', 'shipped', 'delivered'])
     ).group_by(func.date(Order.created_at)).all()
-    
+
     # 填充缺失的日期
     revenue_data = []
     for i in range(30):
         date = thirty_days_ago + timedelta(days=i)
         daily_data = next((item for item in daily_revenue if item.date == date), None)
-        
+
         if daily_data:
             revenue_data.append({
                 'date': date.strftime('%Y-%m-%d'),
@@ -342,7 +344,7 @@ def get_revenue_analytics():
                 'date': date.strftime('%Y-%m-%d'),
                 'revenue': 0.0
             })
-    
+
     return jsonify({
         "code": 200,
         "message": "获取收入分析成功",
@@ -352,4 +354,4 @@ def get_revenue_analytics():
             "growth_rate": round(growth_rate, 2),
             "daily_revenue": revenue_data
         }
-    }), 200 
+    }), 200

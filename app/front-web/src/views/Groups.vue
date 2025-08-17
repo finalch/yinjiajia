@@ -184,7 +184,7 @@ import {
   Picture 
 } from '@element-plus/icons-vue'
 import request from '@/api/request'
-
+import groupService from '../services/groupService'
 import authService from '../services/authService'
 // API基础URL已由全局request统一配置
 
@@ -255,17 +255,14 @@ export default {
     const fetchGroups = async () => {
       try {
         loading.value = true
-        const response = await request.get('/api/web/groups', {
-            merchant_id: currentMerchantId.value
+        
+        // 使用 groupService 获取分组列表
+        const result = await groupService.getGroups({
+          merchant_id: currentMerchantId.value
         })
         
-        // 调试：查看响应结构
-        console.log('API Response:', response)
-        console.log('Response data:', response.data)
-        console.log('Response data structure:', JSON.stringify(response.data, null, 2))
-        
-        if (response.code === 200) {
-          groups.value = response.data.list.map(item => ({
+        if (result.success) {
+          groups.value = result.data.map(item => ({
             id: item.id,
             name: item.name,
             description: item.description,
@@ -277,9 +274,11 @@ export default {
           }))
           
           // 更新统计数据
-          stats.value.total = response.data.pagination.total
+          stats.value.total = result.total
           stats.value.active = groups.value.filter(grp => grp.status === 'active').length
           stats.value.products = groups.value.reduce((sum, grp) => sum + grp.productCount, 0)
+        } else {
+          ElMessage.error(result.message || '获取分组列表失败')
         }
       } catch (error) {
         console.error('获取分组列表失败:', error)
@@ -321,28 +320,28 @@ export default {
           sort_order: groupForm.sort_order,
           status: groupForm.status,
           icon_url: groupForm.icon_url,
-          merchant_id: currentMerchantId
+          merchant_id: currentMerchantId.value
         }
         
-        let response
+        let result
         if (editingGroup.value) {
           // 更新分组
-          response = await request.put(`/api/web/groups/${editingGroup.value}`, requestData)
+          result = await groupService.updateGroup(editingGroup.value, requestData)
         } else {
           // 创建分组
-          response = await request.post('/api/web/groups', requestData)
+          result = await groupService.createGroup(requestData)
         }
         
-        if (response.code === 200) {
-          ElMessage.success(editingGroup.value ? '分组更新成功' : '分组添加成功')
+        if (result.success) {
+          ElMessage.success(result.message || (editingGroup.value ? '分组更新成功' : '分组添加成功'))
           dialogVisible.value = false
           fetchGroups() // 重新获取列表
         } else {
-          ElMessage.error(response.data.message || '操作失败')
+          ElMessage.error(result.message || '操作失败')
         }
       } catch (error) {
         console.error('提交分组失败:', error)
-        ElMessage.error(error.response?.data?.message || '操作失败')
+        ElMessage.error('操作失败')
       } finally {
         submitting.value = false
       }
@@ -353,20 +352,18 @@ export default {
       try {
         await ElMessageBox.confirm(`确定要${action}分组"${group.name}"吗？`, '确认操作')
         
-        const response = await request.put(`/api/web/groups/${group.id}`, {
-          status: group.status === 'active' ? 'inactive' : 'active'
-        })
+        const result = await groupService.toggleGroupStatus(group.id, group.status === 'active' ? 'inactive' : 'active')
         
-        if (response.code === 200) {
-          ElMessage.success(`${action}成功`)
+        if (result.success) {
+          ElMessage.success(result.message || `${action}成功`)
           fetchGroups() // 重新获取列表
         } else {
-          ElMessage.error(response.data.message || '操作失败')
+          ElMessage.error(result.message || '操作失败')
         }
       } catch (error) {
         if (error !== 'cancel') {
           console.error('切换状态失败:', error)
-          ElMessage.error(error.response?.data?.message || '操作失败')
+          ElMessage.error('操作失败')
         }
       }
     }
@@ -377,18 +374,18 @@ export default {
           type: 'warning'
         })
         
-        const response = await request.delete(`/api/web/groups/${group.id}`)
+        const result = await groupService.deleteGroup(group.id)
         
-        if (response.code === 200) {
-          ElMessage.success('删除成功')
+        if (result.success) {
+          ElMessage.success(result.message || '删除成功')
           fetchGroups() // 重新获取列表
         } else {
-          ElMessage.error(response.data.message || '删除失败')
+          ElMessage.error(result.message || '删除失败')
         }
       } catch (error) {
         if (error !== 'cancel') {
           console.error('删除分组失败:', error)
-          ElMessage.error(error.response?.data?.message || '删除失败')
+          ElMessage.error('删除失败')
         }
       }
     }

@@ -5,7 +5,7 @@ from datetime import datetime
 
 # 日志配置
 LOG_PATH = 'logs/ecommerce.log'
-LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'NOTSET').upper()
 LOG_FORMAT = '%(asctime)s [%(levelname)s] [%(name)s:%(lineno)d] %(message)s'
 LOG_DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
 
@@ -35,7 +35,7 @@ def setup_logger(name: str) -> logging.Logger:
         backupCount=5,
         encoding='utf-8'
     )
-    file_handler.setLevel(logging.INFO)
+    file_handler.setLevel(logging.NOTSET)
     file_handler.setFormatter(formatter)
     
     # 控制台处理器

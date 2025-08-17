@@ -1,9 +1,9 @@
-from flask import Blueprint, jsonify, request
-from datetime import datetime, timedelta
 import base64
 import random
-from models import db, Merchant
 from config.log import get_logger
+from datetime import datetime, timedelta
+from flask import Blueprint, jsonify, request
+from models import db, Merchant
 
 web_auth_api = Blueprint('web_auth_api', __name__, url_prefix='/api/web/auth')
 logger = get_logger(__name__)
@@ -132,11 +132,15 @@ def login():
             'code': 200,
             'message': '登录成功',
             'data': {
-                'merchant_id': merchant.id,
-                'merchant_number': merchant.name,
-                'phone': merchant.phone,
-                'status': merchant.status,
-                **token_info
+                'user_info': {
+                    'merchant_id': merchant.id,
+                    'merchant_number': merchant.name,
+                    'status': merchant.status
+                },
+                'token_info': {
+                    **token_info
+                }
+
             }
         }), 200
     except Exception as e:
@@ -147,7 +151,7 @@ def login():
 @web_auth_api.route('/validate', methods=['GET'])
 def validate():
     """校验token是否有效（演示版：解析并校验是否未超过7天）"""
-    token = request.args.get('token', '').strip()
+    token = request.headers.get('authorization', '').strip()
     if not token:
         return jsonify({'code': 400, 'message': '缺少token'}), 400
 

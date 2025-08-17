@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from services.address_service import AddressService
+from address_service import AddressService
 
 app_address_api = Blueprint('app_address_api', __name__, url_prefix='/api/app/address')
 

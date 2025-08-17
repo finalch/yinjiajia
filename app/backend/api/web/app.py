@@ -1,13 +1,15 @@
-import sys
 import os
+import sys
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-import logging
 import time
 from flask import Flask, request, g
-from config import Config
 from config.log import get_logger
+from config import Config
 from models import db
 from flask_cors import CORS
+from utils.TokenUtils import validate
+
 
 def create_app():
     app = Flask(__name__)
@@ -27,6 +29,16 @@ def create_app():
         logger.info(f"Request: {request.method} {request.path} - User-Agent: {request.headers.get('User-Agent', 'Unknown')}")
         if request.method in ['POST', 'PUT', 'PATCH']:
             logger.debug(f"Request Body: {request.get_json(silent=True)}")
+        if request.path == '/api/web/auth/login' or request.path == '/api/web/auth/register' or request.path == '/api/app/auth/login' or request.path == '/api/app/auth/register':
+            return None
+        authorization = request.headers.get('authorization')
+        if authorization is None:
+            return {"code": 401, "message": "Missing Authorization header"}, 401
+        merchant_id = validate(authorization)
+        if merchant_id is None:
+            return {"code": 401, "message": "Invalid token"}, 401
+        g.merchant_id = merchant_id
+        logger.error(f"----------Merchant ID: {merchant_id}")
 
     @app.after_request
     def log_response_info(response):
@@ -40,35 +52,35 @@ def create_app():
         return {"code": 500, "message": "Internal Server Error"}, 500
 
     # Blueprint 延迟导入，避免循环引用
-    from api.app.product import app_product_api
-    from api.app.cart import app_cart_api
-    from api.app.address import app_address_api
-    from api.app.auth import app_auth_api
-    from api.web.product import web_product_api
-    from api.app.order import app_order_api
-    from api.web.order import web_order_api
-    from api.app.review import app_review_api
-    from api.web.review import web_review_api
-    from api.web.group import web_group_api
-    from api.web.analytics import web_analytics_api
-    from api.web.finance import web_finance_api
-    from api.web.customer_service import web_customer_service_api
-    from api.web.media import web_media_api
-    from api.web.auth import web_auth_api
-    from api.web.health import web_health_api
+    # from api.app.product import app_product_api
+    # from api.app.cart import app_cart_api
+    # from api.app.address import app_address_api
+    # from api.app.auth import app_auth_api
+    from product import web_product_api
+    # from order import app_order_api
+    from order import web_order_api
+    # from review import app_review_api
+    from review import web_review_api
+    from group import web_group_api
+    from analytics import web_analytics_api
+    from finance import web_finance_api
+    from customer_service import web_customer_service_api
+    from media import web_media_api
+    from auth import web_auth_api
+    from health import web_health_api
 
     # 全局接口
     from category import category_api
     app.register_blueprint(category_api)
 
-    app.register_blueprint(app_product_api)
-    app.register_blueprint(app_cart_api)
-    app.register_blueprint(app_address_api)
-    app.register_blueprint(app_auth_api)
-    app.register_blueprint(web_product_api)
-    app.register_blueprint(app_order_api)
+    # app.register_blueprint(app_product_api)
+    # app.register_blueprint(app_cart_api)
+    # app.register_blueprint(app_address_api)
+    # app.register_blueprint(app_auth_api)
+    # app.register_blueprint(app_order_api)
+    # app.register_blueprint(app_review_api)
     app.register_blueprint(web_order_api)
-    app.register_blueprint(app_review_api)
+    app.register_blueprint(web_product_api)
     app.register_blueprint(web_review_api)
     app.register_blueprint(web_group_api)
     app.register_blueprint(web_analytics_api)
@@ -78,10 +90,9 @@ def create_app():
     app.register_blueprint(web_auth_api)
     app.register_blueprint(web_health_api)
 
-
-
     logger.info("All blueprints registered successfully")
     return app, logger, Config.LOG_PATH
+
 
 if __name__ == '__main__':
     app, logger, LOG_PATH = create_app()

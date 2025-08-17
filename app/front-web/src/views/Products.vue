@@ -130,13 +130,13 @@
             >
               上架
             </el-button>
-            <el-button 
+            <!-- <el-button 
               type="text" 
               size="small" 
               @click="viewProduct(row)"
             >
               预览
-            </el-button>
+            </el-button> -->
             <el-button 
               type="text" 
               size="small" 
@@ -170,9 +170,10 @@ import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
-import axios from '@/api/request'
+import request from '../api/request'
 import dayjs from 'dayjs'
 import authService from '../services/authService'
+import groupService from '../services/groupService'
 
 export default {
   name: 'Products',
@@ -236,7 +237,7 @@ export default {
         if (filters.status) params.status = filters.status
         params.merchant_id = currentMerchantId.value // 示例
 
-        const res = await axios.get('/api/web/product/', { params })
+        const res = await request.get('/api/web/product/', { params })
         
         if (res.data.code === 200) {
           // 适配后端返回数据到前端表格字段
@@ -270,13 +271,15 @@ export default {
     // 获取分组列表
     const fetchGroups = async () => {
       try {
-        const res = await axios.get('/api/web/groups', {
-          merchant_id: currentMerchantId.value,
+        const result = await groupService.getGroups({
+          // merchant_id: currentMerchantId.value,
           status: 'active'
         })
-        if (res.code === 200) {
-          groups.value = res.data.list || []
+        
+        if (result.success) {
+          groups.value = result.data
         } else {
+          console.error('获取分组列表失败:', result.message)
           groups.value = []
         }
       } catch (e) {
@@ -436,7 +439,7 @@ export default {
           return
         }
         
-        const response = await axios.post(`/api/web/product/${product.id}/toggle-status`, {
+        const response = await request.post(`/api/web/product/${product.id}/toggle-status`, {
           status: newStatus
         })
         

@@ -13,36 +13,36 @@
         <el-form :inline="true" :model="filterForm" class="filter-form">
           <el-form-item label="商品名称">
             <el-input
-              v-model="filterForm.name"
-              placeholder="请输入商品名称"
-              clearable
-              @keyup.enter="handleSearch"
+                v-model="filterForm.name"
+                placeholder="请输入商品名称"
+                clearable
+                @keyup.enter="handleSearch"
             />
           </el-form-item>
-                      <el-form-item label="商品分组">
+          <el-form-item label="商品分组">
             <el-select
-              v-model="filterForm.group_id"
-              placeholder="请选择分类"
-              clearable
+                v-model="filterForm.group_id"
+                placeholder="请选择分类"
+                clearable
             >
               <el-option
-                v-for="group in groups"
-                :key="group.id"
-                :label="group.name"
-                :value="group.id"
+                  v-for="group in groups"
+                  :key="group.id"
+                  :label="group.name"
+                  :value="group.id"
               />
             </el-select>
           </el-form-item>
           <el-form-item label="审核状态">
             <el-select
-              v-model="filterForm.status"
-              placeholder="请选择状态"
-              clearable
+                v-model="filterForm.status"
+                placeholder="请选择状态"
+                clearable
             >
-              <el-option label="待审核和审核失败" value="" />
-              <el-option label="待审核" value="pending" />
-              <el-option label="审核通过" value="approved" />
-              <el-option label="审核拒绝" value="rejected" />
+              <el-option label="待审核和审核失败" value=""/>
+              <el-option label="待审核" value="pending"/>
+              <el-option label="审核通过" value="approved"/>
+              <el-option label="审核拒绝" value="rejected"/>
             </el-select>
           </el-form-item>
           <el-form-item>
@@ -55,16 +55,16 @@
       <!-- 批量操作 -->
       <div class="batch-actions">
         <el-button
-          type="success"
-          :disabled="selectedProducts.length === 0"
-          @click="batchApprove"
+            type="success"
+            :disabled="selectedProducts.length === 0"
+            @click="batchApprove"
         >
           批量通过 ({{ selectedProducts.length }})
         </el-button>
         <el-button
-          type="danger"
-          :disabled="selectedProducts.length === 0"
-          @click="batchReject"
+            type="danger"
+            :disabled="selectedProducts.length === 0"
+            @click="batchReject"
         >
           批量拒绝 ({{ selectedProducts.length }})
         </el-button>
@@ -73,21 +73,21 @@
 
       <!-- 商品列表 -->
       <el-table
-        :data="products"
-        v-loading="loading"
-        @selection-change="handleSelectionChange"
-        class="product-table"
+          :data="products"
+          v-loading="loading"
+          @selection-change="handleSelectionChange"
+          class="product-table"
       >
-        <el-table-column type="selection" width="55" />
-        <el-table-column prop="id" label="商品ID" width="80" />
+        <el-table-column type="selection" width="55"/>
+        <el-table-column prop="id" label="商品ID" width="80"/>
         <el-table-column label="商品信息" min-width="300">
           <template #default="{ row }">
             <div class="product-info">
               <el-image
-                :src="row.image_url || '/default-product.jpg'"
-                :preview-src-list="[row.image_url]"
-                class="product-image"
-                fit="cover"
+                  :src="row.image_url || '/default-product.jpg'"
+                  :preview-src-list="[row.image_url]"
+                  class="product-image"
+                  fit="cover"
               />
               <div class="product-details">
                 <div class="product-name">{{ row.name }}</div>
@@ -97,7 +97,7 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="stock" label="库存" width="80" />
+        <el-table-column prop="stock" label="库存" width="80"/>
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="getStatusType(row.status)">
@@ -105,29 +105,29 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="created_at" label="创建时间" width="160" />
+        <el-table-column prop="created_at" label="创建时间" width="160"/>
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button
-              v-if="row.status === 'pending'"
-              type="success"
-              size="small"
-              @click="auditProduct(row.id, 'approved')"
+                v-if="row.status === 'pending'"
+                type="success"
+                size="small"
+                @click="auditProduct(row.id, 'approved')"
             >
               通过
             </el-button>
             <el-button
-              v-if="row.status === 'pending'"
-              type="danger"
-              size="small"
-              @click="auditProduct(row.id, 'rejected')"
+                v-if="row.status === 'pending'"
+                type="danger"
+                size="small"
+                @click="auditProduct(row.id, 'rejected')"
             >
               拒绝
             </el-button>
             <el-button
-              type="primary"
-              size="small"
-              @click="viewProduct(row.id)"
+                type="primary"
+                size="small"
+                @click="viewProduct(row.id)"
             >
               查看
             </el-button>
@@ -138,22 +138,22 @@
       <!-- 分页 -->
       <div class="pagination-wrapper">
         <el-pagination
-          v-model:current-page="pagination.page"
-          v-model:page-size="pagination.per_page"
-          :page-sizes="[10, 20, 50, 100]"
-          :total="pagination.total"
-          layout="total, sizes, prev, pager, next, jumper"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
+            v-model:current-page="pagination.page"
+            v-model:page-size="pagination.per_page"
+            :page-sizes="[10, 20, 50, 100]"
+            :total="pagination.total"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
         />
       </div>
     </el-card>
 
     <!-- 审核对话框 -->
     <el-dialog
-      v-model="auditDialog.visible"
-      :title="auditDialog.title"
-      width="500px"
+        v-model="auditDialog.visible"
+        :title="auditDialog.title"
+        width="500px"
     >
       <el-form :model="auditForm" label-width="80px">
         <el-form-item label="审核结果">
@@ -164,18 +164,18 @@
         </el-form-item>
         <el-form-item label="拒绝原因" v-if="auditForm.status === 'rejected'">
           <el-input
-            v-model="auditForm.reason"
-            type="textarea"
-            :rows="3"
-            placeholder="请输入拒绝原因"
+              v-model="auditForm.reason"
+              type="textarea"
+              :rows="3"
+              placeholder="请输入拒绝原因"
           />
         </el-form-item>
         <el-form-item label="审核备注">
           <el-input
-            v-model="auditForm.note"
-            type="textarea"
-            :rows="3"
-            placeholder="请输入审核备注"
+              v-model="auditForm.note"
+              type="textarea"
+              :rows="3"
+              placeholder="请输入审核备注"
           />
         </el-form-item>
       </el-form>
@@ -189,18 +189,18 @@
 
     <!-- 商品详情对话框 -->
     <el-dialog
-      v-model="productDialog.visible"
-      title="商品详情"
-      width="800px"
+        v-model="productDialog.visible"
+        title="商品详情"
+        width="800px"
     >
       <div v-if="productDialog.product" class="product-detail">
         <el-row :gutter="20">
           <el-col :span="12">
             <el-image
-              :src="productDialog.product.image_url || '/default-product.jpg'"
-              :preview-src-list="[productDialog.product.image_url]"
-              class="detail-image"
-              fit="cover"
+                :src="productDialog.product.image_url || '/default-product.jpg'"
+                :preview-src-list="[productDialog.product.image_url]"
+                class="detail-image"
+                fit="cover"
             />
           </el-col>
           <el-col :span="12">
@@ -225,9 +225,10 @@
 </template>
 
 <script>
-import { ref, reactive, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import {ref, reactive, onMounted} from 'vue'
+import {ElMessage, ElMessageBox} from 'element-plus'
 import axios from '@/api/request'
+import groupService from '../services/groupService.js'
 
 export default {
   name: 'ProductAudit',
@@ -246,7 +247,7 @@ export default {
 
     const filterForm = reactive({
       name: '',
-              group_id: '',
+      group_id: '',
       status: ''  // 默认为空，显示所有状态
     })
 
@@ -276,21 +277,21 @@ export default {
           page: pagination.page,
           per_page: pagination.per_page
         }
-        
+
         // 添加筛选条件
         if (filterForm.name) params.name = filterForm.name
         if (filterForm.group_id) params.group_id = filterForm.group_id
         if (filterForm.status) params.status = filterForm.status
-        
+
         console.log('请求参数:', params)
-        const response = await axios.get('/api/web/product/', { params })
+        const response = await axios.get('/api/web/product/', {params})
         console.log('响应数据:', response.data)
-        
+
         if (response.data.code === 200) {
           // 如果状态筛选为空，只显示待审核和审核失败的商品
           if (!filterForm.status) {
-            products.value = response.data.data.list.filter(item => 
-              item.status === 'pending' || item.status === 'rejected'
+            products.value = response.data.data.list.filter(item =>
+                item.status === 'pending' || item.status === 'rejected'
             )
             pagination.total = products.value.length
           } else {
@@ -308,15 +309,10 @@ export default {
     }
 
     // 获取分组列表
-    const getCategories = async () => {
+    const getGroups = async () => {
       try {
-        const response = await axios.get('/api/web/groups', {
-          params: { merchant_id: 1, status: 'active' }
-        })
-        
-        if (response.data.code === 200) {
-          groups.value = response.data.data.list
-        }
+        const response = await groupService.getGroups({status: 'active'})
+        groups.value = response.data
       } catch (error) {
         console.error('获取分组列表失败:', error)
       }
@@ -376,7 +372,7 @@ export default {
           reason: auditForm.reason,
           note: auditForm.note
         })
-        
+
         if (response.data.code === 200) {
           ElMessage.success('审核成功')
           auditDialog.visible = false
@@ -401,7 +397,7 @@ export default {
           product_ids: productIds,
           status: status
         })
-        
+
         if (response.data.code === 200) {
           ElMessage.success(`批量${status === 'approved' ? '通过' : '拒绝'}成功`)
           selectedProducts.value = []
@@ -437,7 +433,7 @@ export default {
     const viewProduct = async (productId) => {
       try {
         const response = await axios.get(`/api/web/product/${productId}`)
-        
+
         if (response.data.code === 200) {
           productDialog.product = response.data.data
           productDialog.visible = true
@@ -467,7 +463,7 @@ export default {
 
     onMounted(() => {
       getProducts()
-      getCategories()
+      getGroups()
     })
 
     return {

@@ -1,5 +1,5 @@
 import { ElMessage } from 'element-plus'
-import { api } from '../api/request'
+import request from '../api/request'
 
 class AuthService {
   constructor() {
@@ -27,8 +27,8 @@ class AuthService {
   }
 
   // 设置token和用户信息
-  setAuth(token, userInfo) {
-    localStorage.setItem(this.tokenKey, token)
+  setAuth(token_info, userInfo) {
+    localStorage.setItem(this.tokenKey, token_info.token)
     localStorage.setItem(this.userInfoKey, JSON.stringify(userInfo))
   }
 
@@ -78,22 +78,23 @@ class AuthService {
   // 登录
   async login(phone, password) {
     try {
-      const response = await api.post('/api/web/auth/login', {
+      const response = await request.post('/api/web/auth/login', {
         phone,
         password
       })
 
-      if (response.code === 200) {
-        const { token, ...userInfo } = response.data
+      if (response.data.code === 200) {
+        const { token_info, user_info } = response.data.data
         // 确保用户信息包含必要的字段
         const authInfo = {
-          ...userInfo,
-          expires_at: userInfo.expires_at || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+          ...user_info,
+          expires_at: token_info.expires_at || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
         }
-        this.setAuth(token, authInfo)
+        console.log('🔑 设置登录信息:', token_info)
+        this.setAuth(token_info, authInfo)
         return { success: true, data: response.data }
       } else {
-        return { success: false, message: response.message }
+        return { success: false, message: response.data.message }
       }
     } catch (error) {
       console.error('登录失败:', error)
@@ -104,12 +105,12 @@ class AuthService {
   // 注册
   async register(phone, password) {
     try {
-      const response = await api.post('/api/web/auth/register', {
+      const response = await request.post('/api/web/auth/register', {
         phone,
         password
       })
 
-      if (response.code === 200) {
+      if (response.data.code === 200) {
         return { success: true, data: response.data }
       } else {
         return { success: false, message: response.message }
@@ -129,17 +130,20 @@ class AuthService {
     }
 
     try {
-      console.log('🔍 开始验证Token...')
+      console.log('🔍 开始验证Token...', token)
       // 修复：正确传递token作为查询参数
-      const response = await api.get('/api/web/auth/validate', { token })
+      const response = await request.get('/api/web/auth/validate', { token })
       
       console.log('📡 Token验证响应:', response)
-      
-      if (response.code === 200 && response.data.valid) {
+      console.log('🔑 Token验证结果data:', response.data)
+      console.log('🔑 Token验证结果datadata:', response.data.data)
+      console.log('🔑 Token验证结果datacode:', response.data.code)
+
+      if (response.data.code === 200 && response.data.data.valid) {
         console.log('✅ Token验证成功')
         return true
       } else {
-        console.log('❌ Token验证失败:', response.message)
+        console.log('❌ Token验证失败:', response.data.message)
         this.clearAuth()
         return false
       }
@@ -163,7 +167,7 @@ class AuthService {
         return { success: false, message: '未登录' }
       }
       
-      const response = await api.get('/api/web/auth/profile', { token })
+      const response = await request.get('/api/web/auth/profile', { token })
       
       if (response.code === 200) {
         // 更新本地存储的用户信息

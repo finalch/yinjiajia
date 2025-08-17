@@ -277,6 +277,8 @@ import { Picture, Plus } from '@element-plus/icons-vue'
 import '@wangeditor/editor/dist/css/style.css'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
 import axios from '@/api/request'
+import groupService from '../services/groupService'
+import categoryService from '../services/categoryService'
 
 export default {
   name: 'ProductEdit',
@@ -293,13 +295,7 @@ export default {
     const saving = ref(false)
     
     // 商品分组
-    const groups = ref([
-      { id: 1, name: '手机数码' },
-      { id: 2, name: '服装配饰' },
-      { id: 3, name: '家居生活' },
-      { id: 4, name: '美妆护肤' },
-      { id: 5, name: '运动户外' }
-    ])
+    const groups = ref([])
     
     // 商品品类
     const categories = ref([])
@@ -709,10 +705,26 @@ export default {
     
     // 页面加载时获取商品数据
     onMounted(async () => {
+      // 获取分组列表
+      try {
+        const groupResult = await groupService.getGroups()
+        if (groupResult.success) {
+          groups.value = groupResult.data
+        } else {
+          console.error('获取分组列表失败:', groupResult.message)
+        }
+      } catch (error) {
+        console.error('获取分组列表失败:', error)
+      }
+      
       // 获取品类列表
       try {
-        const categoryRes = await axios.get('/api/g/category')
-        categories.value = (categoryRes.data && categoryRes.data.data) ? categoryRes.data : []
+        const result = await categoryService.getCategories()
+        if (result.success) {
+          categories.value = result.data
+        } else {
+          console.error('获取品类列表失败:', result.message)
+        }
       } catch (error) {
         console.error('获取品类列表失败:', error)
       }

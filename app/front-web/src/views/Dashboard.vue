@@ -272,8 +272,8 @@ export default {
         
         console.log('📊 仪表板数据响应:', res)
         
-        if (res.code === 200) {
-          const d = res.data || {}
+        if (res.data.code === 200) {
+          const d = res.data.data || {}
           const today = d.today || {}
           const yesterday = d.yesterday || {}
           const total = d.total || {}

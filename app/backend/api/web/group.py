@@ -1,11 +1,11 @@
-from flask import Blueprint, request, jsonify
-from models import db, Group, Merchant
+from flask import Blueprint, request, jsonify, g
+from models import db, Group, Merchant, Product
 from datetime import datetime
 import logging
 import os
 
 # 创建蓝图
-web_group_api = Blueprint('web_group_api', __name__, url_prefix='/api/web/groups')
+web_group_api = Blueprint('web_group_api', __name__, url_prefix='/api/web/group')
 logger = logging.getLogger(__name__)
 
 # 获取分组列表
@@ -14,7 +14,7 @@ def get_groups():
     logger.info("get_groups")
     try:
         # 获取查询参数
-        merchant_id = request.args.get('merchant_id', type=int)
+        merchant_id = g.merchant_id
         status = request.args.get('status')
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 10, type=int)
@@ -81,7 +81,7 @@ def get_groups():
 def get_group(group_id):
     try:
         group = Group.query.get_or_404(group_id)
-        
+
         result = {
             'code': 200,
             'message': '获取分组详情成功',
@@ -260,9 +260,9 @@ def update_group(group_id):
 def delete_group(group_id):
     try:
         group = Group.query.get_or_404(group_id)
-        
+        count = Product.query.filter(Product.group_id==group_id).count()
         # 检查是否有商品使用此分组
-        if group.products:
+        if count > 0:
             return jsonify({
                 'code': 500,
                 'message': '该分组下还有商品，无法删除',

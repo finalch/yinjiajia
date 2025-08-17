@@ -14,23 +14,23 @@
 		</div>
 
 		<!-- 分类筛选 -->
-		<div class="group-filter">
-			<div class="group-scroll">
+		<div class="category-filter">
+			<div class="category-scroll">
 				<div 
-					class="group-item" 
+					class="category-item"
 					:class="{ active: selectedCategory === '' }"
 					@click="selectCategory('')"
 				>
 					全部
 				</div>
 				<div 
-					v-for="group in groups" 
-					:key="group.id"
-					class="group-item" 
-					:class="{ active: selectedCategory === group.id }"
-					@click="selectCategory(group.id)"
+					v-for="category in categories"
+					:key="category.uuid"
+					class="category-item"
+					:class="{ active: selectedCategory === category.uuid }"
+					@click="selectCategory(category.uuid)"
 				>
-					{{ group.name }}
+					{{ category.name }}
 				</div>
 			</div>
 		</div>
@@ -68,7 +68,7 @@
 				<div class="product-info">
 					<div class="product-title">{{ item.name }}</div>
 					<div class="product-meta">
-						<span class="group-name">{{ item.category_name }}</span>
+						<span class="category-name">{{ item.category_name }}</span>
 						<span class="sales-count">已售{{ item.sales_count || 0 }}件</span>
 					</div>
 					<div class="price-section">
@@ -108,13 +108,14 @@
 <script>
   import { productApi, cartApi } from '@/utils/api.js'
   import { getUserId } from '@/utils/auth.js'
+  import categoryService from '../services/categoryService.js'
 	
 	export default {
 		name: 'Shop',
 		data() {
 			return {
 				products: [],
-				groups: [],
+				categories: [],
 				selectedCategory: '',
 				searchKeyword: '',
 				sortBy: 'created_at',
@@ -137,14 +138,11 @@
 		this.removeScrollListener()
 	},
 		methods: {
-			// 获取商品分类
+			// 获取商品品类
 			async fetchCategories() {
 				try {
-					const response = await productApi.getCategories()
-					
-					if (response.data.code === 200) {
-						this.groups = response.data.data
-					}
+					const response = await categoryService.getCategories();
+          this.categories = response.data
 				} catch (error) {
 					console.error('获取分类失败:', error)
 					alert('获取分类失败')
@@ -172,7 +170,7 @@
 					}
 					
 					if (this.selectedCategory) {
-						params.category_id = this.selectedCategory
+						params.category_uuid = this.selectedCategory
 					}
 					
 					if (this.searchKeyword) {
@@ -329,18 +327,18 @@
 		background: transparent;
 	}
 
-	.group-filter {
+	.category-filter {
 		margin-bottom: 20px;
 	}
 
-	.group-scroll {
+	.category-scroll {
 		display: flex;
 		overflow-x: auto;
 		gap: 10px;
 		padding: 10px 0;
 	}
 
-	.group-item {
+	.category-item {
 		padding: 8px 15px;
 		font-size: 14px;
 		color: #666;
@@ -351,11 +349,11 @@
 		transition: all 0.3s;
 	}
 
-	.group-item:hover {
+	.category-item:hover {
 		background-color: #e0e0e0;
 	}
 
-	.group-item.active {
+	.category-item.active {
 		background-color: #e93b3d;
 		color: #fff;
 		font-weight: bold;

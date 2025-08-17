@@ -232,6 +232,8 @@ import { ElMessage } from 'element-plus'
 import '@wangeditor/editor/dist/css/style.css'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
 import authService from '../services/authService'
+import groupService from '../services/groupService'
+import categoryService from '../services/categoryService'
 import { getMerchantInfo, clearAuth } from '../router/auth'
 
 const form = reactive({
@@ -296,20 +298,18 @@ onMounted(async () => {
     const merchantId = currentMerchantId.value || 1 // 如果没有商家ID，使用默认值1
     console.log('使用商家ID:', merchantId)
     
-    // 先测试不带参数的请求
-    console.log('测试分组接口...')
-    const testRes = await axios.get('/api/web/groups')
-    console.log('分组接口测试响应:', testRes)
-    
-    const res = await axios.get('/api/web/groups', {
-      params: {
-        merchant_id: merchantId,
-        status: 'active'
-      }
+    const result = await groupService.getGroups({
+      merchant_id: merchantId,
+      status: 'active'
     })
-    console.log('分组接口响应:', res)
-    groups.value = (res.data && res.data.data && res.data.data.list) ? res.data.data.list : []
-    console.log('分组数据设置完成:', groups.value)
+    
+    if (result.success) {
+      groups.value = result.data
+      console.log('分组数据设置完成:', groups.value)
+    } else {
+      console.error('获取分组列表失败:', result.message)
+      groups.value = []
+    }
   } catch (error) {
     console.error('获取分组列表失败:', error)
     groups.value = []
@@ -317,11 +317,14 @@ onMounted(async () => {
   
   // 获取品类列表
   try {
-    console.log('测试品类接口...')
-    const categoryRes = await axios.get('/api/g/category')
-    console.log('品类接口响应:', categoryRes)
-    categories.value = (categoryRes.data && categoryRes.data.data && categoryRes.data.data.list) ? categoryRes.data.data.list : []
-    console.log('品类数据设置完成:', categories.value)
+    const result = await categoryService.getCategories()
+    if (result.success) {
+      categories.value = result.data
+      console.log('品类数据设置完成:', categories.value)
+    } else {
+      console.error('获取品类列表失败:', result.message)
+      categories.value = []
+    }
   } catch (error) {
     console.error('获取品类列表失败:', error)
     categories.value = []
@@ -376,8 +379,8 @@ const uploadMainImage = async (option) => {
     
     console.log('主图上传响应:', res.data)
     
-    if (res.code === 200) {
-      form.main_image = res.data.url
+    if (res.data.code === 200) {
+      form.main_image = res.data.data.url
       console.log('主图上传成功:', form.main_image)
       ElMessage.success('主图上传成功')
       option.onSuccess(res.data, option.file)
@@ -402,11 +405,11 @@ const uploadImage = async (option) => {
     
     console.log('图片上传响应:', res.data)
     
-    if (res.code === 200) {
+    if (res.data.code === 200) {
       // 添加到图片列表
       form.images.push({
         name: option.file.name,
-        url: res.data.url
+        url: res.data.data.url
       })
       
       console.log('图片上传成功，当前图片列表:', form.images)
@@ -738,7 +741,7 @@ const onSubmit = async () => {
       main_image: form.main_image,
       images: form.images.map(img => img.url),
       videos: form.videos.map(video => video.url),
-      merchant_id: 1,
+      merchant_id: currentMerchantId.value,
       has_specs: form.has_specs
     }
     
@@ -766,7 +769,7 @@ const onSubmit = async () => {
     
     const res = await axios.post('/api/web/product/', payload)
     
-    if (res.data && res.data.code === 200) {
+    if (res.data && res.code === 200) {
       alert('商品发布成功！')
       // 跳转到商品列表
       window.location.href = '/products'

@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, g
 from models import db, Order, OrderItem, Product, User, Merchant, Logistics
 from datetime import datetime, timedelta
 from sqlalchemy import func
@@ -10,7 +10,7 @@ web_order_api = Blueprint('web_order_api', __name__, url_prefix='/api/web/order'
 @web_order_api.route('/', methods=['GET'])
 def get_orders():
     """WEB端-获取商家订单列表，支持条件筛选"""
-    merchant_id = request.args.get('merchant_id', type=int)
+    merchant_id = g.merchant_id
     status = request.args.get('status', type=str)
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
@@ -255,10 +255,7 @@ def deliver_order_item(order_item_id):
 @web_order_api.route('/statistics', methods=['GET'])
 def get_order_statistics():
     """WEB端-获取商家订单统计数据"""
-    merchant_id = request.args.get('merchant_id', type=int)
-    
-    if not merchant_id:
-        return jsonify({"code": 400, "message": "商家ID不能为空"}), 400
+    merchant_id = g.merchant_id
     
     try:
         # 今日订单统计

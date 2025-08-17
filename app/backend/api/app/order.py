@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
-from services.order_service import OrderService
-from models import Order, OrderItem, Product, Logistics, db, ProductSpecCombination
+from order_service import OrderService
+from models import Order, OrderItem, Product, db, ProductSpecCombination
 from datetime import datetime
 from config.log import get_logger
 

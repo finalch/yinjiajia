@@ -1,21 +1,28 @@
-from flask import Blueprint, jsonify, request
-from models import db, Product, Group, Merchant, ProductSpec, ProductSpecCombination
+from flask import Blueprint, jsonify, request, g
+from models import db, Product, Group, Merchant, ProductSpec, ProductSpecCombination, Category
 from datetime import datetime
 from sqlalchemy import func
 import json
+import logging
 
 web_product_api = Blueprint('web_product_api', __name__, url_prefix='/api/web/product')
+logger = logging.getLogger(__name__)
 
 @web_product_api.route('/', methods=['GET'])
 def get_products():
     """WEB端-获取商品列表，支持条件筛选"""
     query = Product.query
+    logger.info("get_products")
+    logger.error("-------------------------------- %s", request.args.get('params'))
+    logger.error("-------------------------------- %s", type(request.args.get('params')))
+    merchant_id = g.merchant_id
+    # logger.error(request.args.get('merchant_id', type=int))
     name = request.args.get('name', type=str)
     group_id = request.args.get('group_id', type=int)
     status = request.args.get('status', type=str)
-    merchant_id = request.args.get('merchant_id', type=int)
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
+    category_uuid = request.args.get('category_uuid', type=int)
 
     if name:
         query = query.filter(Product.name.like(f"%{name}%"))
@@ -25,6 +32,8 @@ def get_products():
         query = query.filter(Product.merchant_id == merchant_id)
     if status:
         query = query.filter(Product.status == status)
+    if category_uuid:
+        query = query.filter(Product.category_uuid == category_uuid)
 
     # 分页
     pagination = query.order_by(Product.created_at.desc()).paginate(
@@ -82,7 +91,9 @@ def get_product_detail(product_id):
     group = Group.query.get(product.group_id)
     # 获取商家信息
     merchant = Merchant.query.get(product.merchant_id)
-    
+
+    category = Category.query.filter(Category.uuid==product.category_uuid).first()
+
     data = {
         'id': product.id,
         'name': product.name,
@@ -92,8 +103,9 @@ def get_product_detail(product_id):
         'stock': product.stock,
         'image_url': product.image_url,
         'video_url': product.video_url,
-        'group': product.group,
         'group_id': product.group_id,
+        'category_uuid': category.uuid,
+        'category_name': category.name,
         'group_name': group.name if group else '',
         'merchant_id': product.merchant_id,
         'merchant_name': merchant.name if merchant else '',
@@ -154,7 +166,7 @@ def create_product():
     """WEB端-创建商品"""
     data = request.json
     
-    required_fields = ['name', 'group_id', 'merchant_id']
+    required_fields = ['name', 'group_id']
     for field in required_fields:
         if not data.get(field):
             return jsonify({"code": 400, "message": f"{field} 不能为空"}), 400
@@ -163,8 +175,8 @@ def create_product():
     group = Group.query.get(data['group_id'])
     if not group:
         return jsonify({"code": 404, "message": "分组不存在"}), 404
-    
-    merchant = Merchant.query.get(data['merchant_id'])
+    merchant_id = g.merchant_id
+    merchant = Merchant.query.get(merchant_id)
     if not merchant:
         return jsonify({"code": 404, "message": "商家不存在"}), 404
     
@@ -216,7 +228,8 @@ def create_product():
             image_url=image_url,
             video_url=video_url,
             group_id=data['group_id'],
-            merchant_id=data['merchant_id'],
+            category_uuid=data['category_uuid'],
+            merchant_id=merchant_id,
             has_specs=False,
             status='pending'  # 新商品默认为待审核状态
         )
@@ -278,7 +291,8 @@ def create_product():
             image_url=image_url,
             video_url=video_url,
             group_id=data['group_id'],
-            merchant_id=data['merchant_id'],
+            category_uuid=data['category_uuid'],
+            merchant_id=merchant_id,
             has_specs=True,
             status='pending'  # 新商品默认为待审核状态
         )
@@ -580,8 +594,8 @@ def batch_audit_products():
 @web_product_api.route('/audit-statistics', methods=['GET'])
 def get_audit_statistics():
     """WEB端-获取审核统计数据"""
-    merchant_id = request.args.get('merchant_id', type=int)
-    
+    merchant_id = g.merchant_id
+
     if not merchant_id:
         return jsonify({"code": 400, "message": "商家ID不能为空"}), 400
     
@@ -633,7 +647,7 @@ def get_audit_statistics():
 @web_product_api.route('/pending-audit', methods=['GET'])
 def get_pending_audit_products():
     """WEB端-获取待审核商品列表"""
-    merchant_id = request.args.get('merchant_id', type=int)
+    merchant_id = g.merchant_id
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
     

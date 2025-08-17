@@ -4,7 +4,9 @@
       <h1>订单管理</h1>
       <div class="header-actions">
         <el-button type="primary" @click="exportOrders">
-          <el-icon><Download /></el-icon>
+          <el-icon>
+            <Download/>
+          </el-icon>
           导出订单
         </el-button>
       </div>
@@ -16,7 +18,9 @@
         <el-card class="stat-card">
           <div class="stat-content">
             <div class="stat-icon pending">
-              <el-icon size="24"><Clock /></el-icon>
+              <el-icon size="24">
+                <Clock/>
+              </el-icon>
             </div>
             <div class="stat-info">
               <div class="stat-value">{{ orderStats.pending }}</div>
@@ -25,12 +29,14 @@
           </div>
         </el-card>
       </el-col>
-      
+
       <el-col :span="6">
         <el-card class="stat-card">
           <div class="stat-content">
             <div class="stat-icon shipped">
-              <el-icon size="24"><Van /></el-icon>
+              <el-icon size="24">
+                <Van/>
+              </el-icon>
             </div>
             <div class="stat-info">
               <div class="stat-value">{{ orderStats.shipped }}</div>
@@ -39,12 +45,14 @@
           </div>
         </el-card>
       </el-col>
-      
+
       <el-col :span="6">
         <el-card class="stat-card">
           <div class="stat-content">
             <div class="stat-icon completed">
-              <el-icon size="24"><CircleCheck /></el-icon>
+              <el-icon size="24">
+                <CircleCheck/>
+              </el-icon>
             </div>
             <div class="stat-info">
               <div class="stat-value">{{ orderStats.completed }}</div>
@@ -53,12 +61,14 @@
           </div>
         </el-card>
       </el-col>
-      
+
       <el-col :span="6">
         <el-card class="stat-card">
           <div class="stat-content">
             <div class="stat-icon refund">
-              <el-icon size="24"><RefreshLeft /></el-icon>
+              <el-icon size="24">
+                <RefreshLeft/>
+              </el-icon>
             </div>
             <div class="stat-info">
               <div class="stat-value">{{ orderStats.refund }}</div>
@@ -73,30 +83,30 @@
     <el-card class="filter-card">
       <el-form :model="filters" inline>
         <el-form-item label="订单号">
-          <el-input v-model="filters.orderNo" placeholder="请输入订单号" clearable />
+          <el-input v-model="filters.orderNo" placeholder="请输入订单号" clearable/>
         </el-form-item>
         <el-form-item label="买家信息">
-          <el-input v-model="filters.customer" placeholder="买家姓名/手机号" clearable />
+          <el-input v-model="filters.customer" placeholder="买家姓名/手机号" clearable/>
         </el-form-item>
         <el-form-item label="订单状态">
           <el-select v-model="filters.status" placeholder="选择状态" clearable>
-            <el-option label="待付款" value="pending_payment" />
-            <el-option label="待发货" value="pending_shipment" />
-            <el-option label="已发货" value="shipped" />
-            <el-option label="已完成" value="completed" />
-            <el-option label="已取消" value="cancelled" />
-            <el-option label="退款中" value="refunding" />
+            <el-option label="待付款" value="pending_payment"/>
+            <el-option label="待发货" value="pending_shipment"/>
+            <el-option label="已发货" value="shipped"/>
+            <el-option label="已完成" value="completed"/>
+            <el-option label="已取消" value="cancelled"/>
+            <el-option label="退款中" value="refunding"/>
           </el-select>
         </el-form-item>
         <el-form-item label="下单时间">
           <el-date-picker
-            v-model="filters.dateRange"
-            type="daterange"
-            range-separator="至"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
-            format="YYYY-MM-DD"
-            value-format="YYYY-MM-DD"
+              v-model="filters.dateRange"
+              type="daterange"
+              range-separator="至"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              format="YYYY-MM-DD"
+              value-format="YYYY-MM-DD"
           />
         </el-form-item>
         <el-form-item>
@@ -109,11 +119,11 @@
     <!-- 订单列表 -->
     <el-card>
       <el-table
-        :data="orders"
-        v-loading="loading"
-        @selection-change="handleSelectionChange"
+          :data="orders"
+          v-loading="loading"
+          @selection-change="handleSelectionChange"
       >
-        <el-table-column type="selection" width="55" />
+        <el-table-column type="selection" width="55"/>
         <el-table-column label="订单信息" min-width="300">
           <template #default="{ row }">
             <div class="order-info">
@@ -124,15 +134,15 @@
                 </el-tag>
               </div>
               <div class="order-items">
-                <div 
-                  v-for="item in row.items" 
-                  :key="item.id"
-                  class="order-item"
+                <div
+                    v-for="item in row.items"
+                    :key="item.id"
+                    class="order-item"
                 >
                   <el-image
-                    :src="item.image"
-                    class="item-image"
-                    fit="cover"
+                      :src="item.image"
+                      class="item-image"
+                      fit="cover"
                   />
                   <div class="item-info">
                     <h4 class="item-name">{{ item.product_name }}</h4>
@@ -173,34 +183,34 @@
             <span v-else class="no-logistics">暂无物流</span>
           </template>
         </el-table-column>
-        <el-table-column prop="created_at" label="下单时间" width="180" />
+        <el-table-column prop="created_at" label="下单时间" width="180"/>
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button type="text" size="small" @click="viewOrder(row)">
               查看详情
             </el-button>
-            <el-button 
-              type="text" 
-              size="small" 
-              @click="shipOrder(row)"
-              v-if="row.items && row.items.some(item => item.item_status === 'pending')"
+            <el-button
+                type="text"
+                size="small"
+                @click="shipOrder(row)"
+                v-if="row.items && row.items.some(item => item.item_status === 'pending')"
             >
               发货
             </el-button>
-            <el-button 
-              type="text" 
-              size="small" 
-              @click="viewLogistics(row)"
-              v-if="row.items && row.items.some(item => item.shipping_company)"
+            <el-button
+                type="text"
+                size="small"
+                @click="viewLogistics(row)"
+                v-if="row.items && row.items.some(item => item.shipping_company)"
             >
               查看物流
             </el-button>
-            <el-button 
-              type="text" 
-              size="small" 
-              @click="refundOrder(row)"
-              v-if="row.items && row.items.some(item => item.item_status === 'pending')"
-              style="color: #f56c6c;"
+            <el-button
+                type="text"
+                size="small"
+                @click="refundOrder(row)"
+                v-if="row.items && row.items.some(item => item.item_status === 'pending')"
+                style="color: #f56c6c;"
             >
               同意退款
             </el-button>
@@ -211,36 +221,36 @@
       <!-- 分页 -->
       <div class="pagination">
         <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
-          :page-sizes="[10, 20, 50, 100]"
-          :total="total"
-          layout="total, sizes, prev, pager, next, jumper"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            :page-sizes="[10, 20, 50, 100]"
+            :total="total"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
         />
       </div>
     </el-card>
 
     <!-- 发货对话框 -->
     <el-dialog
-      v-model="shipDialogVisible"
-      title="订单发货"
-      width="500px"
+        v-model="shipDialogVisible"
+        title="订单发货"
+        width="500px"
     >
       <el-form :model="shipForm" label-width="100px">
         <el-form-item label="物流公司">
           <el-select v-model="shipForm.company" placeholder="选择物流公司">
-            <el-option label="顺丰速运" value="SF" />
-            <el-option label="圆通速递" value="YTO" />
-            <el-option label="中通快递" value="ZTO" />
-            <el-option label="申通快递" value="STO" />
-            <el-option label="韵达速递" value="YD" />
-            <el-option label="京东物流" value="JD" />
+            <el-option label="顺丰速运" value="SF"/>
+            <el-option label="圆通速递" value="YTO"/>
+            <el-option label="中通快递" value="ZTO"/>
+            <el-option label="申通快递" value="STO"/>
+            <el-option label="韵达速递" value="YD"/>
+            <el-option label="京东物流" value="JD"/>
           </el-select>
         </el-form-item>
         <el-form-item label="物流单号">
-          <el-input v-model="shipForm.number" placeholder="请输入物流单号" />
+          <el-input v-model="shipForm.number" placeholder="请输入物流单号"/>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -254,15 +264,10 @@
 </template>
 
 <script>
-import { ref, reactive, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { 
-  Download, 
-  Clock, 
-  Van, 
-  CircleCheck, 
-  RefreshLeft 
-} from '@element-plus/icons-vue'
+import {onMounted, reactive, ref} from 'vue'
+import {ElMessage, ElMessageBox} from 'element-plus'
+import {CircleCheck, Clock, Download, RefreshLeft, Van} from '@element-plus/icons-vue'
+import orderService from "@/services/orderService.js";
 
 export default {
   name: 'Orders',
@@ -279,20 +284,20 @@ export default {
       loadOrders()
       loadOrderStats()
     })
-    
+
     const loading = ref(false)
     const shipDialogVisible = ref(false)
     const shipping = ref(false)
     const selectedOrders = ref([])
-    
+
     // 订单统计
     const orderStats = ref({
-      pending: 12,
-      shipped: 8,
-      completed: 156,
-      refund: 3
+      pending: 0,
+      shipped: 0,
+      completed: 0,
+      refund: 0
     })
-    
+
     // 筛选条件
     const filters = reactive({
       orderNo: '',
@@ -300,52 +305,37 @@ export default {
       status: '',
       dateRange: []
     })
-    
+
     // 分页
     const currentPage = ref(1)
     const pageSize = ref(20)
     const total = ref(189)
-    
+
     // 发货表单
     const shipForm = reactive({
       orderItemId: null,
       company: '',
       number: ''
     })
-    
+
     // 订单列表
     const orders = ref([])
-    
+
     // 方法
     const loadOrders = async () => {
       loading.value = true
       try {
         const params = {
-          merchant_id: 1, // 假设商家ID为1，实际应该从登录信息获取
           page: currentPage.value,
           per_page: pageSize.value
         }
-        
+
         if (filters.status) {
           params.status = filters.status
         }
-        
-        const queryString = new URLSearchParams(params).toString()
-        const response = await fetch(`/api/web/order/?${queryString}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        })
-        
-        const result = await response.json()
-        
-        if (result.code === 200) {
-          orders.value = result.data.list
-          total.value = result.data.pagination.total
-        } else {
-          ElMessage.error(result.message || '获取订单列表失败')
-        }
+        const response = await orderService.getOrders(params)
+        orders.value = response.data.list
+        total.value = response.data.pagination.total
       } catch (error) {
         console.error('获取订单列表失败:', error)
         ElMessage.error('获取订单列表失败')
@@ -353,30 +343,28 @@ export default {
         loading.value = false
       }
     }
-    
+
     const loadOrderStats = async () => {
       try {
-        const response = await fetch('/api/web/order/statistics?merchant_id=1')
-        const result = await response.json()
-        
-        if (result.code === 200) {
-          orderStats.value = {
-            pending: result.data.status_counts.pending || 0,
-            shipped: result.data.status_counts.shipped || 0,
-            completed: result.data.status_counts.delivered || 0,
-            refund: result.data.status_counts.refunded || 0
+        const response = await orderService.getOrderStatistics()
+        // console.log(response.data)
+        // ElMessage.success(response)
+        orderStats.value = {
+            pending: response.data.status_counts.pending || 0,
+            shipped: response.data.status_counts.shipped || 0,
+            completed: response.data.status_counts.delivered || 0,
+            refund: response.data.status_counts.refunded || 0
           }
-        }
       } catch (error) {
         console.error('获取订单统计失败:', error)
       }
     }
-    
+
     const handleSearch = () => {
       currentPage.value = 1
       loadOrders()
     }
-    
+
     const resetFilters = () => {
       filters.orderNo = ''
       filters.customer = ''
@@ -384,11 +372,11 @@ export default {
       filters.dateRange = []
       handleSearch()
     }
-    
+
     const handleSelectionChange = (selection) => {
       selectedOrders.value = selection
     }
-    
+
     const getStatusType = (status) => {
       const types = {
         pending_payment: 'warning',
@@ -400,7 +388,7 @@ export default {
       }
       return types[status] || 'info'
     }
-    
+
     const getStatusText = (status) => {
       const texts = {
         pending_payment: '待付款',
@@ -412,7 +400,7 @@ export default {
       }
       return texts[status] || '未知'
     }
-    
+
     const getItemStatusText = (status) => {
       const texts = {
         pending: '待处理',
@@ -422,11 +410,11 @@ export default {
       }
       return texts[status] || '未知'
     }
-    
+
     const viewOrder = (order) => {
       ElMessage.info('订单详情功能开发中...')
     }
-    
+
     const shipOrder = (order) => {
       // 找到第一个待发货的商品
       const pendingItem = order.items.find(item => item.item_status === 'pending')
@@ -434,19 +422,19 @@ export default {
         ElMessage.warning('该订单没有待发货的商品')
         return
       }
-      
+
       shipForm.orderItemId = pendingItem.id
       shipForm.company = ''
       shipForm.number = ''
       shipDialogVisible.value = true
     }
-    
+
     const confirmShip = async () => {
       if (!shipForm.company || !shipForm.number) {
         ElMessage.error('请填写完整的物流信息')
         return
       }
-      
+
       shipping.value = true
       try {
         const response = await fetch(`/api/web/order/${shipForm.orderItemId}/ship`, {
@@ -459,9 +447,9 @@ export default {
             tracking_number: shipForm.number
           })
         })
-        
+
         const result = await response.json()
-        
+
         if (result.code === 200) {
           ElMessage.success('发货成功')
           shipDialogVisible.value = false
@@ -476,11 +464,11 @@ export default {
         shipping.value = false
       }
     }
-    
+
     const viewLogistics = (order) => {
       ElMessage.info('物流跟踪功能开发中...')
     }
-    
+
     const refundOrder = async (order) => {
       try {
         await ElMessageBox.confirm(`确定要同意订单"${order.orderNo}"的退款申请吗？`, '确认退款')
@@ -489,21 +477,21 @@ export default {
         // 用户取消
       }
     }
-    
+
     const exportOrders = () => {
       ElMessage.success('订单导出功能开发中...')
     }
-    
+
     const handleSizeChange = (val) => {
       pageSize.value = val
       loadOrders()
     }
-    
+
     const handleCurrentChange = (val) => {
       currentPage.value = val
       loadOrders()
     }
-    
+
     return {
       loading,
       orderStats,
