@@ -53,8 +53,8 @@ export default {
         const res = await authApi.login({ phone: this.phone, password: this.password })
         if (res.data.code === 200) {
           const { token, expires_at, user_id, user_number, phone } = res.data.data
+		  setUser({ user_id, user_number, phone })
           setToken(token, expires_at)
-          setUser({ user_id, user_number, phone })
           this.$router.replace('/')
         } else {
           alert(res.data.message || '登录失败')

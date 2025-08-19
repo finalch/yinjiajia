@@ -1,0 +1,21 @@
+{
+  "name": "yinjiajia-uni",
+  "version": "1.0.0",
+  "description": "yinjiajia移动端应用 - uni-app版本",
+  "main": "main.js",
+  "scripts": {
+    "dev": "echo '请在HBuilderX中运行'",
+    "build": "echo '请在HBuilderX中构建'"
+  },
+  "dependencies": {
+    "vue": "^3.4.0"
+  },
+  "keywords": [
+    "uni-app",
+    "vue3",
+    "移动端",
+    "yinjiajia"
+  ],
+  "author": "yinjiajia",
+  "license": "MIT"
+}

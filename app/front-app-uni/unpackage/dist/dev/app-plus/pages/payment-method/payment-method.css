@@ -1,0 +1,192 @@
+
+.payment-method-container[data-v-01a39e44] {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  padding-bottom: 80px;
+}
+.header[data-v-01a39e44] {
+  background: white;
+  padding: 15px 20px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #eee;
+  position: -webkit-sticky;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.back-btn[data-v-01a39e44] {
+  font-size: 20px;
+  cursor: pointer;
+  padding: 5px;
+  margin-right: 10px;
+}
+.title[data-v-01a39e44] {
+  font-size: 18px;
+  font-weight: bold;
+}
+.order-info[data-v-01a39e44] {
+  background: white;
+  margin: 10px;
+  border-radius: 8px;
+  padding: 20px;
+}
+.info-item[data-v-01a39e44] {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.info-item[data-v-01a39e44]:last-child {
+  margin-bottom: 0;
+}
+.label[data-v-01a39e44] {
+  color: #666;
+  font-size: 14px;
+}
+.value[data-v-01a39e44] {
+  color: #333;
+  font-size: 14px;
+}
+.price[data-v-01a39e44] {
+  color: #ff4757;
+  font-weight: bold;
+  font-size: 18px;
+}
+.payment-methods[data-v-01a39e44] {
+  background: white;
+  margin: 10px;
+  border-radius: 8px;
+  padding: 15px;
+}
+.section-title[data-v-01a39e44] {
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 15px;
+  color: #333;
+}
+.method-list[data-v-01a39e44] {
+  margin-top: 10px;
+}
+.method-item[data-v-01a39e44] {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 0;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+.method-item[data-v-01a39e44]:last-child {
+  border-bottom: none;
+}
+.method-item[data-v-01a39e44]:hover {
+  background-color: #f8f9fa;
+}
+.method-item.selected[data-v-01a39e44] {
+  background-color: #fff5f5;
+}
+.method-left[data-v-01a39e44] {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+.method-icon[data-v-01a39e44] {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 15px;
+  font-size: 20px;
+}
+.wechat-icon[data-v-01a39e44] {
+  color: #07c160;
+}
+.alipay-icon[data-v-01a39e44] {
+  color: #1677ff;
+}
+.method-info[data-v-01a39e44] {
+  flex: 1;
+}
+.method-name[data-v-01a39e44] {
+  font-size: 16px;
+  color: #333;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+.method-desc[data-v-01a39e44] {
+  font-size: 12px;
+  color: #999;
+}
+.method-right[data-v-01a39e44] {
+  margin-left: 15px;
+}
+.radio-btn[data-v-01a39e44] {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #ddd;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+}
+.radio-btn.active[data-v-01a39e44] {
+  border-color: #ff4757;
+  background-color: #ff4757;
+}
+.radio-inner[data-v-01a39e44] {
+  width: 8px;
+  height: 8px;
+  background-color: white;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.radio-btn.active .radio-inner[data-v-01a39e44] {
+  opacity: 1;
+}
+.bottom-bar[data-v-01a39e44] {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  padding: 15px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid #eee;
+  z-index: 100;
+}
+.total-info[data-v-01a39e44] {
+  font-size: 14px;
+  color: #666;
+}
+.total-price[data-v-01a39e44] {
+  font-size: 18px;
+  color: #ff4757;
+  font-weight: bold;
+}
+.confirm-btn[data-v-01a39e44] {
+  background: #ff4757;
+  color: white;
+  padding: 12px 30px;
+  border-radius: 25px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  transition: background-color 0.3s;
+}
+.confirm-btn[data-v-01a39e44]:hover {
+  background: #ff3742;
+}
+.confirm-btn.disabled[data-v-01a39e44] {
+  background: #ccc;
+  cursor: not-allowed;
+}
+.confirm-btn.disabled[data-v-01a39e44]:hover {
+  background: #ccc;
+}

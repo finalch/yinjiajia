@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, g
 from address_service import AddressService
 
 app_address_api = Blueprint('app_address_api', __name__, url_prefix='/api/app/address')
@@ -6,7 +6,7 @@ app_address_api = Blueprint('app_address_api', __name__, url_prefix='/api/app/ad
 @app_address_api.route('/', methods=['GET'])
 def get_addresses():
     """APP端-获取用户地址列表"""
-    user_id = request.args.get('user_id', 1, type=int)
+    user_id = g.user_id
     
     try:
         addresses = AddressService.get_user_addresses(user_id)
@@ -25,7 +25,7 @@ def get_addresses():
 @app_address_api.route('/<int:address_id>', methods=['GET'])
 def get_address(address_id):
     """APP端-获取单个地址详情"""
-    user_id = request.args.get('user_id', 1, type=int)
+    user_id = g.user_id
     
     try:
         address = AddressService.get_address_by_id(address_id, user_id)
@@ -50,7 +50,7 @@ def get_address(address_id):
 @app_address_api.route('/', methods=['POST'])
 def create_address():
     """APP端-创建新地址"""
-    user_id = request.json.get('user_id', 1)
+    user_id = g.user_id
     address_data = {
         'receiver_name': request.json.get('receiver_name'),
         'phone': request.json.get('phone'),
@@ -87,7 +87,7 @@ def create_address():
 @app_address_api.route('/<int:address_id>', methods=['PUT'])
 def update_address(address_id):
     """APP端-更新地址"""
-    user_id = request.json.get('user_id', 1)
+    user_id = g.user_id
     address_data = {
         'receiver_name': request.json.get('receiver_name'),
         'phone': request.json.get('phone'),
@@ -124,7 +124,7 @@ def update_address(address_id):
 @app_address_api.route('/<int:address_id>', methods=['DELETE'])
 def delete_address(address_id):
     """APP端-删除地址"""
-    user_id = request.args.get('user_id', 1, type=int)
+    user_id = g.user_id
     
     try:
         success = AddressService.delete_address(address_id, user_id)
@@ -148,7 +148,7 @@ def delete_address(address_id):
 @app_address_api.route('/default', methods=['GET'])
 def get_default_address():
     """APP端-获取用户默认地址"""
-    user_id = request.args.get('user_id', 1, type=int)
+    user_id = g.user_id
     
     try:
         default_address = AddressService.get_default_address(user_id)
@@ -167,7 +167,7 @@ def get_default_address():
 @app_address_api.route('/<int:address_id>/set-default', methods=['PUT'])
 def set_default_address(address_id):
     """APP端-设置默认地址"""
-    user_id = request.json.get('user_id', 1)
+    user_id = g.user_id
     
     try:
         success = AddressService.set_default_address(address_id, user_id)

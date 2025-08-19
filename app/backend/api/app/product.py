@@ -1,7 +1,9 @@
-from flask import Blueprint, jsonify, request
-from models import db, Product, Group, ProductSpec, ProductSpecCombination, Order, OrderItem, Review, Merchant, Category
-from sqlalchemy import or_, func
 import json
+
+from flask import Blueprint, jsonify, request
+from sqlalchemy import or_, func
+
+from models import db, Product, Group, ProductSpec, ProductSpecCombination, Order, OrderItem, Review, Merchant, Category
 
 app_product_api = Blueprint('app_product_api', __name__, url_prefix='/api/app/product')
 

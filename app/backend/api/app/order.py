@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, g
 from order_service import OrderService
 from models import Order, OrderItem, Product, db, ProductSpecCombination
 from datetime import datetime
@@ -62,7 +62,7 @@ def calculate_order_status(order_items):
 @app_order_api.route('/', methods=['GET'])
 def get_orders():
     """APP端-获取用户订单列表"""
-    user_id = request.args.get('user_id', 1, type=int)
+    user_id = g.user_id
     status = request.args.get('status', '')
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
@@ -90,7 +90,7 @@ def get_orders():
 @app_order_api.route('/checkout', methods=['GET'])
 def get_checkout_info():
     """APP端-获取下单页面信息"""
-    user_id = request.args.get('user_id', 1, type=int)
+    user_id = g.user_id
     cart_item_ids = request.args.get('cart_items', '').split(',') if request.args.get('cart_items') else []
     product_id = request.args.get('product_id', type=int)
     quantity = request.args.get('quantity', 1, type=int)
@@ -122,7 +122,7 @@ def get_checkout_info():
 @app_order_api.route('/<int:order_id>', methods=['GET'])
 def get_order_detail(order_id):
     """APP端-获取订单详情"""
-    user_id = request.args.get('user_id', 1, type=int)
+    user_id = g.user_id
     
     order = Order.query.filter_by(id=order_id, user_id=user_id).first()
     if not order:
@@ -191,7 +191,7 @@ def get_order_detail(order_id):
 def confirm_receipt(order_id):
     """APP端-确认收货：将订单项标记为已送达，并将订单状态置为已完成"""
     data = request.json or {}
-    user_id = data.get('user_id', request.args.get('user_id', 1, type=int))
+    user_id = g.user_id
 
     order = Order.query.filter_by(id=order_id, user_id=user_id).first()
     if not order:
@@ -244,7 +244,7 @@ def create_order():
     data = request.json
     logger.info(f"创建订单请求: {data}")
     
-    user_id = data.get('user_id', 1)
+    user_id = g.user_id
     address_id = data.get('address_id')
     
     # 验证收货地址
@@ -301,7 +301,7 @@ def cancel_order(order_id):
     - 待付款订单：取消 => cancelled
     - 已付款未发货订单：取消并退款 => refunded
     """
-    user_id = request.args.get('user_id', 1, type=int)
+    user_id = g.user_id
     
     order = Order.query.filter_by(id=order_id, user_id=user_id).first()
     if not order:
@@ -360,7 +360,7 @@ def payment_success(order_number):
     data = request.json
     logger.info(f"支付成功回调: order_number={order_number}, data={data}")
     
-    user_id = data.get('user_id', 1)
+    user_id = g.user_id
     payment_method = data.get('payment_method', 'unknown')
     
     order = Order.query.filter_by(order_number=order_number, user_id=user_id).first()

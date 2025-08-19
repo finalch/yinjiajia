@@ -4,6 +4,9 @@ from flask import jsonify
 
 def validate(token):
     try:
+        # Handle Bearer prefix if present
+        if token.startswith('Bearer '):
+            token = token[7:]
         raw = base64.b64decode(token.encode('utf-8')).decode('utf-8')
         parts = raw.split(':')
         if len(parts) != 3:

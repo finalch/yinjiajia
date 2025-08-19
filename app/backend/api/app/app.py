@@ -33,11 +33,11 @@ def create_app():
         authorization = request.headers.get('authorization')
         if authorization is None:
             return {"code": 401, "message": "Missing Authorization header"}, 401
-        merchant_id = validate(authorization)
-        if merchant_id is None:
+        user_id = validate(authorization)
+        if user_id is False:
             return {"code": 401, "message": "Invalid token"}, 401
-        g.merchant_id = merchant_id
-        logger.error(f"----------Merchant ID: {merchant_id}")
+        g.user_id = user_id
+        logger.error(f"----------user_id: {user_id}")
 
     @app.after_request
     def log_response_info(response):

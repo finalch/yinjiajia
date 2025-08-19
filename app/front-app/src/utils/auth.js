@@ -5,6 +5,8 @@ function tokenExpKey(uid) { return `${APP_PREFIX}_TOKEN_EXPIRES_AT:${uid || 'ANO
 
 export function setToken(token, expiresAt) {
   const uid = getUserId() || 'ANON'
+  const tokenKey = tokenKey(uid)
+  console.log('tokenKey: ', tokenKey)
   localStorage.setItem(tokenKey(uid), token)
   if (expiresAt) localStorage.setItem(tokenExpKey(uid), expiresAt)
 }
