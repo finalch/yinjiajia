@@ -150,7 +150,7 @@
               <div v-for="(spec, index) in form.specs" :key="index" class="spec-type-item">
                 <el-input v-model="spec.name" placeholder="规格名称（如：颜色）" style="width: 200px;" />
                 <el-input v-model="spec.values" placeholder="规格值，用逗号分隔（如：红色,蓝色,绿色）" style="width: 300px; margin-left: 10px;" />
-                <el-input-number v-model="spec.sort_order" :min="0" placeholder="排序" style="width: 100px; margin-left: 10px;" />
+<!--                <el-input-number v-model="spec.sort_order" :min="0" placeholder="排序" style="width: 100px; margin-left: 10px;" />-->
                 <el-button type="danger" size="small" @click="removeSpec(index)" style="margin-left: 10px;">删除</el-button>
               </div>
               <el-button type="primary" @click="addSpec">添加规格类型</el-button>

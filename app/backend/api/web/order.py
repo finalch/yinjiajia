@@ -86,6 +86,11 @@ def get_orders():
                 'user_phone': user.phone if user else '',
                 'total_amount': merchant_total,  # 该商家在这个订单中的总金额
                 'order_total_amount': order.total_amount,  # 整个订单的总金额
+                'ship_status': order.ship_status,
+                'shipping_company': order.shipping_company,
+                'tracking_number': order.tracking_number,
+                'shipped_at': order.shipped_at.strftime('%Y-%m-%d %H:%M:%S') if order.shipped_at else None,
+                'delivered_at': order.delivered_at.strftime('%Y-%m-%d %H:%M:%S') if order.delivered_at else None,
                 'status': order.status,
                 'status_text': get_status_text(order.status),
                 'created_at': order.created_at.strftime('%Y-%m-%d %H:%M:%S'),
@@ -182,8 +187,8 @@ def get_order_detail(order_id):
         logger.error(f"获取订单详情失败: {str(e)}")
         return jsonify({"code": 500, "message": f"获取订单详情失败: {str(e)}"}), 500
 
-@web_order_api.route('/<int:order_item_id>/ship', methods=['POST'])
-def ship_order_item(order_item_id):
+@web_order_api.route('/<int:order_id>/ship', methods=['POST'])
+def ship_order(order_id):
     """WEB端-发货订单项"""
     data = request.json
     
@@ -196,13 +201,13 @@ def ship_order_item(order_item_id):
             return jsonify({"code": 400, "message": f"{field}不能为空"}), 400
     
     try:
-        order_item = OrderItem.query.get_or_404(order_item_id)
+        order = Order.query.get_or_404(order_id)
         
         # 更新订单项状态
-        order_item.item_status = 'shipped'
-        order_item.shipping_company = data['company']
-        order_item.tracking_number = data['tracking_number']
-        order_item.shipped_at = datetime.utcnow()
+        order.item_status = 'shipped'
+        order.shipping_company = data['company']
+        order.tracking_number = data['tracking_number']
+        order.shipped_at = datetime.utcnow()
         
         db.session.commit()
         
@@ -210,11 +215,11 @@ def ship_order_item(order_item_id):
             "code": 200,
             "message": "发货成功",
             "data": {
-                "id": order_item.id,
-                "item_status": order_item.item_status,
-                "shipping_company": order_item.shipping_company,
-                "tracking_number": order_item.tracking_number,
-                "shipped_at": order_item.shipped_at.strftime('%Y-%m-%d %H:%M:%S')
+                "id": order.id,
+                "item_status": order.item_status,
+                "shipping_company": order.shipping_company,
+                "tracking_number": order.tracking_number,
+                "shipped_at": order.shipped_at.strftime('%Y-%m-%d %H:%M:%S')
             }
         }), 200
         
@@ -223,15 +228,15 @@ def ship_order_item(order_item_id):
         logger.error(f"发货失败: {str(e)}")
         return jsonify({"code": 500, "message": f"发货失败: {str(e)}"}), 500
 
-@web_order_api.route('/<int:order_item_id>/deliver', methods=['POST'])
-def deliver_order_item(order_item_id):
+@web_order_api.route('/<int:order_id>/deliver', methods=['POST'])
+def deliver_order(order_id):
     """WEB端-确认送达订单项"""
     try:
-        order_item = OrderItem.query.get_or_404(order_item_id)
+        order = Order.query.get_or_404(order_id)
         
         # 更新订单项状态
-        order_item.item_status = 'delivered'
-        order_item.delivered_at = datetime.utcnow()
+        order.item_status = 'delivered'
+        order.delivered_at = datetime.utcnow()
         
         db.session.commit()
         
@@ -239,9 +244,9 @@ def deliver_order_item(order_item_id):
             "code": 200,
             "message": "确认送达成功",
             "data": {
-                "id": order_item.id,
-                "item_status": order_item.item_status,
-                "delivered_at": order_item.delivered_at.strftime('%Y-%m-%d %H:%M:%S')
+                "id": order.id,
+                "item_status": order.item_status,
+                "delivered_at": order.delivered_at.strftime('%Y-%m-%d %H:%M:%S')
             }
         }), 200
         

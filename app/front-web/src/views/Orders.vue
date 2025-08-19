@@ -128,7 +128,10 @@
           <template #default="{ row }">
             <div class="order-info">
               <div class="order-header">
-                <span class="order-no">订单号：{{ row.order_number }}</span>
+                <span class="order-no">{{ row.order_number }}</span>
+                <el-tag :type="getStatusType(row.status)" size="small">
+                  {{getShipStatusText(row.ship_status)}}
+                </el-tag>
                 <el-tag :type="getStatusType(row.status)" size="small">
                   {{ getStatusText(row.status) }}
                 </el-tag>
@@ -148,7 +151,7 @@
                     <h4 class="item-name">{{ item.product_name }}</h4>
                     <p class="item-specs">{{ item.spec_combination_id ? '规格：' + item.spec_combination_id : '' }}</p>
                     <p class="item-price">¥{{ item.price }} × {{ item.quantity }}</p>
-                    <p class="item-status">状态：{{ getItemStatusText(item.item_status) }}</p>
+<!--                    <p class="item-status">状态：{{ getItemStatusText(item.item_status) }}</p>-->
                   </div>
                 </div>
               </div>
@@ -158,7 +161,6 @@
         <el-table-column label="买家信息" width="150">
           <template #default="{ row }">
             <div class="customer-info">
-              <p class="customer-name">{{ row.user_name }}</p>
               <p class="customer-phone">{{ row.user_phone }}</p>
             </div>
           </template>
@@ -167,18 +169,15 @@
           <template #default="{ row }">
             <div class="order-amount">
               <p class="total-amount">¥{{ row.total_amount }}</p>
-              <p class="payment-method">商家金额</p>
             </div>
           </template>
         </el-table-column>
         <el-table-column label="物流信息" width="150">
           <template #default="{ row }">
             <div class="logistics-info" v-if="row.items && row.items.length > 0">
-              <div v-for="item in row.items" :key="item.id" class="logistics-item">
-                <p v-if="item.shipping_company" class="logistics-company">{{ item.shipping_company }}</p>
-                <p v-if="item.tracking_number" class="logistics-number">{{ item.tracking_number }}</p>
-                <p v-else class="no-logistics">暂无物流</p>
-              </div>
+              <p v-if="row.shipping_company" class="logistics-company">{{ row.shipping_company }}</p>
+              <p v-if="row.tracking_number" class="logistics-number">{{ row.tracking_number }}</p>
+              <p v-else class="no-logistics">暂无物流</p>
             </div>
             <span v-else class="no-logistics">暂无物流</span>
           </template>
@@ -193,7 +192,7 @@
                 type="text"
                 size="small"
                 @click="shipOrder(row)"
-                v-if="row.items && row.items.some(item => item.item_status === 'pending')"
+                v-if="row.ship_status === 'pending' && row.status === 'paid'"
             >
               发货
             </el-button>
@@ -201,19 +200,19 @@
                 type="text"
                 size="small"
                 @click="viewLogistics(row)"
-                v-if="row.items && row.items.some(item => item.shipping_company)"
+                v-if="row.ship_status !== 'pending'"
             >
               查看物流
             </el-button>
-            <el-button
-                type="text"
-                size="small"
-                @click="refundOrder(row)"
-                v-if="row.items && row.items.some(item => item.item_status === 'pending')"
-                style="color: #f56c6c;"
-            >
-              同意退款
-            </el-button>
+<!--            <el-button-->
+<!--                type="text"-->
+<!--                size="small"-->
+<!--                @click="refundOrder(row)"-->
+<!--                v-if="row.items && row.items.some(item => item.item_status === 'pending')"-->
+<!--                style="color: #f56c6c;"-->
+<!--            >-->
+<!--              同意退款-->
+<!--            </el-button>-->
           </template>
         </el-table-column>
       </el-table>
@@ -268,6 +267,7 @@ import {onMounted, reactive, ref} from 'vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {CircleCheck, Clock, Download, RefreshLeft, Van} from '@element-plus/icons-vue'
 import orderService from "@/services/orderService.js";
+import request from "../api/request";
 
 export default {
   name: 'Orders',
@@ -313,7 +313,7 @@ export default {
 
     // 发货表单
     const shipForm = reactive({
-      orderItemId: null,
+      order: null,
       company: '',
       number: ''
     })
@@ -384,7 +384,9 @@ export default {
         shipped: 'success',
         completed: 'success',
         cancelled: 'info',
-        refunding: 'danger'
+        refunding: 'danger',
+        paid: 'success',
+        pending: 'danger'
       }
       return types[status] || 'info'
     }
@@ -392,6 +394,7 @@ export default {
     const getStatusText = (status) => {
       const texts = {
         pending_payment: '待付款',
+        paid: '已付款',
         pending_shipment: '待发货',
         shipped: '已发货',
         completed: '已完成',
@@ -401,7 +404,7 @@ export default {
       return texts[status] || '未知'
     }
 
-    const getItemStatusText = (status) => {
+    const getShipStatusText = (status) => {
       const texts = {
         pending: '待处理',
         shipped: '已发货',
@@ -416,14 +419,7 @@ export default {
     }
 
     const shipOrder = (order) => {
-      // 找到第一个待发货的商品
-      const pendingItem = order.items.find(item => item.item_status === 'pending')
-      if (!pendingItem) {
-        ElMessage.warning('该订单没有待发货的商品')
-        return
-      }
-
-      shipForm.orderItemId = pendingItem.id
+      shipForm.order = order
       shipForm.company = ''
       shipForm.number = ''
       shipDialogVisible.value = true
@@ -437,20 +433,11 @@ export default {
 
       shipping.value = true
       try {
-        const response = await fetch(`/api/web/order/${shipForm.orderItemId}/ship`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
+        const response = await request.post(`/api/web/order/${shipForm.order.id}/ship`, {
             company: shipForm.company,
             tracking_number: shipForm.number
-          })
         })
-
-        const result = await response.json()
-
-        if (result.code === 200) {
+        if (response.data.code === 200) {
           ElMessage.success('发货成功')
           shipDialogVisible.value = false
           loadOrders() // 重新加载订单列表
@@ -511,7 +498,7 @@ export default {
       handleSelectionChange,
       getStatusType,
       getStatusText,
-      getItemStatusText,
+      getShipStatusText,
       viewOrder,
       shipOrder,
       confirmShip,
@@ -620,8 +607,8 @@ export default {
 }
 
 .order-no {
-  font-weight: bold;
   color: #333;
+  font-size: 0.8rem;
 }
 
 .order-items {
@@ -649,7 +636,7 @@ export default {
 .item-name {
   margin: 0 0 5px 0;
   color: #333;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
 }
 
 .item-specs {
