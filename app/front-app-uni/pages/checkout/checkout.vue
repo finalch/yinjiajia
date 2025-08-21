@@ -32,10 +32,6 @@
     <!-- 商品信息 -->
     <view class="products-section">
       <view class="section-title">商品信息</view>
-      <!-- 调试信息 -->
-      <view class="debug-info" style="background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 5px; font-size: 12px;">
-        <text>调试信息：商品数量 {{ products.length }}，总金额 {{ totalAmount }}，页面参数 {{ JSON.stringify(pageParams) }}</text>
-      </view>
       <view class="product-list" v-if="products.length > 0">
         <view 
           class="product-item" 
@@ -43,18 +39,24 @@
           :key="product.product_id"
         >
           <view class="product-image">
-            <image :src="product.product_image || '/static/default-product.png'" />
+            <image 
+              :src="product.product_image || '/static/default-product.png'" 
+              @error="handleImageError"
+              mode="aspectFill"
+            />
           </view>
           <view class="product-info">
             <view class="product-name">{{ product.product_name }}</view>
-            <view class="product-specs" v-if="product.spec_combination_name">
-              <text class="spec-text">{{ product.spec_combination_name }}</text>
+            <view class="product-specs" v-if="product.spec_combination_id || product.spec_combination_name">
+              <text class="spec-text">
+                {{ product.spec_combination_name || `规格ID: ${product.spec_combination_id}` }}
+              </text>
             </view>
             <view class="product-price">¥{{ formatPrice(product.price) }}</view>
           </view>
           <view class="product-right">
             <view class="product-quantity">×{{ product.quantity }}</view>
-            <view class="product-subtotal">¥{{ formatPrice(product.price * product.quantity) }}</view>
+            <view class="product-subtotal">¥{{ formatPrice(product.subtotal || product.price * product.quantity) }}</view>
           </view>
         </view>
       </view>
@@ -98,11 +100,16 @@
           @click="selectedMethod = 'alipay'"
         >
           <view class="method-left">
-            <text class="brand-badge alipay">A</text>
-            <text class="method-name">支付宝</text>
+            <view class="brand-badge alipay">
+              <text class="brand-icon">支</text>
+            </view>
+            <view class="method-info">
+              <text class="method-name">支付宝</text>
+              <text class="method-desc">推荐使用支付宝支付</text>
+            </view>
           </view>
           <view class="method-right">
-            <text class="checkmark" :class="{ active: selectedMethod === 'alipay' }"></text>
+            <view class="checkmark" :class="{ active: selectedMethod === 'alipay' }"></view>
           </view>
         </view>
         <view 
@@ -111,11 +118,16 @@
           @click="selectedMethod = 'wechat'"
         >
           <view class="method-left">
-            <text class="brand-badge wechat">W</text>
-            <text class="method-name">微信支付</text>
+            <view class="brand-badge wechat">
+              <text class="brand-icon">微</text>
+            </view>
+            <view class="method-info">
+              <text class="method-name">微信支付</text>
+              <text class="method-desc">使用微信扫码支付</text>
+            </view>
           </view>
           <view class="method-right">
-            <text class="checkmark" :class="{ active: selectedMethod === 'wechat' }"></text>
+            <view class="checkmark" :class="{ active: selectedMethod === 'wechat' }"></view>
           </view>
         </view>
       </view>
@@ -201,15 +213,16 @@ export default {
   computed: {
     // 计算商品总数量
     totalQuantity() {
-      return this.products.reduce((total, product) => total + (product.quantity || 0), 0)
+      const total = this.products.reduce((total, product) => total + (product.quantity || 0), 0)
+      return total
     },
     // 计算最终实付金额
     finalAmount() {
-      return Math.max(0, this.totalAmount - this.discountAmount)
+      const final = Math.max(0, this.totalAmount - this.discountAmount)
+      return final
     }
   },
   onLoad(options) {
-    // 获取页面参数
     this.pageParams = options
     this.loadCheckoutInfo()
   },
@@ -242,16 +255,13 @@ export default {
       try {
         // 从页面参数获取商品信息
         const { cart_items, product_id, quantity, spec_combination_id } = this.pageParams
-        
-        console.log('页面参数:', this.pageParams)
-        
+        console.log(" ------ >>>>>>>   ", product_id, quantity, spec_combination_id)
         let params = {
           user_id: this.user_id
         }
         
         if (cart_items) {
           params.cart_items = cart_items
-          console.log('购物车商品ID:', cart_items)
         }
         
         if (product_id) {
@@ -268,87 +278,61 @@ export default {
           params.address_id = address_id
         }
         
-        console.log('请求参数:', params)
-        
-        // 尝试从购物车API获取商品信息
-        if (cart_items) {
-          try {
-            // 先尝试从购物车API获取商品详情
-            const cartResponse = await request.get('/api/app/cart/', {
-              params: { 
-                user_id: this.user_id
+        // 优先使用 checkout API 获取商品信息（支持购物车和直接购买）
+        try {
+          const checkoutResponse = await request.get('/api/app/order/checkout', params)
+          
+          if (checkoutResponse.data.code === 200) {
+            const data = checkoutResponse.data.data
+            this.products = data.products || []
+            this.totalAmount = data.total_amount || 0
+          }
+        } catch (checkoutError) {
+          console.error('从checkout API加载失败:', checkoutError)
+          
+          // 如果 checkout API 失败，尝试从购物车API获取商品信息
+          if (cart_items) {
+            try {
+              const cartResponse = await request.get('/api/app/cart/', {
+                params: { 
+                  user_id: this.user_id
+                }
+              })
+              
+              if (cartResponse.data.code === 200) {
+                const cartData = cartResponse.data.data
+                if (cartData && cartData.items) {
+                  // 根据传递的cart_item_ids过滤购物车商品
+                  const cartItemIds = cart_items.split(',').map(id => parseInt(id))
+                  const selectedItems = cartData.items.filter(item => 
+                    cartItemIds.includes(item.id)
+                  )
+                  
+                  this.products = selectedItems.map(item => ({
+                    product_id: item.product_id,
+                    product_name: item.product_name,
+                    product_image: item.product_image,
+                    price: item.price,
+                    quantity: item.quantity,
+                    spec_combination_id: item.spec_combination_id,
+                    spec_combination_name: item.spec_combination_name,
+                    item_total: item.item_total
+                  }))
+                  
+                  // 计算总金额
+                  this.totalAmount = this.products.reduce((total, item) => {
+                    return total + (item.item_total || 0)
+                  }, 0)
+                }
               }
-            })
-            
-            if (cartResponse.data.code === 200) {
-              const cartData = cartResponse.data.data
-              if (cartData && cartData.items) {
-                // 根据传递的cart_item_ids过滤购物车商品
-                const cartItemIds = cart_items.split(',').map(id => parseInt(id))
-                const selectedItems = cartData.items.filter(item => 
-                  cartItemIds.includes(item.id)
-                )
-                
-                this.products = selectedItems.map(item => ({
-                  product_id: item.product_id,
-                  product_name: item.product_name,
-                  product_image: item.product_image,
-                  price: item.price,
-                  quantity: item.quantity,
-                  spec_combination_id: item.spec_combination_id,
-                  spec_combination_name: item.spec_combination_name,
-                  item_total: item.item_total
-                }))
-                
-                // 计算总金额
-                this.totalAmount = this.products.reduce((total, item) => {
-                  return total + (item.item_total || 0)
-                }, 0)
-                
-                console.log('从购物车加载的商品:', this.products)
-                console.log('计算的总金额:', this.totalAmount)
-              }
+            } catch (cartError) {
+              console.error('从购物车加载商品失败:', cartError)
             }
-          } catch (cartError) {
-            console.error('从购物车加载商品失败:', cartError)
           }
         }
-        
-        // 如果购物车API失败，尝试使用原来的checkout API
-        if (!this.products.length) {
-          try {
-            const checkoutResponse = await request.get('/api/app/order/checkout', { params })
-            
-            if (checkoutResponse.data.code === 200) {
-              const data = checkoutResponse.data.data
-              this.products = data.products || []
-              this.totalAmount = data.total_amount || 0
-              console.log('从checkout API加载的商品:', this.products)
-              console.log('从checkout API加载的总金额:', this.totalAmount)
-            }
-          } catch (checkoutError) {
-            console.error('从checkout API加载失败:', checkoutError)
-          }
-        }
-        
-        // 如果仍然没有商品数据，尝试从本地购物车数据构建
-        if (!this.products.length && cart_items) {
-          console.log('尝试从本地数据构建商品信息')
-          // 这里可以尝试从本地存储或其他方式获取商品信息
-        }
-        
+
         // 加载地址信息
-        if (address_id) {
-          // 透传仅带了 id，这里仍从缓存/后端加载完整对象
-          const cached = AddressService.getSelectedAddress()
-          if (cached && String(cached.id) === String(address_id)) {
-            this.selectedAddress = cached
-          } else {
-            this.selectedAddress = await AddressService.getDefaultAddress(this.user_id)
-          }
-        } else {
-          this.selectedAddress = await AddressService.getDefaultAddress(this.user_id)
-        }
+        await this.loadAddressInfo()
       } catch (error) {
         console.error('加载下单信息失败:', error)
         // 显示错误提示
@@ -368,8 +352,35 @@ export default {
 
     
     async loadAddressInfo() {
-      // 使用AddressService获取默认地址
-      this.selectedAddress = await AddressService.getDefaultAddress(this.user_id)
+      try {
+        // 优先使用从 eventChannel 传递的地址信息
+        const { address_id } = this.pageParams
+        if (address_id) {
+          // 透传仅带了 id，这里仍从缓存/后端加载完整对象
+          const cached = AddressService.getSelectedAddress()
+          if (cached && String(cached.id) === String(address_id)) {
+            this.selectedAddress = cached
+            return
+          } else {
+            // 尝试从后端加载地址详情
+            try {
+              // 这里可以调用地址详情API
+              // const addressResponse = await request.get(`/api/app/address/${address_id}`)
+              // if (addressResponse.data.code === 200) {
+              //   this.selectedAddress = addressResponse.data.data
+              //   return
+              // }
+            } catch (error) {
+              console.error('加载地址详情失败:', error)
+            }
+          }
+        }
+        
+        // 如果没有指定地址，使用默认地址
+        this.selectedAddress = await AddressService.getDefaultAddress(this.user_id)
+      } catch (error) {
+        console.error('加载地址信息失败:', error)
+      }
     },
     
     // 去结算：创建订单 -> 弹窗模拟支付
@@ -465,6 +476,12 @@ export default {
       } finally {
         this.isProcessing = false
       }
+    },
+
+    handleImageError(e) {
+      console.error('商品图片加载失败:', e.detail.message);
+      // 可以在这里设置一个默认图片或提示
+      e.target.src = '/static/default-product.png';
     }
   }
 }
@@ -472,10 +489,9 @@ export default {
 
 <style scoped>
 .checkout-container {
+  padding-bottom: 80px; /* 为固定底部栏留出空间 */
   min-height: 100vh;
-  background-color: #f5f5f5;
-  padding-bottom: constant(safe-area-inset-bottom, 80px);
-  padding-bottom: env(safe-area-inset-bottom, 80px);
+  background: #f5f5f5;
 }
 
 .header {
@@ -571,9 +587,14 @@ export default {
 
 .product-item {
   display: flex;
-  align-items: center;
-  padding: 12px 0;
-  border-bottom: 1px dashed #eee;
+  align-items: flex-start;
+  padding: 16px 0;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background-color 0.2s ease;
+}
+
+.product-item:hover {
+  background-color: #fafafa;
 }
 
 .product-item:last-child {
@@ -581,69 +602,87 @@ export default {
 }
 
 .product-image {
-  width: 64px;
-  height: 64px;
-  margin-right: 12px;
+  width: 80px;
+  height: 80px;
+  margin-right: 16px;
+  flex-shrink: 0;
 }
 
-.product-image img {
+.product-image image {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 6px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .product-info {
   flex: 1;
-  min-width: 0; /* 关键：允许子元素在 flex 容器中收缩，ellipsis 才能生效 */
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 80px;
 }
 
 .product-name {
-  font-size: 14px;
-  color: #1f2d3d;
-  margin-bottom: 4px;
-  line-height: 1.35;
-  display: block; /* 让 ellipsis 更稳定生效 */
-  white-space: nowrap;
+  font-size: 16px;
+  color: #1f2937;
+  margin-bottom: 6px;
+  line-height: 1.4;
+  font-weight: 500;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
-  width: 100%;
+}
+
+.product-specs {
+  margin: 6px 0;
+}
+
+.spec-text {
+  font-size: 13px;
+  color: #6b7280;
+  background-color: #f3f4f6;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  display: inline-block;
 }
 
 .product-price {
-  font-size: 15px;
-  color: #ff4d4f;
+  font-size: 16px;
+  color: #ef4444;
   font-weight: 600;
-}
-
-.product-quantity {
-  color: #666;
-  font-size: 14px;
+  margin-top: auto;
 }
 
 .product-right {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 4px;
+  justify-content: space-between;
+  height: 80px;
+  margin-left: 12px;
+  flex-shrink: 0;
+}
+
+.product-quantity {
+  color: #6b7280;
+  font-size: 14px;
+  background-color: #f9fafb;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
 }
 
 .product-subtotal {
-  color: #ff4d4f;
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.product-specs {
-  margin: 4px 0;
-}
-
-.spec-text {
-  font-size: 12px;
-  color: #666;
-  background-color: #f5f5f5;
-  padding: 2px 6px;
-  border-radius: 3px;
+  color: #ef4444;
+  font-size: 18px;
+  font-weight: 700;
+  margin-top: auto;
 }
 
 .info-item {
@@ -685,11 +724,13 @@ export default {
   right: 0;
   background: white;
   padding: 12px 16px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); /* 支持安全区域 */
   display: flex;
   align-items: center;
   justify-content: space-between;
   border-top: 1px solid #eee;
   z-index: 100;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.1); /* 添加顶部阴影 */
 }
 
 .total-info {
@@ -849,9 +890,10 @@ export default {
 
 /* 支付方式视觉优化 */
 .payment-methods {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 0; /* 移除之前的底部边距，因为已经在section上设置了 */
 }
 
 .payment-item {
@@ -859,55 +901,86 @@ export default {
   align-items: center;
   justify-content: space-between;
   background: #fff;
-  border: 1px solid #f0f0f0;
-  border-radius: 10px;
-  padding: 12px 14px;
-  transition: border-color .15s ease, box-shadow .15s ease;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.payment-item:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
 
 .payment-item.selected {
   border-color: #ff4d4f;
   box-shadow: 0 0 0 2px rgba(255,77,79,0.12);
+  background: #fff5f5;
 }
 
 .method-left {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  flex: 1;
 }
 
 .brand-badge {
-  width: 28px;
-  height: 28px;
-  display: inline-flex;
+  width: 40px;
+  height: 40px;
+  display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  color: #fff;
-  font-weight: 700;
-  font-size: 14px;
+  border-radius: 10px;
+  flex-shrink: 0;
 }
 
-.brand-badge.alipay { background: linear-gradient(135deg, #2e7cf6, #1f6fe5); }
-.brand-badge.wechat { background: linear-gradient(135deg, #20c997, #16a34a); }
+.brand-icon {
+  color: #fff;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.brand-badge.alipay { 
+  background: linear-gradient(135deg, #1677ff, #0958d9); 
+}
+
+.brand-badge.wechat { 
+  background: linear-gradient(135deg, #07c160, #06ad56); 
+}
+
+.method-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
 
 .method-name {
-  font-size: 14px;
+  font-size: 16px;
   color: #111827;
+  font-weight: 500;
+}
+
+.method-desc {
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.4;
 }
 
 .method-right {
   display: flex;
   align-items: center;
+  margin-left: 16px;
 }
 
 .checkmark {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   border: 2px solid #d1d5db;
   border-radius: 50%;
   position: relative;
-  transition: all 0.3s;
+  transition: all 0.2s ease;
 }
 
 .checkmark.active {
@@ -960,15 +1033,5 @@ export default {
   color: #999;
   padding: 40px 20px;
   font-size: 14px;
-}
-
-.debug-info {
-  background: #f0f0f0;
-  padding: 10px;
-  margin: 10px 0;
-  border-radius: 5px;
-  font-size: 12px;
-  color: #666;
-  word-break: break-all;
 }
 </style> 

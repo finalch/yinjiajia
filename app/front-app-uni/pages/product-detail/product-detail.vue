@@ -401,10 +401,6 @@
 
 						this.product = productData
 
-						// 调试信息
-						console.log('商品详情数据:', this.product)
-						console.log('富文本详情:', this.product.detail)
-
 						// 如果有规格，默认选择第一个规格组合
 						if (this.product.has_specs && this.product.specs && this.product.specs.length > 0) {
 							this.selectDefaultSpecs()
@@ -478,8 +474,10 @@
 
 			// 预览图片
 			previewImage(index) {
-				// 简单的图片预览，实际项目中可以使用图片预览组件
-				console.log('预览图片:', this.productImages[index])
+				uni.previewImage({
+					current: this.productImages[index],
+					urls: this.productImages
+				})
 			},
 
 			// 上一张图片
@@ -558,22 +556,22 @@
 				if (this.selectedAddress) {
 					AddressService.setSelectedAddress(this.selectedAddress)
 				}
-				const query = {
+				
+				// 构建完整的商品信息
+				const productInfo = {
 					product_id: this.product.id,
-					quantity: this.quantity
+					product_name: this.product.name,
+					product_image: this.product.images && this.product.images[0] || '/static/default-product.png',
+					price: this.currentPrice,
+					quantity: this.quantity,
+					spec_combination_id: this.selectedCombination ? this.selectedCombination.id : null,
+					spec_combination_name: this.selectedCombination ? this.selectedCombination.name : null,
+					subtotal: this.currentPrice * this.quantity
 				}
-				if (this.selectedCombination) {
-					query.spec_combination_id = this.selectedCombination.id
-				}
-				if (this.selectedAddress && this.selectedAddress.id) {
-					query.address_id = this.selectedAddress.id
-				}
-				// 构建查询字符串
-				const queryString = Object.keys(query)
-					.map(key => `${key}=${encodeURIComponent(query[key])}`)
-					.join('&')
+				
+				// 使用 eventChannel 传递商品信息
 				uni.navigateTo({
-					url: `/pages/checkout/checkout?${queryString}`
+					url: '/pages/checkout/checkout?product_id=' + this.product.id + '&quantity=' + this.quantity + '&spec_combination_id=' + this.selectedCombination,
 				})
 			},
 
@@ -727,21 +725,21 @@
 
 			// 跳转到客服页面
 			goToCustomerService() {
-				uni.navigateTo({
+				uni.switchTab({
 					url: '/pages/customer-service/customer-service'
 				})
 			},
 
 			// 跳转到店铺页面
 			goToShop() {
-				uni.navigateTo({
+				uni.switchTab({
 					url: '/pages/shop/shop'
 				})
 			},
 
 			// 跳转到购物车页面
 			goToCart() {
-				uni.navigateTo({
+				uni.switchTab({
 					url: '/pages/cart/cart'
 				})
 			},
@@ -845,23 +843,21 @@
 
 				this.closeSpecPopup()
 
-				// 跳转到结算页面
-				const query = {
-					product_id: this.product.id,
-					quantity: this.quantity
-				}
-				if (this.selectedCombination) {
-					query.spec_combination_id = this.selectedCombination.id
-				}
-				if (this.selectedAddress && this.selectedAddress.id) {
-					query.address_id = this.selectedAddress.id
-				}
-				// 构建查询字符串
-				const queryString = Object.keys(query)
-					.map(key => `${key}=${encodeURIComponent(query[key])}`)
-					.join('&')
+				// 构建完整的商品信息
+				// const productInfo = {
+				// 	product_id: this.product.id,
+				// 	product_name: this.product.name,
+				// 	product_image: this.product.images && this.product.images[0] || '/static/default-product.png',
+				// 	price: this.currentPrice,
+				// 	quantity: this.quantity,
+				// 	spec_combination_id: this.selectedCombination ? this.selectedCombination.id : null,
+				// 	spec_combination_name: this.selectedCombination ? this.selectedCombination.name : null,
+				// 	subtotal: this.currentPrice * this.quantity
+				// }
+				
+				// 使用 eventChannel 传递商品信息
 				uni.navigateTo({
-					url: `/pages/checkout/checkout?${queryString}`
+					url: '/pages/checkout/checkout?product_id=' + this.product.id + '&quantity=' + this.quantity + '&spec_combination_id=' + this.selectedCombination ? this.selectedCombination.id : null,
 				})
 			}
 		}

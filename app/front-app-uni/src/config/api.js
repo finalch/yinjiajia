@@ -2,7 +2,7 @@
 const config = {
   // 开发环境
   development: {
-    baseURL: 'http://192.168.1.22:6000',
+    baseURL: 'http://192.168.1.17:6000',
     timeout: 10000
   },
   // 生产环境

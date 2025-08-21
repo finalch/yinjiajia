@@ -8,7 +8,6 @@
 
 		<!-- 购物车为空状态 -->
 		<view v-if="cartList.length === 0" class="empty-cart">
-			<view class="empty-icon">��</view>
 			<view class="empty-text">购物车空空如也</view>
 			<view class="shop-btn" @click="goToShop">去购物</view>
 		</view>
@@ -369,7 +368,7 @@
 
 	// 去商城
 	const goToShop = () => {
-		uni.navigateTo({
+		uni.switchTab({
 			url: '/pages/shop/shop'
 		})
 	}

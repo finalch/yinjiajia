@@ -87,10 +87,14 @@
 		methods: {
 			// 加载支付结果
 			loadPaymentResult() {
-				const query = this.$route.query;
-				this.paymentStatus = query.status || 'success';
-				this.orderInfo.orderNo = query.order_number || '';
-				this.orderInfo.totalAmount = query.total_amount || '0.00';
+				// 从页面参数获取数据
+				const pages = getCurrentPages();
+				const currentPage = pages[pages.length - 1];
+				const options = currentPage.options;
+				
+				this.paymentStatus = options.status || 'success';
+				this.orderInfo.orderNo = options.order_number || '';
+				this.orderInfo.totalAmount = options.total_amount || '0.00';
 				this.orderInfo.payTime = this.formatDate(new Date());
 			},
 
@@ -108,28 +112,30 @@
 
 			// 返回上一页
 			goBack() {
-				this.$router.go(-1);
+				uni.navigateBack({
+					delta: 1
+				});
 			},
 
 			// 查看订单
 			viewOrder() {
-				this.$router.push('/my-order');
+				uni.navigateTo({
+					url: '/pages/myorder/myorder'
+				});
 			},
 
 			// 重新支付
 			retryPayment() {
-				this.$router.push({
-					path: '/payment',
-					query: {
-						order_number: this.orderInfo.orderNo,
-						total_amount: this.orderInfo.totalAmount
-					}
+				uni.navigateTo({
+					url: '/pages/payment/payment?order_number=' + this.orderInfo.orderNo + '&total_amount=' + this.orderInfo.totalAmount
 				});
 			},
 
 			// 返回首页
 			goHome() {
-				this.$router.push('/');
+				uni.switchTab({
+					url: '/pages/index/index'
+				});
 			}
 		}
 	}

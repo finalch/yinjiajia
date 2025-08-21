@@ -58,11 +58,35 @@ export default {
   },
   methods: {
     navigateTo(path) {
-      this.$router.push(path);
+      // 根据路径跳转到对应页面
+      if (path === '/') {
+        uni.switchTab({
+          url: '/pages/index/index'
+        })
+      } else if (path === '/cart') {
+        uni.switchTab({
+          url: '/pages/cart/cart'
+        })
+      } else if (path === '/myorder') {
+        uni.switchTab({
+          url: '/pages/myorder/myorder'
+        })
+      } else if (path === '/profile') {
+        uni.switchTab({
+          url: '/pages/profile/profile'
+        })
+      } else {
+        uni.navigateTo({
+          url: path
+        })
+      }
     },
     async fetchCartCount() {
       // 避免与购物车页重复请求
-      if (this.$route.path === '/cart') return
+      const pages = getCurrentPages()
+      const currentPage = pages[pages.length - 1]
+      if (currentPage && currentPage.route === 'pages/cart/cart') return
+      
       // 获取最新用户ID；未登录则不请求
       const uid = getUserId()
       if (!uid) {
@@ -80,18 +104,11 @@ export default {
       }
     }
   },
-  watch: {
-    $route() {
-      this.fetchCartCount()
-    }
-  },
-  mounted() {
+  onShow() {
     this.fetchCartCount()
-    // 去掉焦点触发，避免切回详情页与详情页自身拉取产生并发
-    // window.addEventListener('focus', this.fetchCartCount)
   },
-  beforeUnmount() {
-    // window.removeEventListener('focus', this.fetchCartCount)
+  onHide() {
+    // 页面隐藏时的处理
   }
 }
 </script>

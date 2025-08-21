@@ -138,18 +138,24 @@ export default {
 
 			// 返回上一页
 			goBack() {
-				this.$router.go(-1);
+				uni.navigateBack({
+					delta: 1
+				});
 			},
 
 			// 加载订单信息
 			loadOrderInfo() {
-				const query = this.$route.query;
-				this.orderInfo.orderNo = query.order_number || '';
-				this.orderInfo.totalAmount = query.total_amount || '0.00';
+				// 从页面参数获取数据
+				const pages = getCurrentPages();
+				const currentPage = pages[pages.length - 1];
+				const options = currentPage.options;
+				
+				this.orderInfo.orderNo = options.order_number || '';
+				this.orderInfo.totalAmount = options.total_amount || '0.00';
 				this.orderInfo.createTime = this.formatDate(new Date());
 				this.orderInfo.productName = '商品订单';
-				this.currentMethod = query.payment_method || 'wechat';
-				this.orderId = query.order_id; // 保存订单ID
+				this.currentMethod = options.payment_method || 'wechat';
+				this.orderId = options.order_id; // 保存订单ID
 			},
 
 			// 复制订单号
@@ -260,13 +266,8 @@ export default {
 			// 支付成功处理
 			paymentSuccess() {
 				// 跳转到支付结果页面
-				this.$router.push({
-					path: '/pay-result',
-					query: {
-						status: 'success',
-						order_number: this.orderInfo.orderNo,
-						total_amount: this.orderInfo.totalAmount
-					}
+				uni.navigateTo({
+					url: '/pages/pay-result/pay-result?status=success&order_number=' + this.orderInfo.orderNo + '&total_amount=' + this.orderInfo.totalAmount
 				});
 			},
 

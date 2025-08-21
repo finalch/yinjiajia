@@ -48,7 +48,8 @@ export default {
   name: 'OrderDetail',
   data() {
     return {
-      order: { items: [] }
+      order: { items: [] },
+      orderId: null
     }
   },
   computed: {
@@ -65,7 +66,9 @@ export default {
       return m[this.order.status] || 'status-default'
     }
   },
-  mounted() {
+  onLoad(options) {
+    // 获取页面参数
+    this.orderId = options.id || options.order_id
     this.loadDetail()
   },
   methods: {
@@ -76,14 +79,36 @@ export default {
       return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
     },
     formatPrice(n) { return Number(n || 0).toFixed(2) },
-    goBack() { this.$router.go(-1) },
+    goBack() { 
+      uni.navigateBack({
+        delta: 1
+      })
+    },
     async loadDetail() {
-      const id = this.$route.params.id
-      const res = await request.get(`/api/app/order/${id}`, { params: { user_id: getUserId() } })
-      if (res.data && res.data.code === 200) {
-        this.order = res.data.data
-      } else {
-        alert(res.data?.message || '加载失败')
+      const id = this.orderId
+      if (!id) {
+        uni.showToast({
+          title: '订单ID不能为空',
+          icon: 'error'
+        })
+        return
+      }
+      
+      try {
+        const res = await request.get(`/api/app/order/${id}`, { params: { user_id: getUserId() } })
+        if (res.data && res.data.code === 200) {
+          this.order = res.data.data
+        } else {
+          uni.showToast({
+            title: res.data?.message || '加载失败',
+            icon: 'error'
+          })
+        }
+      } catch (error) {
+        uni.showToast({
+          title: '网络错误',
+          icon: 'error'
+        })
       }
     }
   }

@@ -50,14 +50,14 @@ if (uni.restoreGlobal) {
     try {
       uni.setStorageSync(key, value);
     } catch (e) {
-      formatAppLog("warn", "at src/utils/auth.js:11", "设置存储失败:", e);
+      formatAppLog("warn", "at src/utils/auth.js:17", "设置存储失败:", e);
     }
   }
   function safeGetStorage(key, defaultValue = "") {
     try {
       return uni.getStorageSync(key) || defaultValue;
     } catch (e) {
-      formatAppLog("warn", "at src/utils/auth.js:19", "获取存储失败:", e);
+      formatAppLog("warn", "at src/utils/auth.js:25", "获取存储失败:", e);
       return defaultValue;
     }
   }
@@ -65,7 +65,7 @@ if (uni.restoreGlobal) {
     try {
       uni.removeStorageSync(key);
     } catch (e) {
-      formatAppLog("warn", "at src/utils/auth.js:28", "删除存储失败:", e);
+      formatAppLog("warn", "at src/utils/auth.js:34", "删除存储失败:", e);
     }
   }
   function setToken(token, expiresAt) {
@@ -91,7 +91,7 @@ if (uni.restoreGlobal) {
       const userStr = safeGetStorage(USER_KEY, "{}");
       return JSON.parse(userStr);
     } catch (e) {
-      formatAppLog("warn", "at src/utils/auth.js:58", "解析用户信息失败:", e);
+      formatAppLog("warn", "at src/utils/auth.js:64", "解析用户信息失败:", e);
       return {};
     }
   }
@@ -105,7 +105,7 @@ if (uni.restoreGlobal) {
   const config = {
     // 开发环境
     development: {
-      baseURL: "http://192.168.1.22:6000",
+      baseURL: "http://192.168.1.17:6000",
       timeout: 1e4
     },
     // 生产环境
@@ -130,10 +130,16 @@ if (uni.restoreGlobal) {
     response: []
   };
   function addRequestInterceptor(onFulfilled, onRejected) {
-    interceptors.request.push({ onFulfilled, onRejected });
+    interceptors.request.push({
+      onFulfilled,
+      onRejected
+    });
   }
   function addResponseInterceptor(onFulfilled, onRejected) {
-    interceptors.response.push({ onFulfilled, onRejected });
+    interceptors.response.push({
+      onFulfilled,
+      onRejected
+    });
   }
   function executeRequestInterceptors(config2) {
     let result = config2;
@@ -179,7 +185,7 @@ if (uni.restoreGlobal) {
         },
         timeout,
         success: (res) => {
-          formatAppLog("log", "at src/utils/request.js:75", "Response:", res.statusCode, res.data);
+          formatAppLog("log", "at src/utils/request.js:85", "Response:", res.statusCode, res.data);
           const processedResponse = executeResponseInterceptors({
             data: res.data,
             status: res.statusCode,
@@ -189,7 +195,7 @@ if (uni.restoreGlobal) {
           resolve(processedResponse);
         },
         fail: (err) => {
-          formatAppLog("error", "at src/utils/request.js:88", "Request Error:", err);
+          formatAppLog("error", "at src/utils/request.js:98", "Request Error:", err);
           const processedError = executeResponseInterceptors({
             error: err,
             config: options
@@ -197,12 +203,12 @@ if (uni.restoreGlobal) {
           reject(processedError);
         }
       };
-      formatAppLog("log", "at src/utils/request.js:101", "-----token:", token);
+      formatAppLog("log", "at src/utils/request.js:111", "-----token:", token);
       if (token) {
         config2.header["Authorization"] = `Bearer ${token}`;
       }
       config2 = executeRequestInterceptors(config2);
-      formatAppLog("log", "at src/utils/request.js:109", "Request:", (_a = config2.method) == null ? void 0 : _a.toUpperCase(), config2);
+      formatAppLog("log", "at src/utils/request.js:119", "Request:", (_a = config2.method) == null ? void 0 : _a.toUpperCase(), config2);
       uni.request(config2);
     });
   };
@@ -298,14 +304,21 @@ if (uni.restoreGlobal) {
   const cartApi = {
     // 获取购物车列表
     getCart(userId = 1) {
-      return request$1.get("/api/app/cart/", { user_id: userId });
+      return request$1.get("/api/app/cart/", {
+        user_id: userId
+      });
     },
     // 添加商品到购物车
     addToCart(data) {
       return request$1.post("/api/app/cart/", data);
     },
     // 快捷加入购物车（商品页默认选择第一个规格）
-    quickAddToCart({ productId, userId = 1, quantity = 1, specCombinationId }) {
+    quickAddToCart({
+      productId,
+      userId = 1,
+      quantity = 1,
+      specCombinationId
+    }) {
       const payload = {
         user_id: userId,
         product_id: productId,
@@ -329,14 +342,28 @@ if (uni.restoreGlobal) {
     }
   };
   const authApi = {
-    register({ phone, password }) {
-      return request$1.post("/api/app/auth/register", { phone, password });
+    register({
+      phone,
+      password
+    }) {
+      return request$1.post("/api/app/auth/register", {
+        phone,
+        password
+      });
     },
-    login({ phone, password }) {
-      return request$1.post("/api/app/auth/login", { phone, password });
+    login({
+      phone,
+      password
+    }) {
+      return request$1.post("/api/app/auth/login", {
+        phone,
+        password
+      });
     },
     validate(token) {
-      return request$1.get("/api/app/auth/validate", { token });
+      return request$1.get("/api/app/auth/validate", {
+        token
+      });
     }
   };
   class CategoryService {
@@ -1078,7 +1105,7 @@ if (uni.restoreGlobal) {
             showToast(response.data.message || "获取购物车失败");
           }
         } catch (error) {
-          formatAppLog("error", "at pages/cart/cart.vue:203", "获取购物车列表失败:", error);
+          formatAppLog("error", "at pages/cart/cart.vue:202", "获取购物车列表失败:", error);
           showToast("网络错误，请重试");
         } finally {
           loading.value = false;
@@ -1111,7 +1138,7 @@ if (uni.restoreGlobal) {
             showToast(response.data.message || "更新数量失败");
           }
         } catch (error) {
-          formatAppLog("error", "at pages/cart/cart.vue:245", "更新数量失败:", error);
+          formatAppLog("error", "at pages/cart/cart.vue:244", "更新数量失败:", error);
           showToast("网络错误，请重试");
         }
       };
@@ -1131,7 +1158,7 @@ if (uni.restoreGlobal) {
             showToast(response.data.message || "更新数量失败");
           }
         } catch (error) {
-          formatAppLog("error", "at pages/cart/cart.vue:270", "更新数量失败:", error);
+          formatAppLog("error", "at pages/cart/cart.vue:269", "更新数量失败:", error);
         }
       };
       const removeFromCart = async (item) => {
@@ -1146,7 +1173,7 @@ if (uni.restoreGlobal) {
             showToast(response.data.message || "删除失败");
           }
         } catch (error) {
-          formatAppLog("error", "at pages/cart/cart.vue:290", "删除商品失败:", error);
+          formatAppLog("error", "at pages/cart/cart.vue:289", "删除商品失败:", error);
           showToast("网络错误，请重试");
         }
       };
@@ -1159,7 +1186,7 @@ if (uni.restoreGlobal) {
             showToast(response.data.message || "清空购物车失败");
           }
         } catch (error) {
-          formatAppLog("error", "at pages/cart/cart.vue:307", "清空购物车失败:", error);
+          formatAppLog("error", "at pages/cart/cart.vue:306", "清空购物车失败:", error);
           showToast("网络错误，请重试");
         }
       };
@@ -1207,7 +1234,7 @@ if (uni.restoreGlobal) {
         confirmModalData.value = { title: "", content: "", item: null };
       };
       const goToShop = () => {
-        uni.navigateTo({
+        uni.switchTab({
           url: "/pages/shop/shop"
         });
       };
@@ -1241,7 +1268,6 @@ if (uni.restoreGlobal) {
         key: 0,
         class: "empty-cart"
       }, [
-        vue.createElementVNode("view", { class: "empty-icon" }, "��"),
         vue.createElementVNode("view", { class: "empty-text" }, "购物车空空如也"),
         vue.createElementVNode("view", {
           class: "shop-btn",
@@ -2132,8 +2158,6 @@ if (uni.restoreGlobal) {
               }));
             }
             this.product = productData;
-            formatAppLog("log", "at pages/product-detail/product-detail.vue:405", "商品详情数据:", this.product);
-            formatAppLog("log", "at pages/product-detail/product-detail.vue:406", "富文本详情:", this.product.detail);
             if (this.product.has_specs && this.product.specs && this.product.specs.length > 0) {
               this.selectDefaultSpecs();
             }
@@ -2144,7 +2168,7 @@ if (uni.restoreGlobal) {
             });
           }
         } catch (error) {
-          formatAppLog("error", "at pages/product-detail/product-detail.vue:419", "获取商品详情失败:", error);
+          formatAppLog("error", "at pages/product-detail/product-detail.vue:415", "获取商品详情失败:", error);
           uni.showToast({
             title: "网络错误",
             icon: "error"
@@ -2179,7 +2203,7 @@ if (uni.restoreGlobal) {
             this.cartCount = data && (data.item_count || (((_a = data.items) == null ? void 0 : _a.length) ?? 0)) || 0;
           }
         } catch (error) {
-          formatAppLog("error", "at pages/product-detail/product-detail.vue:456", "获取购物车数量失败:", error);
+          formatAppLog("error", "at pages/product-detail/product-detail.vue:452", "获取购物车数量失败:", error);
         } finally {
           this._isFetchingCart = false;
           this._lastCartFetchAt = now;
@@ -2199,7 +2223,10 @@ if (uni.restoreGlobal) {
       },
       // 预览图片
       previewImage(index) {
-        formatAppLog("log", "at pages/product-detail/product-detail.vue:482", "预览图片:", this.productImages[index]);
+        uni.previewImage({
+          current: this.productImages[index],
+          urls: this.productImages
+        });
       },
       // 上一张图片
       prevImage() {
@@ -2220,7 +2247,7 @@ if (uni.restoreGlobal) {
       // 预览评价图片
       previewReviewImage(index) {
         if (this.product.top_review && this.product.top_review.images) {
-          formatAppLog("log", "at pages/product-detail/product-detail.vue:509", "预览评价图片:", this.product.top_review.images[index]);
+          formatAppLog("log", "at pages/product-detail/product-detail.vue:507", "预览评价图片:", this.product.top_review.images[index]);
         }
       },
       // 分享商品
@@ -2265,19 +2292,18 @@ if (uni.restoreGlobal) {
         if (this.selectedAddress) {
           AddressService.setSelectedAddress(this.selectedAddress);
         }
-        const query = {
+        ({
           product_id: this.product.id,
-          quantity: this.quantity
-        };
-        if (this.selectedCombination) {
-          query.spec_combination_id = this.selectedCombination.id;
-        }
-        if (this.selectedAddress && this.selectedAddress.id) {
-          query.address_id = this.selectedAddress.id;
-        }
-        const queryString = Object.keys(query).map((key) => `${key}=${encodeURIComponent(query[key])}`).join("&");
+          product_name: this.product.name,
+          product_image: this.product.images && this.product.images[0] || "/static/default-product.png",
+          price: this.currentPrice,
+          quantity: this.quantity,
+          spec_combination_id: this.selectedCombination ? this.selectedCombination.id : null,
+          spec_combination_name: this.selectedCombination ? this.selectedCombination.name : null,
+          subtotal: this.currentPrice * this.quantity
+        });
         uni.navigateTo({
-          url: `/pages/checkout/checkout?${queryString}`
+          url: "/pages/checkout/checkout?product_id=" + this.product.id + "&quantity=" + this.quantity + "&spec_combination_id=" + this.selectedCombination
         });
       },
       // 选择规格
@@ -2393,7 +2419,7 @@ if (uni.restoreGlobal) {
             });
           }
         } catch (error) {
-          formatAppLog("error", "at pages/product-detail/product-detail.vue:720", "加入购物车失败:", error);
+          formatAppLog("error", "at pages/product-detail/product-detail.vue:718", "加入购物车失败:", error);
           uni.showToast({
             title: "网络错误，请重试",
             icon: "error"
@@ -2402,19 +2428,19 @@ if (uni.restoreGlobal) {
       },
       // 跳转到客服页面
       goToCustomerService() {
-        uni.navigateTo({
+        uni.switchTab({
           url: "/pages/customer-service/customer-service"
         });
       },
       // 跳转到店铺页面
       goToShop() {
-        uni.navigateTo({
+        uni.switchTab({
           url: "/pages/shop/shop"
         });
       },
       // 跳转到购物车页面
       goToCart() {
-        uni.navigateTo({
+        uni.switchTab({
           url: "/pages/cart/cart"
         });
       },
@@ -2496,19 +2522,8 @@ if (uni.restoreGlobal) {
         }
         AddressService.setSelectedAddress(this.selectedAddress);
         this.closeSpecPopup();
-        const query = {
-          product_id: this.product.id,
-          quantity: this.quantity
-        };
-        if (this.selectedCombination) {
-          query.spec_combination_id = this.selectedCombination.id;
-        }
-        if (this.selectedAddress && this.selectedAddress.id) {
-          query.address_id = this.selectedAddress.id;
-        }
-        const queryString = Object.keys(query).map((key) => `${key}=${encodeURIComponent(query[key])}`).join("&");
         uni.navigateTo({
-          url: `/pages/checkout/checkout?${queryString}`
+          url: "/pages/checkout/checkout?product_id=" + this.product.id + "&quantity=" + this.quantity + "&spec_combination_id=" + this.selectedCombination ? this.selectedCombination.id : null
         });
       }
     }
@@ -3103,11 +3118,13 @@ if (uni.restoreGlobal) {
     computed: {
       // 计算商品总数量
       totalQuantity() {
-        return this.products.reduce((total, product) => total + (product.quantity || 0), 0);
+        const total = this.products.reduce((total2, product) => total2 + (product.quantity || 0), 0);
+        return total;
       },
       // 计算最终实付金额
       finalAmount() {
-        return Math.max(0, this.totalAmount - this.discountAmount);
+        const final = Math.max(0, this.totalAmount - this.discountAmount);
+        return final;
       }
     },
     onLoad(options) {
@@ -3139,13 +3156,12 @@ if (uni.restoreGlobal) {
       async loadCheckoutInfo() {
         try {
           const { cart_items, product_id, quantity, spec_combination_id } = this.pageParams;
-          formatAppLog("log", "at pages/checkout/checkout.vue:246", "页面参数:", this.pageParams);
+          formatAppLog("log", "at pages/checkout/checkout.vue:258", " ------ >>>>>>>   ", product_id, quantity, spec_combination_id);
           let params = {
             user_id: this.user_id
           };
           if (cart_items) {
             params.cart_items = cart_items;
-            formatAppLog("log", "at pages/checkout/checkout.vue:254", "购物车商品ID:", cart_items);
           }
           if (product_id) {
             params.product_id = product_id;
@@ -3158,71 +3174,52 @@ if (uni.restoreGlobal) {
           if (address_id) {
             params.address_id = address_id;
           }
-          formatAppLog("log", "at pages/checkout/checkout.vue:271", "请求参数:", params);
-          if (cart_items) {
-            try {
-              const cartResponse = await request$1.get("/api/app/cart/", {
-                params: {
-                  user_id: this.user_id
+          try {
+            const checkoutResponse = await request$1.get("/api/app/order/checkout", params);
+            if (checkoutResponse.data.code === 200) {
+              const data = checkoutResponse.data.data;
+              this.products = data.products || [];
+              this.totalAmount = data.total_amount || 0;
+            }
+          } catch (checkoutError) {
+            formatAppLog("error", "at pages/checkout/checkout.vue:291", "从checkout API加载失败:", checkoutError);
+            if (cart_items) {
+              try {
+                const cartResponse = await request$1.get("/api/app/cart/", {
+                  params: {
+                    user_id: this.user_id
+                  }
+                });
+                if (cartResponse.data.code === 200) {
+                  const cartData = cartResponse.data.data;
+                  if (cartData && cartData.items) {
+                    const cartItemIds = cart_items.split(",").map((id) => parseInt(id));
+                    const selectedItems = cartData.items.filter(
+                      (item) => cartItemIds.includes(item.id)
+                    );
+                    this.products = selectedItems.map((item) => ({
+                      product_id: item.product_id,
+                      product_name: item.product_name,
+                      product_image: item.product_image,
+                      price: item.price,
+                      quantity: item.quantity,
+                      spec_combination_id: item.spec_combination_id,
+                      spec_combination_name: item.spec_combination_name,
+                      item_total: item.item_total
+                    }));
+                    this.totalAmount = this.products.reduce((total, item) => {
+                      return total + (item.item_total || 0);
+                    }, 0);
+                  }
                 }
-              });
-              if (cartResponse.data.code === 200) {
-                const cartData = cartResponse.data.data;
-                if (cartData && cartData.items) {
-                  const cartItemIds = cart_items.split(",").map((id) => parseInt(id));
-                  const selectedItems = cartData.items.filter(
-                    (item) => cartItemIds.includes(item.id)
-                  );
-                  this.products = selectedItems.map((item) => ({
-                    product_id: item.product_id,
-                    product_name: item.product_name,
-                    product_image: item.product_image,
-                    price: item.price,
-                    quantity: item.quantity,
-                    spec_combination_id: item.spec_combination_id,
-                    spec_combination_name: item.spec_combination_name,
-                    item_total: item.item_total
-                  }));
-                  this.totalAmount = this.products.reduce((total, item) => {
-                    return total + (item.item_total || 0);
-                  }, 0);
-                  formatAppLog("log", "at pages/checkout/checkout.vue:308", "从购物车加载的商品:", this.products);
-                  formatAppLog("log", "at pages/checkout/checkout.vue:309", "计算的总金额:", this.totalAmount);
-                }
+              } catch (cartError) {
+                formatAppLog("error", "at pages/checkout/checkout.vue:329", "从购物车加载商品失败:", cartError);
               }
-            } catch (cartError) {
-              formatAppLog("error", "at pages/checkout/checkout.vue:313", "从购物车加载商品失败:", cartError);
             }
           }
-          if (!this.products.length) {
-            try {
-              const checkoutResponse = await request$1.get("/api/app/order/checkout", { params });
-              if (checkoutResponse.data.code === 200) {
-                const data = checkoutResponse.data.data;
-                this.products = data.products || [];
-                this.totalAmount = data.total_amount || 0;
-                formatAppLog("log", "at pages/checkout/checkout.vue:326", "从checkout API加载的商品:", this.products);
-                formatAppLog("log", "at pages/checkout/checkout.vue:327", "从checkout API加载的总金额:", this.totalAmount);
-              }
-            } catch (checkoutError) {
-              formatAppLog("error", "at pages/checkout/checkout.vue:330", "从checkout API加载失败:", checkoutError);
-            }
-          }
-          if (!this.products.length && cart_items) {
-            formatAppLog("log", "at pages/checkout/checkout.vue:336", "尝试从本地数据构建商品信息");
-          }
-          if (address_id) {
-            const cached = AddressService.getSelectedAddress();
-            if (cached && String(cached.id) === String(address_id)) {
-              this.selectedAddress = cached;
-            } else {
-              this.selectedAddress = await AddressService.getDefaultAddress(this.user_id);
-            }
-          } else {
-            this.selectedAddress = await AddressService.getDefaultAddress(this.user_id);
-          }
+          await this.loadAddressInfo();
         } catch (error) {
-          formatAppLog("error", "at pages/checkout/checkout.vue:353", "加载下单信息失败:", error);
+          formatAppLog("error", "at pages/checkout/checkout.vue:337", "加载下单信息失败:", error);
           uni.showToast({
             title: "加载商品信息失败，请重试",
             icon: "none"
@@ -3235,7 +3232,24 @@ if (uni.restoreGlobal) {
         });
       },
       async loadAddressInfo() {
-        this.selectedAddress = await AddressService.getDefaultAddress(this.user_id);
+        try {
+          const { address_id } = this.pageParams;
+          if (address_id) {
+            const cached = AddressService.getSelectedAddress();
+            if (cached && String(cached.id) === String(address_id)) {
+              this.selectedAddress = cached;
+              return;
+            } else {
+              try {
+              } catch (error) {
+                formatAppLog("error", "at pages/checkout/checkout.vue:374", "加载地址详情失败:", error);
+              }
+            }
+          }
+          this.selectedAddress = await AddressService.getDefaultAddress(this.user_id);
+        } catch (error) {
+          formatAppLog("error", "at pages/checkout/checkout.vue:382", "加载地址信息失败:", error);
+        }
       },
       // 去结算：创建订单 -> 弹窗模拟支付
       async handleCheckout() {
@@ -3279,7 +3293,7 @@ if (uni.restoreGlobal) {
           this.currentTotalAmount = this.finalAmount;
           this.showPaymentModal = true;
         } catch (error) {
-          formatAppLog("error", "at pages/checkout/checkout.vue:424", "去结算失败:", error);
+          formatAppLog("error", "at pages/checkout/checkout.vue:435", "去结算失败:", error);
           uni.showToast({
             title: "去结算失败：" + (error.message || "请稍后重试"),
             icon: "none"
@@ -3314,7 +3328,7 @@ if (uni.restoreGlobal) {
             });
           }
         } catch (err) {
-          formatAppLog("error", "at pages/checkout/checkout.vue:460", "支付失败:", err);
+          formatAppLog("error", "at pages/checkout/checkout.vue:471", "支付失败:", err);
           uni.showToast({
             title: "支付失败：" + (err.message || "请稍后重试"),
             icon: "none"
@@ -3322,6 +3336,10 @@ if (uni.restoreGlobal) {
         } finally {
           this.isProcessing = false;
         }
+      },
+      handleImageError(e) {
+        formatAppLog("error", "at pages/checkout/checkout.vue:482", "商品图片加载失败:", e.detail.message);
+        e.target.src = "/static/default-product.png";
       }
     }
   };
@@ -3384,19 +3402,6 @@ if (uni.restoreGlobal) {
       vue.createCommentVNode(" 商品信息 "),
       vue.createElementVNode("view", { class: "products-section" }, [
         vue.createElementVNode("view", { class: "section-title" }, "商品信息"),
-        vue.createCommentVNode(" 调试信息 "),
-        vue.createElementVNode("view", {
-          class: "debug-info",
-          style: { "background": "#f0f0f0", "padding": "10px", "margin": "10px 0", "border-radius": "5px", "font-size": "12px" }
-        }, [
-          vue.createElementVNode(
-            "text",
-            null,
-            "调试信息：商品数量 " + vue.toDisplayString($data.products.length) + "，总金额 " + vue.toDisplayString($data.totalAmount) + "，页面参数 " + vue.toDisplayString(JSON.stringify($data.pageParams)),
-            1
-            /* TEXT */
-          )
-        ]),
         $data.products.length > 0 ? (vue.openBlock(), vue.createElementBlock("view", {
           key: 0,
           class: "product-list"
@@ -3411,8 +3416,10 @@ if (uni.restoreGlobal) {
               }, [
                 vue.createElementVNode("view", { class: "product-image" }, [
                   vue.createElementVNode("image", {
-                    src: product.product_image || "/static/default-product.png"
-                  }, null, 8, ["src"])
+                    src: product.product_image || "/static/default-product.png",
+                    onError: _cache[2] || (_cache[2] = (...args) => $options.handleImageError && $options.handleImageError(...args)),
+                    mode: "aspectFill"
+                  }, null, 40, ["src"])
                 ]),
                 vue.createElementVNode("view", { class: "product-info" }, [
                   vue.createElementVNode(
@@ -3422,14 +3429,14 @@ if (uni.restoreGlobal) {
                     1
                     /* TEXT */
                   ),
-                  product.spec_combination_name ? (vue.openBlock(), vue.createElementBlock("view", {
+                  product.spec_combination_id || product.spec_combination_name ? (vue.openBlock(), vue.createElementBlock("view", {
                     key: 0,
                     class: "product-specs"
                   }, [
                     vue.createElementVNode(
                       "text",
                       { class: "spec-text" },
-                      vue.toDisplayString(product.spec_combination_name),
+                      vue.toDisplayString(product.spec_combination_name || `规格ID: ${product.spec_combination_id}`),
                       1
                       /* TEXT */
                     )
@@ -3453,7 +3460,7 @@ if (uni.restoreGlobal) {
                   vue.createElementVNode(
                     "view",
                     { class: "product-subtotal" },
-                    "¥" + vue.toDisplayString($options.formatPrice(product.price * product.quantity)),
+                    "¥" + vue.toDisplayString($options.formatPrice(product.subtotal || product.price * product.quantity)),
                     1
                     /* TEXT */
                   )
@@ -3529,16 +3536,21 @@ if (uni.restoreGlobal) {
             "view",
             {
               class: vue.normalizeClass(["payment-item", { selected: $data.selectedMethod === "alipay" }]),
-              onClick: _cache[2] || (_cache[2] = ($event) => $data.selectedMethod = "alipay")
+              onClick: _cache[3] || (_cache[3] = ($event) => $data.selectedMethod = "alipay")
             },
             [
               vue.createElementVNode("view", { class: "method-left" }, [
-                vue.createElementVNode("text", { class: "brand-badge alipay" }, "A"),
-                vue.createElementVNode("text", { class: "method-name" }, "支付宝")
+                vue.createElementVNode("view", { class: "brand-badge alipay" }, [
+                  vue.createElementVNode("text", { class: "brand-icon" }, "支")
+                ]),
+                vue.createElementVNode("view", { class: "method-info" }, [
+                  vue.createElementVNode("text", { class: "method-name" }, "支付宝"),
+                  vue.createElementVNode("text", { class: "method-desc" }, "推荐使用支付宝支付")
+                ])
               ]),
               vue.createElementVNode("view", { class: "method-right" }, [
                 vue.createElementVNode(
-                  "text",
+                  "view",
                   {
                     class: vue.normalizeClass(["checkmark", { active: $data.selectedMethod === "alipay" }])
                   },
@@ -3555,16 +3567,21 @@ if (uni.restoreGlobal) {
             "view",
             {
               class: vue.normalizeClass(["payment-item", { selected: $data.selectedMethod === "wechat" }]),
-              onClick: _cache[3] || (_cache[3] = ($event) => $data.selectedMethod = "wechat")
+              onClick: _cache[4] || (_cache[4] = ($event) => $data.selectedMethod = "wechat")
             },
             [
               vue.createElementVNode("view", { class: "method-left" }, [
-                vue.createElementVNode("text", { class: "brand-badge wechat" }, "W"),
-                vue.createElementVNode("text", { class: "method-name" }, "微信支付")
+                vue.createElementVNode("view", { class: "brand-badge wechat" }, [
+                  vue.createElementVNode("text", { class: "brand-icon" }, "微")
+                ]),
+                vue.createElementVNode("view", { class: "method-info" }, [
+                  vue.createElementVNode("text", { class: "method-name" }, "微信支付"),
+                  vue.createElementVNode("text", { class: "method-desc" }, "使用微信扫码支付")
+                ])
               ]),
               vue.createElementVNode("view", { class: "method-right" }, [
                 vue.createElementVNode(
-                  "text",
+                  "view",
                   {
                     class: vue.normalizeClass(["checkmark", { active: $data.selectedMethod === "wechat" }])
                   },
@@ -3595,7 +3612,7 @@ if (uni.restoreGlobal) {
           "view",
           {
             class: vue.normalizeClass(["submit-btn", { disabled: !$data.selectedAddress }]),
-            onClick: _cache[4] || (_cache[4] = (...args) => $options.handleCheckout && $options.handleCheckout(...args))
+            onClick: _cache[5] || (_cache[5] = (...args) => $options.handleCheckout && $options.handleCheckout(...args))
           },
           " 去结算 ",
           2
@@ -3665,12 +3682,12 @@ if (uni.restoreGlobal) {
           vue.createElementVNode("view", { class: "modal-footer" }, [
             vue.createElementVNode("button", {
               class: "cancel-btn",
-              onClick: _cache[5] || (_cache[5] = (...args) => $options.cancelPayment && $options.cancelPayment(...args)),
+              onClick: _cache[6] || (_cache[6] = (...args) => $options.cancelPayment && $options.cancelPayment(...args)),
               disabled: $data.isProcessing
             }, "取消", 8, ["disabled"]),
             vue.createElementVNode("button", {
               class: "confirm-btn",
-              onClick: _cache[6] || (_cache[6] = (...args) => $options.processPayment && $options.processPayment(...args)),
+              onClick: _cache[7] || (_cache[7] = (...args) => $options.processPayment && $options.processPayment(...args)),
               disabled: $data.isProcessing
             }, "确认支付", 8, ["disabled"])
           ])
@@ -3725,17 +3742,21 @@ if (uni.restoreGlobal) {
       },
       // 返回上一页
       goBack() {
-        this.$router.go(-1);
+        uni.navigateBack({
+          delta: 1
+        });
       },
       // 加载订单信息
       loadOrderInfo() {
-        const query = this.$route.query;
-        this.orderInfo.orderNo = query.order_number || "";
-        this.orderInfo.totalAmount = query.total_amount || "0.00";
+        const pages = getCurrentPages();
+        const currentPage = pages[pages.length - 1];
+        const options = currentPage.options;
+        this.orderInfo.orderNo = options.order_number || "";
+        this.orderInfo.totalAmount = options.total_amount || "0.00";
         this.orderInfo.createTime = this.formatDate(/* @__PURE__ */ new Date());
         this.orderInfo.productName = "商品订单";
-        this.currentMethod = query.payment_method || "wechat";
-        this.orderId = query.order_id;
+        this.currentMethod = options.payment_method || "wechat";
+        this.orderId = options.order_id;
       },
       // 复制订单号
       copyOrderNo() {
@@ -3802,7 +3823,7 @@ if (uni.restoreGlobal) {
               throw new Error("订单号不存在");
             }
           } catch (error) {
-            formatAppLog("error", "at pages/payment/payment.vue:231", "支付处理失败:", error);
+            formatAppLog("error", "at pages/payment/payment.vue:237", "支付处理失败:", error);
             this.hideLoading();
             this.paymentFail(error);
           }
@@ -3829,18 +3850,13 @@ if (uni.restoreGlobal) {
       },
       // 支付成功处理
       paymentSuccess() {
-        this.$router.push({
-          path: "/pay-result",
-          query: {
-            status: "success",
-            order_number: this.orderInfo.orderNo,
-            total_amount: this.orderInfo.totalAmount
-          }
+        uni.navigateTo({
+          url: "/pages/pay-result/pay-result?status=success&order_number=" + this.orderInfo.orderNo + "&total_amount=" + this.orderInfo.totalAmount
         });
       },
       // 支付失败处理
       paymentFail(err) {
-        formatAppLog("error", "at pages/payment/payment.vue:275", "支付失败:", err);
+        formatAppLog("error", "at pages/payment/payment.vue:276", "支付失败:", err);
         alert("支付失败：" + (err.message || "支付过程中出现问题"));
       }
     }
@@ -4154,20 +4170,33 @@ if (uni.restoreGlobal) {
         try {
           const res = await authApi.register({ phone: this.phone, password: this.password });
           if (res.data.code === 200) {
-            alert("注册成功，请登录");
-            this.$router.replace("/login");
+            uni.showToast({
+              title: "注册成功，请登录",
+              icon: "success"
+            });
+            uni.redirectTo({
+              url: "/pages/login/login"
+            });
           } else {
-            alert(res.data.message || "注册失败");
+            uni.showToast({
+              title: res.data.message || "注册失败",
+              icon: "error"
+            });
           }
         } catch (e) {
-          formatAppLog("error", "at pages/register/register.vue:70", "注册失败:", e);
-          alert("网络错误，注册失败");
+          formatAppLog("error", "at pages/register/register.vue:79", "注册失败:", e);
+          uni.showToast({
+            title: "网络错误，注册失败",
+            icon: "error"
+          });
         } finally {
           this.submitting = false;
         }
       },
       goLogin() {
-        this.$router.replace("/");
+        uni.redirectTo({
+          url: "/pages/login/login"
+        });
       }
     }
   };
@@ -4306,7 +4335,9 @@ if (uni.restoreGlobal) {
       },
       // 返回上一页
       goBack() {
-        this.$router.go(-1);
+        uni.navigateBack({
+          delta: 1
+        });
       },
       // 选择状态筛选
       selectStatus(status) {
@@ -4340,8 +4371,11 @@ if (uni.restoreGlobal) {
             this.hasNextPage = data.pagination.has_next;
           }
         } catch (error) {
-          formatAppLog("error", "at pages/myorder/myorder.vue:219", "加载订单列表失败:", error);
-          alert("加载订单列表失败");
+          formatAppLog("error", "at pages/myorder/myorder.vue:221", "加载订单列表失败:", error);
+          uni.showToast({
+            title: "加载订单列表失败",
+            icon: "error"
+          });
         } finally {
           this.loading = false;
         }
@@ -4387,41 +4421,57 @@ if (uni.restoreGlobal) {
       },
       // 查看订单详情
       viewOrderDetail(orderId) {
-        this.$router.push({ path: `/order-detail/${orderId}` });
+        uni.navigateTo({
+          url: `/pages/order-detail/order-detail?id=${orderId}`
+        });
       },
       // 去支付
       goPay(order) {
-        this.$router.push({
-          path: "/payment",
-          query: {
-            order_number: order.order_number,
-            total_amount: order.total_amount
-          }
+        uni.navigateTo({
+          url: `/pages/payment/payment?order_number=${order.order_number}&total_amount=${order.total_amount}`
         });
       },
       // 取消订单
       async cancelOrder(order) {
-        var _a;
-        if (!confirm("确定取消该订单吗？"))
-          return;
-        try {
-          const res = await request$1.post(`/api/app/order/${order.id}/cancel`, null, { params: { user_id: this.user_id } });
-          if (res.data && res.data.code === 200) {
-            alert("订单已取消");
-            this.currentPage = 1;
-            this.orders = [];
-            await this.loadOrders();
-          } else {
-            alert(((_a = res.data) == null ? void 0 : _a.message) || "取消失败");
+        uni.showModal({
+          title: "确认取消",
+          content: "确定取消该订单吗？",
+          success: async (res) => {
+            var _a;
+            if (res.confirm) {
+              try {
+                const res2 = await request$1.post(`/api/app/order/${order.id}/cancel`, null, { params: { user_id: this.user_id } });
+                if (res2.data && res2.data.code === 200) {
+                  uni.showToast({
+                    title: "订单已取消",
+                    icon: "success"
+                  });
+                  this.currentPage = 1;
+                  this.orders = [];
+                  await this.loadOrders();
+                } else {
+                  uni.showToast({
+                    title: ((_a = res2.data) == null ? void 0 : _a.message) || "取消失败",
+                    icon: "error"
+                  });
+                }
+              } catch (e) {
+                formatAppLog("error", "at pages/myorder/myorder.vue:315", "取消订单失败", e);
+                uni.showToast({
+                  title: "取消失败",
+                  icon: "error"
+                });
+              }
+            }
           }
-        } catch (e) {
-          formatAppLog("error", "at pages/myorder/myorder.vue:302", "取消订单失败", e);
-          alert("取消失败");
-        }
+        });
       },
       // 售后（占位）
       afterSales(order) {
-        alert("售后功能开发中...");
+        uni.showToast({
+          title: "售后功能开发中...",
+          icon: "none"
+        });
       },
       // 查看物流
       viewLogistics(order) {
@@ -4430,36 +4480,60 @@ if (uni.restoreGlobal) {
           const message = `物流公司：${logistics.carrier}
 物流单号：${logistics.tracking_number}
 物流状态：${logistics.status_text || logistics.status}`;
-          alert(message);
+          uni.showModal({
+            title: "物流信息",
+            content: message,
+            showCancel: false
+          });
         } else {
-          alert("暂无物流信息");
+          uni.showToast({
+            title: "暂无物流信息",
+            icon: "none"
+          });
         }
       },
       // 确认收货
       async confirmReceipt(order) {
-        var _a;
-        if (!confirm("确认已收到货物吗？"))
-          return;
-        try {
-          const res = await request$1.post(`/api/app/order/${order.id}/confirm-receipt`, {
-            user_id: this.user_id
-          });
-          if (res.data && res.data.code === 200) {
-            alert("确认收货成功");
-            this.currentPage = 1;
-            this.orders = [];
-            await this.loadOrders();
-          } else {
-            alert(((_a = res.data) == null ? void 0 : _a.message) || "确认收货失败");
+        uni.showModal({
+          title: "确认收货",
+          content: "确认已收到货物吗？",
+          success: async (res) => {
+            var _a;
+            if (res.confirm) {
+              try {
+                const res2 = await request$1.post(`/api/app/order/${order.id}/confirm-receipt`, {
+                  user_id: this.user_id
+                });
+                if (res2.data && res2.data.code === 200) {
+                  uni.showToast({
+                    title: "确认收货成功",
+                    icon: "success"
+                  });
+                  this.currentPage = 1;
+                  this.orders = [];
+                  await this.loadOrders();
+                } else {
+                  uni.showToast({
+                    title: ((_a = res2.data) == null ? void 0 : _a.message) || "确认收货失败",
+                    icon: "error"
+                  });
+                }
+              } catch (e) {
+                formatAppLog("error", "at pages/myorder/myorder.vue:379", "确认收货失败", e);
+                uni.showToast({
+                  title: "确认收货失败",
+                  icon: "error"
+                });
+              }
+            }
           }
-        } catch (e) {
-          formatAppLog("error", "at pages/myorder/myorder.vue:340", "确认收货失败", e);
-          alert("确认收货失败");
-        }
+        });
       },
       // 去购物
       goShop() {
-        this.$router.push("/");
+        uni.switchTab({
+          url: "/pages/index/index"
+        });
       }
     }
   };
@@ -5300,7 +5374,8 @@ if (uni.restoreGlobal) {
     name: "OrderDetail",
     data() {
       return {
-        order: { items: [] }
+        order: { items: [] },
+        orderId: null
       };
     },
     computed: {
@@ -5317,7 +5392,8 @@ if (uni.restoreGlobal) {
         return m[this.order.status] || "status-default";
       }
     },
-    mounted() {
+    onLoad(options) {
+      this.orderId = options.id || options.order_id;
       this.loadDetail();
     },
     methods: {
@@ -5332,16 +5408,35 @@ if (uni.restoreGlobal) {
         return Number(n || 0).toFixed(2);
       },
       goBack() {
-        this.$router.go(-1);
+        uni.navigateBack({
+          delta: 1
+        });
       },
       async loadDetail() {
         var _a;
-        const id = this.$route.params.id;
-        const res = await request$1.get(`/api/app/order/${id}`, { params: { user_id: getUserId() } });
-        if (res.data && res.data.code === 200) {
-          this.order = res.data.data;
-        } else {
-          alert(((_a = res.data) == null ? void 0 : _a.message) || "加载失败");
+        const id = this.orderId;
+        if (!id) {
+          uni.showToast({
+            title: "订单ID不能为空",
+            icon: "error"
+          });
+          return;
+        }
+        try {
+          const res = await request$1.get(`/api/app/order/${id}`, { params: { user_id: getUserId() } });
+          if (res.data && res.data.code === 200) {
+            this.order = res.data.data;
+          } else {
+            uni.showToast({
+              title: ((_a = res.data) == null ? void 0 : _a.message) || "加载失败",
+              icon: "error"
+            });
+          }
+        } catch (error) {
+          uni.showToast({
+            title: "网络错误",
+            icon: "error"
+          });
         }
       }
     }
@@ -5522,10 +5617,12 @@ if (uni.restoreGlobal) {
     methods: {
       // 加载支付结果
       loadPaymentResult() {
-        const query = this.$route.query;
-        this.paymentStatus = query.status || "success";
-        this.orderInfo.orderNo = query.order_number || "";
-        this.orderInfo.totalAmount = query.total_amount || "0.00";
+        const pages = getCurrentPages();
+        const currentPage = pages[pages.length - 1];
+        const options = currentPage.options;
+        this.paymentStatus = options.status || "success";
+        this.orderInfo.orderNo = options.order_number || "";
+        this.orderInfo.totalAmount = options.total_amount || "0.00";
         this.orderInfo.payTime = this.formatDate(/* @__PURE__ */ new Date());
       },
       // 格式化日期
@@ -5540,25 +5637,27 @@ if (uni.restoreGlobal) {
       },
       // 返回上一页
       goBack() {
-        this.$router.go(-1);
+        uni.navigateBack({
+          delta: 1
+        });
       },
       // 查看订单
       viewOrder() {
-        this.$router.push("/my-order");
+        uni.navigateTo({
+          url: "/pages/myorder/myorder"
+        });
       },
       // 重新支付
       retryPayment() {
-        this.$router.push({
-          path: "/payment",
-          query: {
-            order_number: this.orderInfo.orderNo,
-            total_amount: this.orderInfo.totalAmount
-          }
+        uni.navigateTo({
+          url: "/pages/payment/payment?order_number=" + this.orderInfo.orderNo + "&total_amount=" + this.orderInfo.totalAmount
         });
       },
       // 返回首页
       goHome() {
-        this.$router.push("/");
+        uni.switchTab({
+          url: "/pages/index/index"
+        });
       }
     }
   };
@@ -5704,11 +5803,33 @@ if (uni.restoreGlobal) {
     },
     methods: {
       navigateTo(path) {
-        this.$router.push(path);
+        if (path === "/") {
+          uni.switchTab({
+            url: "/pages/index/index"
+          });
+        } else if (path === "/cart") {
+          uni.switchTab({
+            url: "/pages/cart/cart"
+          });
+        } else if (path === "/myorder") {
+          uni.switchTab({
+            url: "/pages/myorder/myorder"
+          });
+        } else if (path === "/profile") {
+          uni.switchTab({
+            url: "/pages/profile/profile"
+          });
+        } else {
+          uni.navigateTo({
+            url: path
+          });
+        }
       },
       async fetchCartCount() {
         var _a;
-        if (this.$route.path === "/cart")
+        const pages = getCurrentPages();
+        const currentPage = pages[pages.length - 1];
+        if (currentPage && currentPage.route === "pages/cart/cart")
           return;
         const uid = getUserId();
         if (!uid) {
@@ -5725,15 +5846,10 @@ if (uni.restoreGlobal) {
         }
       }
     },
-    watch: {
-      $route() {
-        this.fetchCartCount();
-      }
-    },
-    mounted() {
+    onShow() {
       this.fetchCartCount();
     },
-    beforeUnmount() {
+    onHide() {
     }
   };
   function _sfc_render$2(_ctx, _cache, $props, $setup, $data, $options) {
@@ -6221,11 +6337,13 @@ if (uni.restoreGlobal) {
     data() {
       return {
         orderType: "direct",
-        // 'direct' 或 'cart'
+        // 'cart' 或 'direct'
         totalAmount: "0.00",
         quantity: 1,
         cartItemCount: 0,
         selectedMethod: "wechat",
+        pageOptions: {},
+        // 页面参数
         paymentMethods: [
           {
             id: "wechat",
@@ -6242,15 +6360,18 @@ if (uni.restoreGlobal) {
         ]
       };
     },
-    mounted() {
+    onLoad(options) {
+      this.pageOptions = options;
       this.loadOrderInfo();
     },
     methods: {
       goBack() {
-        this.$router.go(-1);
+        uni.navigateBack({
+          delta: 1
+        });
       },
       loadOrderInfo() {
-        const query = this.$route.query;
+        const query = this.pageOptions;
         if (query.cart_items) {
           this.orderType = "cart";
           this.cartItemCount = query.cart_items.split(",").length;
@@ -6265,11 +6386,14 @@ if (uni.restoreGlobal) {
       },
       async confirmPayment() {
         if (!this.selectedMethod) {
-          alert("请选择支付方式");
+          uni.showToast({
+            title: "请选择支付方式",
+            icon: "error"
+          });
           return;
         }
         try {
-          const query = this.$route.query;
+          const query = this.pageOptions;
           let addressId = parseInt(query.address_id) || 1;
           if (!query.address_id) {
             try {
@@ -6280,7 +6404,7 @@ if (uni.restoreGlobal) {
                 addressId = addressResponse.data.data.id;
               }
             } catch (error) {
-              formatAppLog("warn", "at pages/payment-method/payment-method.vue:147", "获取默认地址失败，使用默认值:", error);
+              formatAppLog("warn", "at pages/payment-method/payment-method.vue:155", "获取默认地址失败，使用默认值:", error);
             }
           }
           const orderData = {
@@ -6299,26 +6423,26 @@ if (uni.restoreGlobal) {
               orderData.direct_buy.spec_combination_id = parseInt(query.spec_combination_id);
             }
           }
-          formatAppLog("log", "at pages/payment-method/payment-method.vue:171", "创建订单数据:", orderData);
+          formatAppLog("log", "at pages/payment-method/payment-method.vue:179", "创建订单数据:", orderData);
           const response = await request$1.post("/api/app/order/", orderData);
           if (response.data.code === 200) {
-            formatAppLog("log", "at pages/payment-method/payment-method.vue:175", "订单创建成功:", response.data);
-            this.$router.push({
-              path: "/payment",
-              query: {
-                order_id: response.data.data.order_id,
-                order_number: response.data.data.order_number,
-                total_amount: response.data.data.total_amount,
-                payment_method: this.selectedMethod
-              }
+            formatAppLog("log", "at pages/payment-method/payment-method.vue:183", "订单创建成功:", response.data);
+            uni.navigateTo({
+              url: `/pages/payment/payment?order_id=${response.data.data.order_id}&order_number=${response.data.data.order_number}&total_amount=${response.data.data.total_amount}&payment_method=${this.selectedMethod}`
             });
           } else {
-            formatAppLog("error", "at pages/payment-method/payment-method.vue:187", "创建订单失败:", response.data);
-            alert(response.data.message || "创建订单失败");
+            formatAppLog("error", "at pages/payment-method/payment-method.vue:189", "创建订单失败:", response.data);
+            uni.showToast({
+              title: response.data.message || "创建订单失败",
+              icon: "error"
+            });
           }
         } catch (error) {
-          formatAppLog("error", "at pages/payment-method/payment-method.vue:191", "创建订单失败:", error);
-          alert("创建订单失败，请重试");
+          formatAppLog("error", "at pages/payment-method/payment-method.vue:196", "创建订单失败:", error);
+          uni.showToast({
+            title: "创建订单失败，请重试",
+            icon: "error"
+          });
         }
       }
     }

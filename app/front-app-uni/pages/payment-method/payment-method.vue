@@ -76,11 +76,12 @@ export default {
   name: 'PaymentMethod',
   data() {
     return {
-      orderType: 'direct', // 'direct' 或 'cart'
+      orderType: 'direct', // 'cart' 或 'direct'
       totalAmount: '0.00',
       quantity: 1,
       cartItemCount: 0,
       selectedMethod: 'wechat',
+      pageOptions: {}, // 页面参数
       paymentMethods: [
         {
           id: 'wechat',
@@ -97,16 +98,20 @@ export default {
       ]
     }
   },
-  mounted() {
+  onLoad(options) {
+    // 获取页面参数
+    this.pageOptions = options
     this.loadOrderInfo()
   },
   methods: {
     goBack() {
-      this.$router.go(-1)
+      uni.navigateBack({
+        delta: 1
+      })
     },
 
     loadOrderInfo() {
-      const query = this.$route.query
+      const query = this.pageOptions
       
       // 判断订单类型
       if (query.cart_items) {
@@ -126,12 +131,15 @@ export default {
 
     async confirmPayment() {
       if (!this.selectedMethod) {
-        alert('请选择支付方式')
+        uni.showToast({
+          title: '请选择支付方式',
+          icon: 'error'
+        })
         return
       }
 
       try {
-        const query = this.$route.query
+        const query = this.pageOptions
         
         // 获取默认地址
         let addressId = parseInt(query.address_id) || 1
@@ -150,7 +158,7 @@ export default {
         
         // 创建订单
         const orderData = {
-  user_id: getUserId(),
+          user_id: getUserId(),
           payment_method: this.selectedMethod,
           address_id: addressId
         }
@@ -174,22 +182,22 @@ export default {
         if (response.data.code === 200) {
           console.log('订单创建成功:', response.data)
           // 跳转到支付页面
-          this.$router.push({
-            path: '/payment',
-            query: {
-              order_id: response.data.data.order_id,
-              order_number: response.data.data.order_number,
-              total_amount: response.data.data.total_amount,
-              payment_method: this.selectedMethod
-            }
+          uni.navigateTo({
+            url: `/pages/payment/payment?order_id=${response.data.data.order_id}&order_number=${response.data.data.order_number}&total_amount=${response.data.data.total_amount}&payment_method=${this.selectedMethod}`
           })
         } else {
           console.error('创建订单失败:', response.data)
-          alert(response.data.message || '创建订单失败')
+          uni.showToast({
+            title: response.data.message || '创建订单失败',
+            icon: 'error'
+          })
         }
       } catch (error) {
         console.error('创建订单失败:', error)
-        alert('创建订单失败，请重试')
+        uni.showToast({
+          title: '创建订单失败，请重试',
+          icon: 'error'
+        })
       }
     }
   }

@@ -176,7 +176,9 @@ export default {
     },
     // 返回上一页
     goBack() {
-      this.$router.go(-1)
+      uni.navigateBack({
+        delta: 1
+      })
     },
 
     // 选择状态筛选
@@ -217,7 +219,10 @@ export default {
         }
       } catch (error) {
         console.error('加载订单列表失败:', error)
-        alert('加载订单列表失败')
+        uni.showToast({
+          title: '加载订单列表失败',
+          icon: 'error'
+        })
       } finally {
         this.loading = false
       }
@@ -271,42 +276,59 @@ export default {
 
     // 查看订单详情
     viewOrderDetail(orderId) {
-      this.$router.push({ path: `/order-detail/${orderId}` })
+      uni.navigateTo({
+        url: `/pages/order-detail/order-detail?id=${orderId}`
+      })
     },
 
     // 去支付
     goPay(order) {
-      this.$router.push({
-        path: '/payment',
-        query: {
-          order_number: order.order_number,
-          total_amount: order.total_amount
-        }
+      uni.navigateTo({
+        url: `/pages/payment/payment?order_number=${order.order_number}&total_amount=${order.total_amount}`
       })
     },
 
     // 取消订单
     async cancelOrder(order) {
-      if (!confirm('确定取消该订单吗？')) return
-      try {
-        const res = await request.post(`/api/app/order/${order.id}/cancel`, null, { params: { user_id: this.user_id } })
-        if (res.data && res.data.code === 200) {
-          alert('订单已取消')
-          this.currentPage = 1
-          this.orders = []
-          await this.loadOrders()
-        } else {
-          alert(res.data?.message || '取消失败')
+      uni.showModal({
+        title: '确认取消',
+        content: '确定取消该订单吗？',
+        success: async (res) => {
+          if (res.confirm) {
+            try {
+              const res = await request.post(`/api/app/order/${order.id}/cancel`, null, { params: { user_id: this.user_id } })
+              if (res.data && res.data.code === 200) {
+                uni.showToast({
+                  title: '订单已取消',
+                  icon: 'success'
+                })
+                this.currentPage = 1
+                this.orders = []
+                await this.loadOrders()
+              } else {
+                uni.showToast({
+                  title: res.data?.message || '取消失败',
+                  icon: 'error'
+                })
+              }
+            } catch (e) {
+              console.error('取消订单失败', e)
+              uni.showToast({
+                title: '取消失败',
+                icon: 'error'
+              })
+            }
+          }
         }
-      } catch (e) {
-        console.error('取消订单失败', e)
-        alert('取消失败')
-      }
+      })
     },
 
     // 售后（占位）
     afterSales(order) {
-      alert('售后功能开发中...')
+      uni.showToast({
+        title: '售后功能开发中...',
+        icon: 'none'
+      })
     },
 
     // 查看物流
@@ -314,37 +336,62 @@ export default {
       if (order.logistics) {
         const logistics = order.logistics
         const message = `物流公司：${logistics.carrier}\n物流单号：${logistics.tracking_number}\n物流状态：${logistics.status_text || logistics.status}`
-        alert(message)
+        uni.showModal({
+          title: '物流信息',
+          content: message,
+          showCancel: false
+        })
       } else {
-        alert('暂无物流信息')
+        uni.showToast({
+          title: '暂无物流信息',
+          icon: 'none'
+        })
       }
     },
 
     // 确认收货
     async confirmReceipt(order) {
-      if (!confirm('确认已收到货物吗？')) return
-      try {
-        const res = await request.post(`/api/app/order/${order.id}/confirm-receipt`, {
-          user_id: this.user_id
-        })
-        if (res.data && res.data.code === 200) {
-          alert('确认收货成功')
-          // 刷新订单列表
-          this.currentPage = 1
-          this.orders = []
-          await this.loadOrders()
-        } else {
-          alert(res.data?.message || '确认收货失败')
+      uni.showModal({
+        title: '确认收货',
+        content: '确认已收到货物吗？',
+        success: async (res) => {
+          if (res.confirm) {
+            try {
+              const res = await request.post(`/api/app/order/${order.id}/confirm-receipt`, {
+                user_id: this.user_id
+              })
+              if (res.data && res.data.code === 200) {
+                uni.showToast({
+                  title: '确认收货成功',
+                  icon: 'success'
+                })
+                // 刷新订单列表
+                this.currentPage = 1
+                this.orders = []
+                await this.loadOrders()
+              } else {
+                uni.showToast({
+                  title: res.data?.message || '确认收货失败',
+                  icon: 'error'
+                })
+              }
+            } catch (e) {
+              console.error('确认收货失败', e)
+              uni.showToast({
+                title: '确认收货失败',
+                icon: 'error'
+              })
+            }
+          }
         }
-      } catch (e) {
-        console.error('确认收货失败', e)
-        alert('确认收货失败')
-      }
+      })
     },
 
     // 去购物
     goShop() {
-      this.$router.push('/')
+      uni.switchTab({
+        url: '/pages/index/index'
+      })
     }
   }
 }

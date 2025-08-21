@@ -61,21 +61,35 @@ export default {
       try {
         const res = await authApi.register({ phone: this.phone, password: this.password })
         if (res.data.code === 200) {
-          alert('注册成功，请登录')
-          this.$router.replace('/login')
+          uni.showToast({
+            title: '注册成功，请登录',
+            icon: 'success'
+          })
+          // 跳转到登录页
+          uni.redirectTo({
+            url: '/pages/login/login'
+          })
         } else {
-          alert(res.data.message || '注册失败')
+          uni.showToast({
+            title: res.data.message || '注册失败',
+            icon: 'error'
+          })
         }
       } catch (e) {
         console.error('注册失败:', e)
-        alert('网络错误，注册失败')
+        uni.showToast({
+          title: '网络错误，注册失败',
+          icon: 'error'
+        })
       } finally {
         this.submitting = false
       }
     },
     goLogin() {
-      // 预留：跳转到登录页
-      this.$router.replace('/')
+      // 跳转到登录页
+      uni.redirectTo({
+        url: '/pages/login/login'
+      })
     }
   }
 }
