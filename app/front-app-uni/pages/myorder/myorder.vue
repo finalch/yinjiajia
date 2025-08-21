@@ -93,7 +93,6 @@
 
     <!-- 空状态 -->
     <view class="empty-state" v-else>
-      <view class="empty-icon">��</view>
       <view class="empty-text">暂无订单</view>
       <button class="go-shop-btn" @click="goShop">去购物</button>
     </view>

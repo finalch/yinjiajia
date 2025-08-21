@@ -98,7 +98,6 @@
 			
 			<!-- 空状态 -->
 			<view v-if="!loading && products.length === 0" class="empty-state">
-				<view class="empty-icon">📦</view>
 				<view class="empty-text">暂无商品</view>
 			</view>
 		</view>

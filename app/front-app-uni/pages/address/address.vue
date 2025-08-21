@@ -42,7 +42,6 @@
 
     <!-- 空状态 -->
     <view class="empty-state" v-else>
-      <view class="empty-icon">��</view>
       <view class="empty-text">暂无收货地址</view>
       <view class="empty-desc">添加收货地址，享受便捷购物</view>
       <view class="add-address-btn" @click="showAddAddress">

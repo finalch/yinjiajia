@@ -19,7 +19,6 @@
 			<!-- 订单相关 -->
 			<view class="menu-group">
 				<view class="menu-item" @click="goToOrders">
-					<view class="menu-icon">��</view>
 					<view class="menu-content">
 						<view class="menu-title">我的订单</view>
 						<view class="menu-desc">查看所有订单状态</view>
@@ -28,7 +27,6 @@
 				</view>
 
 				<view class="menu-item" @click="goToAddress">
-					<view class="menu-icon">��</view>
 					<view class="menu-content">
 						<view class="menu-title">收货地址</view>
 						<view class="menu-desc">管理收货地址</view>
@@ -40,7 +38,6 @@
 			<!-- 其他功能 -->
 			<view class="menu-group">
 				<view class="menu-item" @click="goToCustomerService">
-					<view class="menu-icon">��</view>
 					<view class="menu-content">
 						<view class="menu-title">客服中心</view>
 						<view class="menu-desc">联系客服解决问题</view>
@@ -49,7 +46,6 @@
 				</view>
 
 				<view class="menu-item" @click="goToAbout">
-					<view class="menu-icon">ℹ️</view>
 					<view class="menu-content">
 						<view class="menu-title">关于我们</view>
 						<view class="menu-desc">了解更多信息</view>
@@ -61,7 +57,6 @@
 			<!-- 退出登录 -->
 			<view class="menu-group">
 				<view class="menu-item logout-item" @click="showLogoutConfirm">
-					<view class="menu-icon">��</view>
 					<view class="menu-content">
 						<view class="menu-title">退出登录</view>
 						<view class="menu-desc">安全退出当前账号</view>

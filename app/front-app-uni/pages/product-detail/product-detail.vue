@@ -125,15 +125,12 @@
 		<view class="bottom-bar" v-if="!showPopup">
 			<view class="action-btn">
 				<view class="btn-icon" @click="goToCustomerService">
-					<text class="btn-icon-text">��</text>
 					<text class="btn-text">客服</text>
 				</view>
 				<view class="btn-icon" @click="goToShop">
-					<text class="btn-icon-text">��</text>
 					<text class="btn-text">进店</text>
 				</view>
 				<view class="btn-icon" @click="goToCart">
-					<text class="btn-icon-text">��</text>
 					<text class="btn-text">购物车</text>
 					<text v-if="cartCount > 0" class="cart-badge">{{ cartCount }}</text>
 				</view>

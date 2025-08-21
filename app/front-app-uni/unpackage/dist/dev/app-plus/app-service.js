@@ -581,7 +581,7 @@ if (uni.restoreGlobal) {
           const response = await categoryService.getCategories();
           this.categories = response.data;
         } catch (error) {
-          formatAppLog("error", "at pages/shop/shop.vue:146", "获取分类失败:", error);
+          formatAppLog("error", "at pages/shop/shop.vue:145", "获取分类失败:", error);
           uni.showToast({
             title: "获取分类失败",
             icon: "none"
@@ -631,7 +631,7 @@ if (uni.restoreGlobal) {
             });
           }
         } catch (error) {
-          formatAppLog("error", "at pages/shop/shop.vue:206", "获取商品失败:", error);
+          formatAppLog("error", "at pages/shop/shop.vue:205", "获取商品失败:", error);
           uni.showToast({
             title: "网络错误",
             icon: "none"
@@ -690,7 +690,7 @@ if (uni.restoreGlobal) {
             });
           }
         } catch (e) {
-          formatAppLog("error", "at pages/shop/shop.vue:272", "加入购物车失败:", e);
+          formatAppLog("error", "at pages/shop/shop.vue:271", "加入购物车失败:", e);
           uni.showToast({
             title: "网络错误，加入购物车失败",
             icon: "none"
@@ -934,7 +934,6 @@ if (uni.restoreGlobal) {
           key: 2,
           class: "empty-state"
         }, [
-          vue.createElementVNode("view", { class: "empty-icon" }, "📦"),
           vue.createElementVNode("view", { class: "empty-text" }, "暂无商品")
         ])) : vue.createCommentVNode("v-if", true)
       ])
@@ -1562,7 +1561,6 @@ if (uni.restoreGlobal) {
             class: "menu-item",
             onClick: _cache[1] || (_cache[1] = (...args) => $options.goToOrders && $options.goToOrders(...args))
           }, [
-            vue.createElementVNode("view", { class: "menu-icon" }, "��"),
             vue.createElementVNode("view", { class: "menu-content" }, [
               vue.createElementVNode("view", { class: "menu-title" }, "我的订单"),
               vue.createElementVNode("view", { class: "menu-desc" }, "查看所有订单状态")
@@ -1573,7 +1571,6 @@ if (uni.restoreGlobal) {
             class: "menu-item",
             onClick: _cache[2] || (_cache[2] = (...args) => $options.goToAddress && $options.goToAddress(...args))
           }, [
-            vue.createElementVNode("view", { class: "menu-icon" }, "��"),
             vue.createElementVNode("view", { class: "menu-content" }, [
               vue.createElementVNode("view", { class: "menu-title" }, "收货地址"),
               vue.createElementVNode("view", { class: "menu-desc" }, "管理收货地址")
@@ -1587,7 +1584,6 @@ if (uni.restoreGlobal) {
             class: "menu-item",
             onClick: _cache[3] || (_cache[3] = (...args) => $options.goToCustomerService && $options.goToCustomerService(...args))
           }, [
-            vue.createElementVNode("view", { class: "menu-icon" }, "��"),
             vue.createElementVNode("view", { class: "menu-content" }, [
               vue.createElementVNode("view", { class: "menu-title" }, "客服中心"),
               vue.createElementVNode("view", { class: "menu-desc" }, "联系客服解决问题")
@@ -1598,7 +1594,6 @@ if (uni.restoreGlobal) {
             class: "menu-item",
             onClick: _cache[4] || (_cache[4] = (...args) => $options.goToAbout && $options.goToAbout(...args))
           }, [
-            vue.createElementVNode("view", { class: "menu-icon" }, "ℹ️"),
             vue.createElementVNode("view", { class: "menu-content" }, [
               vue.createElementVNode("view", { class: "menu-title" }, "关于我们"),
               vue.createElementVNode("view", { class: "menu-desc" }, "了解更多信息")
@@ -1612,7 +1607,6 @@ if (uni.restoreGlobal) {
             class: "menu-item logout-item",
             onClick: _cache[5] || (_cache[5] = (...args) => $options.showLogoutConfirm && $options.showLogoutConfirm(...args))
           }, [
-            vue.createElementVNode("view", { class: "menu-icon" }, "��"),
             vue.createElementVNode("view", { class: "menu-content" }, [
               vue.createElementVNode("view", { class: "menu-title" }, "退出登录"),
               vue.createElementVNode("view", { class: "menu-desc" }, "安全退出当前账号")
@@ -2168,7 +2162,7 @@ if (uni.restoreGlobal) {
             });
           }
         } catch (error) {
-          formatAppLog("error", "at pages/product-detail/product-detail.vue:415", "获取商品详情失败:", error);
+          formatAppLog("error", "at pages/product-detail/product-detail.vue:412", "获取商品详情失败:", error);
           uni.showToast({
             title: "网络错误",
             icon: "error"
@@ -2203,7 +2197,7 @@ if (uni.restoreGlobal) {
             this.cartCount = data && (data.item_count || (((_a = data.items) == null ? void 0 : _a.length) ?? 0)) || 0;
           }
         } catch (error) {
-          formatAppLog("error", "at pages/product-detail/product-detail.vue:452", "获取购物车数量失败:", error);
+          formatAppLog("error", "at pages/product-detail/product-detail.vue:449", "获取购物车数量失败:", error);
         } finally {
           this._isFetchingCart = false;
           this._lastCartFetchAt = now;
@@ -2247,7 +2241,7 @@ if (uni.restoreGlobal) {
       // 预览评价图片
       previewReviewImage(index) {
         if (this.product.top_review && this.product.top_review.images) {
-          formatAppLog("log", "at pages/product-detail/product-detail.vue:507", "预览评价图片:", this.product.top_review.images[index]);
+          formatAppLog("log", "at pages/product-detail/product-detail.vue:504", "预览评价图片:", this.product.top_review.images[index]);
         }
       },
       // 分享商品
@@ -2419,7 +2413,7 @@ if (uni.restoreGlobal) {
             });
           }
         } catch (error) {
-          formatAppLog("error", "at pages/product-detail/product-detail.vue:718", "加入购物车失败:", error);
+          formatAppLog("error", "at pages/product-detail/product-detail.vue:715", "加入购物车失败:", error);
           uni.showToast({
             title: "网络错误，请重试",
             icon: "error"
@@ -2840,21 +2834,18 @@ if (uni.restoreGlobal) {
             class: "btn-icon",
             onClick: _cache[7] || (_cache[7] = (...args) => $options.goToCustomerService && $options.goToCustomerService(...args))
           }, [
-            vue.createElementVNode("text", { class: "btn-icon-text" }, "��"),
             vue.createElementVNode("text", { class: "btn-text" }, "客服")
           ]),
           vue.createElementVNode("view", {
             class: "btn-icon",
             onClick: _cache[8] || (_cache[8] = (...args) => $options.goToShop && $options.goToShop(...args))
           }, [
-            vue.createElementVNode("text", { class: "btn-icon-text" }, "��"),
             vue.createElementVNode("text", { class: "btn-text" }, "进店")
           ]),
           vue.createElementVNode("view", {
             class: "btn-icon",
             onClick: _cache[9] || (_cache[9] = (...args) => $options.goToCart && $options.goToCart(...args))
           }, [
-            vue.createElementVNode("text", { class: "btn-icon-text" }, "��"),
             vue.createElementVNode("text", { class: "btn-text" }, "购物车"),
             $data.cartCount > 0 ? (vue.openBlock(), vue.createElementBlock(
               "text",
@@ -4371,7 +4362,7 @@ if (uni.restoreGlobal) {
             this.hasNextPage = data.pagination.has_next;
           }
         } catch (error) {
-          formatAppLog("error", "at pages/myorder/myorder.vue:221", "加载订单列表失败:", error);
+          formatAppLog("error", "at pages/myorder/myorder.vue:220", "加载订单列表失败:", error);
           uni.showToast({
             title: "加载订单列表失败",
             icon: "error"
@@ -4456,7 +4447,7 @@ if (uni.restoreGlobal) {
                   });
                 }
               } catch (e) {
-                formatAppLog("error", "at pages/myorder/myorder.vue:315", "取消订单失败", e);
+                formatAppLog("error", "at pages/myorder/myorder.vue:314", "取消订单失败", e);
                 uni.showToast({
                   title: "取消失败",
                   icon: "error"
@@ -4519,7 +4510,7 @@ if (uni.restoreGlobal) {
                   });
                 }
               } catch (e) {
-                formatAppLog("error", "at pages/myorder/myorder.vue:379", "确认收货失败", e);
+                formatAppLog("error", "at pages/myorder/myorder.vue:378", "确认收货失败", e);
                 uni.showToast({
                   title: "确认收货失败",
                   icon: "error"
@@ -4743,7 +4734,6 @@ if (uni.restoreGlobal) {
         [
           vue.createCommentVNode(" 空状态 "),
           vue.createElementVNode("view", { class: "empty-state" }, [
-            vue.createElementVNode("view", { class: "empty-icon" }, "��"),
             vue.createElementVNode("view", { class: "empty-text" }, "暂无订单"),
             vue.createElementVNode("button", {
               class: "go-shop-btn",
@@ -4822,7 +4812,7 @@ if (uni.restoreGlobal) {
             this.addresses = response.data.data;
           }
         } catch (error) {
-          formatAppLog("error", "at pages/address/address.vue:203", "加载地址失败:", error);
+          formatAppLog("error", "at pages/address/address.vue:202", "加载地址失败:", error);
         }
       },
       showAddAddress() {
@@ -4852,7 +4842,7 @@ if (uni.restoreGlobal) {
             this.deleteAddressName = "";
           }
         } catch (error) {
-          formatAppLog("error", "at pages/address/address.vue:239", "删除地址失败:", error);
+          formatAppLog("error", "at pages/address/address.vue:238", "删除地址失败:", error);
         }
       },
       async saveAddress() {
@@ -4900,7 +4890,7 @@ if (uni.restoreGlobal) {
             this.loadAddresses();
           }
         } catch (error) {
-          formatAppLog("error", "at pages/address/address.vue:292", "保存地址失败:", error);
+          formatAppLog("error", "at pages/address/address.vue:291", "保存地址失败:", error);
         }
       },
       selectAddress(address) {
@@ -5016,7 +5006,6 @@ if (uni.restoreGlobal) {
             [
               vue.createCommentVNode(" 空状态 "),
               vue.createElementVNode("view", { class: "empty-state" }, [
-                vue.createElementVNode("view", { class: "empty-icon" }, "��"),
                 vue.createElementVNode("view", { class: "empty-text" }, "暂无收货地址"),
                 vue.createElementVNode("view", { class: "empty-desc" }, "添加收货地址，享受便捷购物"),
                 vue.createElementVNode("view", {
@@ -5234,7 +5223,7 @@ if (uni.restoreGlobal) {
             }
           }
         } catch (error) {
-          formatAppLog("error", "at pages/address-list/address-list.vue:101", "加载地址列表失败:", error);
+          formatAppLog("error", "at pages/address-list/address-list.vue:100", "加载地址列表失败:", error);
         }
       },
       selectAddress(address) {
@@ -5339,7 +5328,6 @@ if (uni.restoreGlobal) {
         [
           vue.createCommentVNode(" 空状态 "),
           vue.createElementVNode("view", { class: "empty-state" }, [
-            vue.createElementVNode("view", { class: "empty-icon" }, "��"),
             vue.createElementVNode("view", { class: "empty-text" }, "暂无收货地址"),
             vue.createElementVNode("view", { class: "empty-desc" }, "请添加收货地址以便下单"),
             vue.createElementVNode("view", {
