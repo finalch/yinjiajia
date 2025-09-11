@@ -68,17 +68,12 @@ def create_app():
     from media import web_media_api
     from auth import web_auth_api
     from health import web_health_api
+    from logistics import web_logistics_api
 
     # 全局接口
     from category import category_api
     app.register_blueprint(category_api)
 
-    # app.register_blueprint(app_product_api)
-    # app.register_blueprint(app_cart_api)
-    # app.register_blueprint(app_address_api)
-    # app.register_blueprint(app_auth_api)
-    # app.register_blueprint(app_order_api)
-    # app.register_blueprint(app_review_api)
     app.register_blueprint(web_order_api)
     app.register_blueprint(web_product_api)
     app.register_blueprint(web_review_api)
@@ -89,6 +84,7 @@ def create_app():
     app.register_blueprint(web_media_api)
     app.register_blueprint(web_auth_api)
     app.register_blueprint(web_health_api)
+    app.register_blueprint(web_logistics_api)
 
     logger.info("All blueprints registered successfully")
     return app, logger, Config.LOG_PATH

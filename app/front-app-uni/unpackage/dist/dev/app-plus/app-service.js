@@ -105,7 +105,7 @@ if (uni.restoreGlobal) {
   const config = {
     // 开发环境
     development: {
-      baseURL: "http://192.168.1.17:6000",
+      baseURL: "http://192.168.1.15:6000",
       timeout: 1e4
     },
     // 生产环境
@@ -6139,7 +6139,7 @@ if (uni.restoreGlobal) {
                 size: "18",
                 color: "#999"
               }),
-              vue.createElementVNode("text", { class: "search-text" }, "搜索商品")
+              vue.createElementVNode("text", { class: "search-text" }, "搜索商品111")
             ]),
             vue.createElementVNode("view", {
               class: "cart-icon",

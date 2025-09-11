@@ -5,7 +5,7 @@
 		<view class="top-bar">
 			<view class="search-bar" @click="goToSearch">
 				<uni-icons type="search" size="18" color="#999"></uni-icons>
-				<text class="search-text">搜索商品</text>
+				<text class="search-text">搜索商品111</text>
 			</view>
 			<view class="cart-icon" @click="goToCart">
 				<uni-icons type="cart" size="24" color="#ff2442"></uni-icons>
