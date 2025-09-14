@@ -273,3 +273,27 @@ class Address(db.Model):
 
     # 关联关系
     user = db.relationship('User', backref='addresses')
+
+
+class ChatRoom(db.Model):
+    __tablename__ = 'chat_rooms'
+    id = db.Column(db.Integer, primary_key=True)  # 聊天室ID
+    user_id = db.Column(db.Integer, nullable=False)  # 用户ID
+    merchant_id = db.Column(db.Integer, nullable=False)  # 商家ID
+    status = db.Column(db.String(16), default='active')  # 状态：active/closed
+    last_message_at = db.Column(db.DateTime)  # 最后消息时间
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
+
+
+class ChatMessage(db.Model):
+    __tablename__ = 'chat_messages'
+    id = db.Column(db.Integer, primary_key=True)  # 消息ID
+    chat_room_id = db.Column(db.Integer, nullable=False)  # 聊天室ID
+    sender_type = db.Column(db.String(16), nullable=False)  # 发送者类型：user/merchant
+    sender_id = db.Column(db.Integer, nullable=False)  # 发送者ID
+    content = db.Column(db.Text, nullable=False)  # 消息内容
+    message_type = db.Column(db.String(16), default='text')  # 消息类型：text/image/file
+    file_url = db.Column(db.String(256))  # 文件URL（图片、文件等）
+    is_read = db.Column(db.Boolean, default=False)  # 是否已读
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间

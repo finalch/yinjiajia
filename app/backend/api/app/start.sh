@@ -1,1 +1,1 @@
-.venv/bin/python app.py
+./.app-venv/bin/python app.py

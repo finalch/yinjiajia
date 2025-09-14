@@ -95,6 +95,13 @@
 			"style": {
 				"navigationBarTitleText": "支付方式"
 			}
+		},
+		{
+			"path": "pages/chat/chat",
+			"style": {
+				"navigationBarTitleText": "客服聊天",
+				"navigationStyle": "custom"
+			}
 		}
 	],
 	"globalStyle": {

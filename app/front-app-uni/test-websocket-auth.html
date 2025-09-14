@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket认证测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #6c757d; cursor: not-allowed; }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 10px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>WebSocket认证测试</h1>
+    
+    <div class="container">
+        <h3>连接配置</h3>
+        <input type="text" id="tokenInput" placeholder="请输入认证token（不含Bearer前缀）" value="">
+        <input type="text" id="serverUrl" placeholder="WebSocket服务器地址" value="ws://172.16.70.209:8003">
+        <button onclick="connect()">连接</button>
+        <button onclick="disconnect()">断开</button>
+    </div>
+    
+    <div class="container">
+        <h3>连接状态</h3>
+        <div id="status" class="status info">未连接</div>
+    </div>
+    
+    <div class="container">
+        <h3>消息测试</h3>
+        <input type="text" id="messageInput" placeholder="输入消息内容">
+        <button onclick="sendMessage()">发送消息</button>
+        <button onclick="joinAsUser()">以用户身份加入</button>
+        <button onclick="joinAsMerchant()">以商家身份加入</button>
+    </div>
+    
+    <div class="container">
+        <h3>日志</h3>
+        <div id="log" class="log"></div>
+        <button onclick="clearLog()">清空日志</button>
+    </div>
+
+    <script>
+        let socket = null;
+        let isConnected = false;
+        
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `[${timestamp}] ${message}`;
+            logEntry.style.color = type === 'error' ? '#721c24' : type === 'success' ? '#155724' : '#0c5460';
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        function updateStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+        }
+        
+        function connect() {
+            const token = document.getElementById('tokenInput').value.trim();
+            const serverUrl = document.getElementById('serverUrl').value.trim();
+            
+            if (!token) {
+                alert('请输入认证token');
+                return;
+            }
+            
+            if (!serverUrl) {
+                alert('请输入WebSocket服务器地址');
+                return;
+            }
+            
+            try {
+                const wsUrl = `${serverUrl}?authorization=${encodeURIComponent(`Bearer ${token}`)}`;
+                log(`尝试连接到: ${wsUrl}`);
+                
+                socket = new WebSocket(wsUrl);
+                
+                socket.onopen = function(event) {
+                    isConnected = true;
+                    updateStatus('已连接', 'success');
+                    log('WebSocket连接成功', 'success');
+                };
+                
+                socket.onclose = function(event) {
+                    isConnected = false;
+                    updateStatus('连接已关闭', 'error');
+                    log(`WebSocket连接关闭: code=${event.code}, reason=${event.reason}`, 'error');
+                    
+                    // 检查是否是认证失败
+                    if (event.code === 1008 || event.code === 1002 || event.code === 1006) {
+                        log('认证失败，请检查token是否正确', 'error');
+                    }
+                };
+                
+                socket.onerror = function(error) {
+                    isConnected = false;
+                    updateStatus('连接错误', 'error');
+                    log('WebSocket连接错误', 'error');
+                };
+                
+                socket.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        log(`收到消息: ${JSON.stringify(data)}`, 'info');
+                    } catch (e) {
+                        log(`收到原始消息: ${event.data}`, 'info');
+                    }
+                };
+                
+            } catch (error) {
+                log(`连接失败: ${error.message}`, 'error');
+                updateStatus('连接失败', 'error');
+            }
+        }
+        
+        function disconnect() {
+            if (socket) {
+                socket.close();
+                socket = null;
+                isConnected = false;
+                updateStatus('已断开', 'info');
+                log('主动断开连接', 'info');
+            }
+        }
+        
+        function sendMessage() {
+            if (!isConnected || !socket) {
+                alert('请先连接WebSocket');
+                return;
+            }
+            
+            const message = document.getElementById('messageInput').value.trim();
+            if (!message) {
+                alert('请输入消息内容');
+                return;
+            }
+            
+            const data = {
+                type: 'send_message',
+                data: {
+                    chat_room_id: 1,
+                    sender_type: 'user',
+                    sender_id: 1,
+                    content: message,
+                    message_type: 'text'
+                }
+            };
+            
+            socket.send(JSON.stringify(data));
+            log(`发送消息: ${message}`, 'info');
+            document.getElementById('messageInput').value = '';
+        }
+        
+        function joinAsUser() {
+            if (!isConnected || !socket) {
+                alert('请先连接WebSocket');
+                return;
+            }
+            
+            const data = {
+                type: 'user_join',
+                data: {
+                    user_id: 1
+                }
+            };
+            
+            socket.send(JSON.stringify(data));
+            log('发送用户加入请求', 'info');
+        }
+        
+        function joinAsMerchant() {
+            if (!isConnected || !socket) {
+                alert('请先连接WebSocket');
+                return;
+            }
+            
+            const data = {
+                type: 'merchant_join',
+                data: {
+                    merchant_id: 1
+                }
+            };
+            
+            socket.send(JSON.stringify(data));
+            log('发送商家加入请求', 'info');
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+        
+        // 页面加载时设置默认token（用于测试）
+        window.onload = function() {
+            // 这里可以设置一个测试用的token
+            // 注意：实际使用时需要从登录接口获取真实的token
+            document.getElementById('tokenInput').value = 'test_token_here';
+        };
+    </script>
+</body>
+</html>

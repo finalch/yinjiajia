@@ -4,10 +4,11 @@ import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import time
 from flask import Flask, request, g
+from flask_cors import CORS
+from flask_socketio import SocketIO
 from config.log import get_logger
 from config import Config
 from models import db
-from flask_cors import CORS
 from utils.TokenUtils import validate
 
 
@@ -17,7 +18,19 @@ def create_app():
     db.init_app(app)
 
     # 启用CORS，允许所有来源访问
-    CORS(app, supports_credentials=True)
+    CORS(app, 
+         supports_credentials=True,
+         origins="*",
+         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+         allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+         expose_headers=["Content-Type", "Authorization"])
+    
+    # 初始化SocketIO
+    socketio = SocketIO(app, 
+                       cors_allowed_origins="*", 
+                       logger=True, 
+                       engineio_logger=True,
+                       path='/socket.io/')
 
     # 获取logger
     logger = get_logger(__name__)
@@ -29,6 +42,11 @@ def create_app():
         logger.info(f"Request: {request.method} {request.path} - User-Agent: {request.headers.get('User-Agent', 'Unknown')}")
         if request.method in ['POST', 'PUT', 'PATCH']:
             logger.debug(f"Request Body: {request.get_json(silent=True)}")
+        
+        # OPTIONS请求不需要token验证（CORS预检请求）
+        if request.method == 'OPTIONS':
+            return None
+            
         if request.path == '/api/web/auth/login' or request.path == '/api/web/auth/register' or request.path == '/api/app/auth/login' or request.path == '/api/app/auth/register':
             return None
         authorization = request.headers.get('authorization')
@@ -86,11 +104,19 @@ def create_app():
     app.register_blueprint(web_health_api)
     app.register_blueprint(web_logistics_api)
 
+    # 初始化WebSocket事件处理器
+    from websocket_chat import init_websocket
+    init_websocket(socketio)
+    
+    # 启动原生WebSocket服务器
+    from websocket_native import websocket_handler
+    websocket_handler.start_server(host='0.0.0.0', port=8002)
+
     logger.info("All blueprints registered successfully")
-    return app, logger, Config.LOG_PATH
+    return app, socketio, logger, Config.LOG_PATH
 
 
 if __name__ == '__main__':
-    app, logger, LOG_PATH = create_app()
-    logger.info(f"Starting Flask app, log file: {LOG_PATH}")
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app, socketio, logger, LOG_PATH = create_app()
+    logger.info(f"Starting Flask app with WebSocket support, log file: {LOG_PATH}")
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True, allow_unsafe_werkzeug=True)

@@ -3,6 +3,7 @@ import time
 
 from flask import Flask, request, g
 from flask_cors import CORS
+from flask_socketio import SocketIO
 
 from config import Config
 from config.log import get_logger
@@ -16,7 +17,15 @@ def create_app():
     db.init_app(app)
 
     # 启用CORS，允许所有来源访问
-    CORS(app, supports_credentials=True)
+    CORS(app,
+         supports_credentials=True,
+         origins="*",
+         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+         allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+         expose_headers=["Content-Type", "Authorization"])
+
+    # 初始化SocketIO
+    socketio = SocketIO(app, cors_allowed_origins="*", logger=True, engineio_logger=True)
 
     # 获取logger
     logger = get_logger(__name__)
@@ -28,11 +37,29 @@ def create_app():
         logger.info(f"Request: {request.method} {request.path} - User-Agent: {request.headers.get('User-Agent', 'Unknown')}")
         if request.method in ['POST', 'PUT', 'PATCH']:
             logger.debug(f"Request Body: {request.get_json(silent=True)}")
-        if request.path == '/api/web/auth/login' or request.path == '/api/web/auth/register' or request.path == '/api/app/auth/login' or request.path == '/api/app/auth/register':
+
+        # OPTIONS请求不需要token验证（CORS预检请求）
+        if request.method == 'OPTIONS':
             return None
+
+        # 不需要token验证的路径
+        public_paths = [
+            '/api/web/auth/login',
+            '/api/web/auth/register',
+            '/api/app/auth/login',
+            '/api/app/auth/register',
+            '/api/g/category/'  # 分类接口是全局接口，不需要token
+        ]
+
+        if request.path in public_paths:
+            return None
+
         authorization = request.headers.get('authorization')
         if authorization is None:
-            return {"code": 401, "message": "Missing Authorization header"}, 401
+            authorization = request.args.get('authorization')
+            if authorization is None:
+                logger.error(f"----------authorization: {authorization}")
+                return {"code": 401, "message": "Missing Authorization header"}, 401
         user_id = validate(authorization)
         if user_id is False:
             return {"code": 401, "message": "Invalid token"}, 401
@@ -70,12 +97,19 @@ def create_app():
 
     app.register_blueprint(app_review_api)
 
+    # 初始化WebSocket事件处理器
+    from websocket_chat import init_websocket
+    init_websocket(socketio)
+    
+    # 启动原生WebSocket服务器
+    from websocket_native import websocket_handler
+    websocket_handler.start_server(host='0.0.0.0', port=8003)
 
     logger.info("All blueprints registered successfully")
-    return app, logger, Config.LOG_PATH
+    return app, socketio, logger, Config.LOG_PATH
 
 
 if __name__ == '__main__':
-    app, logger, LOG_PATH = create_app()
-    logger.info(f"Starting Flask app, log file: {LOG_PATH}")
-    app.run(host='0.0.0.0', port=6000, debug=True)
+    app, socketio, logger, LOG_PATH = create_app()
+    logger.info(f"Starting Flask app with WebSocket support, log file: {LOG_PATH}")
+    socketio.run(app, host='0.0.0.0', port=8001, debug=True, allow_unsafe_werkzeug=True)

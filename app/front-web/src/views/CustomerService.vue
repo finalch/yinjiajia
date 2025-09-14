@@ -3,6 +3,10 @@
     <div class="page-header">
       <h1>客户服务</h1>
       <div class="header-actions">
+        <el-button type="success" @click="goToChatList">
+          <el-icon><ChatDotRound /></el-icon>
+          实时聊天
+        </el-button>
         <el-button type="primary" @click="showQuickReplyDialog">
           <el-icon><Plus /></el-icon>
           添加快捷短语
@@ -556,6 +560,11 @@ export default {
       return texts[group] || '未知'
     }
     
+    const goToChatList = () => {
+      // 跳转到聊天列表页面
+      window.location.href = '/customer-service/list'
+    }
+    
     return {
       quickReplyDialogVisible,
       editingQuickReply,
@@ -583,7 +592,8 @@ export default {
       getStatusType,
       getStatusText,
       getCategoryType,
-      getCategoryText
+      getCategoryText,
+      goToChatList
     }
   }
 }

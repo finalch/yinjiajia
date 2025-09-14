@@ -68,6 +68,16 @@ const routes = [
     component: () => import('../views/customer-service.vue')
   },
   {
+    path: '/chat',
+    name: 'Chat',
+    component: () => import('../views/chat.vue')
+  },
+  {
+    path: '/websocket-test',
+    name: 'WebSocketTest',
+    component: () => import('../views/websocket-test.vue')
+  },
+  {
     path: '/register',
     name: 'Register',
     component: () => import('../views/register.vue')

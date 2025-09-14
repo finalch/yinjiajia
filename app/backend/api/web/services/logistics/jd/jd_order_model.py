@@ -1,11 +1,9 @@
 """
 京东物流订单数据模型
 """
-from dataclasses import dataclass
 from typing import List, Optional, Dict, Any
 
 
-@dataclass
 class JdSenderInfo:
     """寄件人信息"""
     name: str
@@ -17,7 +15,6 @@ class JdSenderInfo:
     post_code: Optional[str] = None
 
 
-@dataclass
 class JdReceiverInfo:
     """收件人信息"""
     name: str
@@ -29,17 +26,15 @@ class JdReceiverInfo:
     post_code: Optional[str] = None
 
 
-@dataclass
 class JdCargoDetail:
     """货物详情"""
     name: str
     weight: float  # 重量(kg)
-    value: float   # 价值(元)
+    value: float  # 价值(元)
     quantity: int = 1
     remark: Optional[str] = None
 
 
-@dataclass
 class JdOrderRequest:
     """京东物流订单请求"""
     order_id: str
@@ -49,8 +44,8 @@ class JdOrderRequest:
     cargo_details: List[JdCargoDetail]
     remark: Optional[str] = None
     insurance_value: Optional[float] = None  # 保价金额
-    cod_value: Optional[float] = None       # 代收金额
-    
+    cod_value: Optional[float] = None  # 代收金额
+
     def to_dict(self) -> Dict[str, Any]:
         """转换为京东API请求格式"""
         return {
@@ -89,8 +84,6 @@ class JdOrderRequest:
             "codValue": self.cod_value
         }
 
-
-@dataclass
 class JdOrderResponse:
     """京东物流订单响应"""
     success: bool
@@ -99,4 +92,3 @@ class JdOrderResponse:
     error_code: Optional[str] = None
     error_message: Optional[str] = None
     raw_response: Optional[Dict[str, Any]] = None
-

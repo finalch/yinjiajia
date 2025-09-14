@@ -73,6 +73,18 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/customer-service/chat',
+    name: 'CustomerServiceChat',
+    component: () => import('../views/CustomerServiceChat.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/customer-service/list',
+    name: 'CustomerServiceList',
+    component: () => import('../views/CustomerServiceList.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/reviews',
     name: 'Reviews',
     component: () => import('../views/Reviews.vue'),

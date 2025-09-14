@@ -14,50 +14,34 @@
 			<uni-icons type="close" size="24" color="#999" @click="goBack"></uni-icons>
 		</view>
 
-		<!-- 聊天区域 -->
-		<scroll-view class="chat-area" scroll-y :scroll-into-view="scrollToView">
-			<view class="chat-date">今天 10:30</view>
-
-			<!-- 客服消息 -->
-			<view class="chat-message cs-message">
-				<image class="avatar"
-					src="https://img10.360buyimg.com/img/s80x80_jfs/t1/123456/32/12345/67890/5f6789abE12345678/abcdef123456.jpg">
-				</image>
-				<view class="message-content">
-					<text class="message-text">您好，音加加客服为您服务，请问有什么可以帮您？</text>
-					<text class="message-time">10:30</text>
-				</view>
+		<!-- 客服介绍 -->
+		<view class="cs-intro">
+			<view class="intro-content">
+				<text class="intro-title">欢迎使用音加加客服</text>
+				<text class="intro-desc">我们为您提供7x24小时在线服务，有任何问题都可以随时咨询</text>
 			</view>
-
-			<!-- 用户消息 -->
-			<view class="chat-message user-message">
-				<view class="message-content">
-					<text class="message-text">我买的iPhone 13什么时候能发货？</text>
-					<text class="message-time">10:32</text>
-				</view>
-				<image class="avatar"
-					src="https://img10.360buyimg.com/img/s80x80_jfs/t1/123456/32/12345/67890/5f6789abE12345678/abcdef123456.jpg">
-				</image>
-			</view>
-
-			<!-- 更多消息... -->
-		</scroll-view>
-
-		<!-- 输入区域 -->
-		<view class="input-area">
-			<view class="input-box">
-				<input class="message-input" type="text" v-model="message" placeholder="请输入消息内容"
-					@confirm="sendMessage" />
-				<view class="emoji-btn" @click="toggleEmoji">
-					<uni-icons type="happy" size="24" color="#666"></uni-icons>
-				</view>
-			</view>
-			<view class="send-btn" @click="sendMessage">发送</view>
 		</view>
 
-		<!-- 表情面板 -->
-		<view class="emoji-panel" v-show="showEmoji">
-			<!-- 这里可以添加表情选择器 -->
+		<!-- 快捷功能 -->
+		<view class="quick-actions">
+			<view class="action-item" @click="startChat">
+				<uni-icons type="chat" size="24" color="#007bff"></uni-icons>
+				<text class="action-text">开始对话</text>
+			</view>
+			<view class="action-item" @click="viewFAQ">
+				<uni-icons type="help" size="24" color="#28a745"></uni-icons>
+				<text class="action-text">常见问题</text>
+			</view>
+			<view class="action-item" @click="contactPhone">
+				<uni-icons type="phone" size="24" color="#ffc107"></uni-icons>
+				<text class="action-text">电话咨询</text>
+			</view>
+		</view>
+
+		<!-- 服务时间 -->
+		<view class="service-time">
+			<text class="time-title">服务时间</text>
+			<text class="time-desc">周一至周日 9:00-21:00</text>
 		</view>
 	</view>
 </template>
@@ -66,63 +50,30 @@
 	export default {
 		data() {
 			return {
-				message: '',
-				showEmoji: false,
-				scrollToView: '',
-				messages: [{
-						type: 'cs',
-						text: '您好，音加加客服为您服务，请问有什么可以帮您？',
-						time: '10:30'
-					},
-					{
-						type: 'user',
-						text: '我买的iPhone 13什么时候能发货？',
-						time: '10:32'
-					}
-					// 更多消息...
-				]
+				merchantId: 1 // 默认商家ID，实际应该从商品或配置中获取
 			}
 		},
 		methods: {
 			goBack() {
 				uni.navigateBack()
 			},
-			sendMessage() {
-				if (!this.message.trim()) return
-
-				// 添加到消息列表
-				this.messages.push({
-					type: 'user',
-					text: this.message,
-					time: this.getCurrentTime()
+			startChat() {
+				// 跳转到聊天页面
+				uni.navigateTo({
+					url: `/pages/chat/chat?merchantId=${this.merchantId}`
 				})
-
-				// 模拟客服回复
-				setTimeout(() => {
-					this.messages.push({
-						type: 'cs',
-						text: '您的订单将在24小时内发货，请耐心等待。',
-						time: this.getCurrentTime()
-					})
-					this.scrollToBottom()
-				}, 1000)
-
-				this.message = ''
-				this.scrollToBottom()
 			},
-			toggleEmoji() {
-				this.showEmoji = !this.showEmoji
+			viewFAQ() {
+				uni.showToast({
+					title: '常见问题功能开发中',
+					icon: 'none'
+				})
 			},
-			scrollToBottom() {
-				this.scrollToView = 'msg-' + (this.messages.length - 1)
-			},
-			getCurrentTime() {
-				const now = new Date()
-				return `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`
+			contactPhone() {
+				uni.makePhoneCall({
+					phoneNumber: '400-123-4567'
+				})
 			}
-		},
-		onReady() {
-			this.scrollToBottom()
 		}
 	}
 </script>
@@ -171,111 +122,76 @@
 		color: #07c160;
 	}
 
-	.chat-area {
-		flex: 1;
-		padding: 15px;
-		overflow: auto;
+	.cs-intro {
+		padding: 20px;
+		background-color: #fff;
+		margin: 10px;
+		border-radius: 8px;
 	}
 
-	.chat-date {
+	.intro-content {
 		text-align: center;
-		font-size: 12px;
-		color: #999;
-		margin: 10px 0;
 	}
 
-	.chat-message {
-		display: flex;
-		margin-bottom: 15px;
-	}
-
-	.avatar {
-		width: 36px;
-		height: 36px;
-		border-radius: 18px;
-	}
-
-	.message-content {
-		max-width: 70%;
-		margin: 0 10px;
-	}
-
-	.message-text {
-		padding: 10px;
-		font-size: 14px;
-		line-height: 1.4;
-		border-radius: 5px;
-		display: inline-block;
-	}
-
-	.message-time {
+	.intro-title {
 		display: block;
-		font-size: 10px;
-		color: #999;
-		margin-top: 5px;
-		text-align: right;
-	}
-
-	.cs-message {
-		justify-content: flex-start;
-	}
-
-	.cs-message .message-text {
-		background-color: #fff;
-		color: #333;
-	}
-
-	.user-message {
-		justify-content: flex-end;
-	}
-
-	.user-message .message-text {
-		background-color: #07c160;
-		color: #fff;
-	}
-
-	.input-area {
-		display: flex;
-		align-items: center;
-		padding: 10px;
-		background-color: #fff;
-		border-top: 1px solid #eee;
-	}
-
-	.input-box {
-		flex: 1;
-		display: flex;
-		align-items: center;
-		background-color: #f5f5f5;
-		border-radius: 18px;
-		padding: 5px 10px;
-		margin-right: 10px;
-	}
-
-	.message-input {
-		flex: 1;
-		height: 36px;
-		font-size: 14px;
-	}
-
-	.emoji-btn {
-		width: 30px;
-		height: 30px;
-		display: flex;
-		justify-content: center;
-		align-items: center;
-	}
-
-	.send-btn {
-		font-size: 14px;
-		color: #07c160;
+		font-size: 18px;
 		font-weight: bold;
+		color: #333;
+		margin-bottom: 10px;
 	}
 
-	.emoji-panel {
-		height: 200px;
+	.intro-desc {
+		display: block;
+		font-size: 14px;
+		color: #666;
+		line-height: 1.5;
+	}
+
+	.quick-actions {
+		display: flex;
+		justify-content: space-around;
+		padding: 20px;
 		background-color: #fff;
-		border-top: 1px solid #eee;
-		padding: 10px;
+		margin: 0 10px 10px;
+		border-radius: 8px;
+	}
+
+	.action-item {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		padding: 15px;
+		border-radius: 8px;
+		background-color: #f8f9fa;
+		min-width: 80px;
+	}
+
+	.action-text {
+		font-size: 12px;
+		color: #333;
+		margin-top: 8px;
+	}
+
+	.service-time {
+		padding: 15px 20px;
+		background-color: #fff;
+		margin: 0 10px;
+		border-radius: 8px;
+		text-align: center;
+	}
+
+	.time-title {
+		display: block;
+		font-size: 14px;
+		font-weight: bold;
+		color: #333;
+		margin-bottom: 5px;
+	}
+
+	.time-desc {
+		display: block;
+		font-size: 12px;
+		color: #666;
 	}
 </style>
