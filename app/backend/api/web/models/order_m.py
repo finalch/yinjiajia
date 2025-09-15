@@ -1,5 +1,7 @@
 from typing import Dict
 
+from ..models import Product, OrderItem, ProductSpecCombination, Address, User
+
 
 class ProductSpec:
     def __init__(self, spec_id, price, spec: Dict):
@@ -8,9 +10,9 @@ class ProductSpec:
         self.spec = spec
 
 
-class ProductSnapshot:
-    def __init__(self, product_id, name, price, specs: ProductSpec):
-        self.product_id = product_id
-        self.name = name
-        self.price = price
-        self.specs = specs
+class ProductItemSnapshot:
+    def __init__(self, product: Product, spec: ProductSpecCombination, user: User, address: Address):
+        self.product = product,
+        self.spec = spec,
+        self.address = address,
+        self.user = user

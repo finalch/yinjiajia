@@ -87,6 +87,7 @@ def create_app():
     from auth import web_auth_api
     from health import web_health_api
     from logistics import web_logistics_api
+    from warehouse import web_warehouse_api
 
     # 全局接口
     from category import category_api
@@ -103,6 +104,7 @@ def create_app():
     app.register_blueprint(web_auth_api)
     app.register_blueprint(web_health_api)
     app.register_blueprint(web_logistics_api)
+    app.register_blueprint(web_warehouse_api)
 
     # 初始化WebSocket事件处理器
     from websocket_chat import init_websocket

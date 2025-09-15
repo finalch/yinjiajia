@@ -128,13 +128,10 @@
           <template #default="{ row }">
             <div class="order-info">
               <div class="order-header">
-                <span class="order-no">{{ row.order_number }}</span>
-                <el-tag :type="getStatusType(row.status)" size="small">
-                  {{getShipStatusText(row.ship_status)}}
-                </el-tag>
-                <el-tag :type="getStatusType(row.status)" size="small">
-                  {{ getStatusText(row.status) }}
-                </el-tag>
+                <div class="order-meta">
+                  <span class="order-id">订单ID: {{ row.id }}</span>
+                  <span class="payment-time" v-if="row.paid_at">付款时间: {{ formatDateTime(row.paid_at) }}</span>
+                </div>
               </div>
               <div class="order-items">
                 <div
@@ -150,7 +147,7 @@
                   <div class="item-info">
                     <h4 class="item-name">{{ item.product_name }}</h4>
                     <p class="item-specs">{{ item.spec_combination_id ? '规格：' + item.spec_combination_id : '' }}</p>
-                    <p class="item-price">¥{{ item.price }} × {{ item.quantity }}</p>
+                    <!-- <p class="item-price">¥{{ item.price }} × {{ item.quantity }}</p> -->
 <!--                    <p class="item-status">状态：{{ getItemStatusText(item.item_status) }}</p>-->
                   </div>
                 </div>
@@ -172,14 +169,11 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="物流信息" width="150">
+        <el-table-column label="支付状态" width="120">
           <template #default="{ row }">
-            <div class="logistics-info" v-if="row.items && row.items.length > 0">
-              <p v-if="row.shipping_company" class="logistics-company">{{ row.shipping_company }}</p>
-              <p v-if="row.tracking_number" class="logistics-number">{{ row.tracking_number }}</p>
-              <p v-else class="no-logistics">暂无物流</p>
-            </div>
-            <span v-else class="no-logistics">暂无物流</span>
+            <el-tag :type="getPaymentStatusType(row.status)" size="small">
+              {{ getPaymentStatusText(row.status) }}
+            </el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="created_at" label="下单时间" width="180"/>
@@ -235,28 +229,55 @@
     <el-dialog
         v-model="shipDialogVisible"
         title="订单发货"
-        width="500px"
+        width="600px"
     >
       <el-form :model="shipForm" label-width="100px">
-        <el-form-item label="物流公司">
-          <el-select v-model="shipForm.company" placeholder="选择物流公司">
-            <el-option label="顺丰速运" value="SF"/>
-            <el-option label="圆通速递" value="YTO"/>
-            <el-option label="中通快递" value="ZTO"/>
-            <el-option label="申通快递" value="STO"/>
-            <el-option label="韵达速递" value="YD"/>
-            <el-option label="京东物流" value="JD"/>
+        <el-form-item label="发货仓库" required>
+          <el-select 
+            v-model="shipForm.warehouse_id" 
+            placeholder="选择发货仓库"
+            style="width: 100%"
+            clearable
+          >
+            <el-option 
+              v-for="warehouse in warehouseList" 
+              :key="warehouse.id"
+              :label="warehouse.name"
+              :value="warehouse.id"
+            >
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span>{{ warehouse.name }}</span>
+                <span style="color: #999; font-size: 12px;">{{ warehouse.address }}</span>
+              </div>
+            </el-option>
+          </el-select>
+          <div class="form-tip">请选择发货的仓库地址</div>
+        </el-form-item>
+        
+        <el-form-item label="物流公司" required>
+          <el-select 
+            v-model="shipForm.company" 
+            placeholder="选择物流公司"
+            style="width: 100%"
+            clearable
+          >
+            <el-option 
+              v-for="company in logisticsCompanies" 
+              :key="company.value"
+              :label="company.label"
+              :value="company.value"
+            />
           </el-select>
         </el-form-item>
-        <el-form-item label="物流单号">
-          <el-input v-model="shipForm.number" placeholder="请输入物流单号"/>
-        </el-form-item>
       </el-form>
+      
       <template #footer>
-        <el-button @click="shipDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmShip" :loading="shipping">
-          确认发货
-        </el-button>
+        <div class="dialog-footer">
+          <el-button @click="shipDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="confirmShip" :loading="shipping">
+            确认发货
+          </el-button>
+        </div>
       </template>
     </el-dialog>
   </div>
@@ -268,6 +289,7 @@ import {ElMessage, ElMessageBox} from 'element-plus'
 import {CircleCheck, Clock, Download, RefreshLeft, Van} from '@element-plus/icons-vue'
 import orderService from "@/services/orderService.js";
 import request from "../api/request";
+import warehouseService from '../services/warehouseService';
 
 export default {
   name: 'Orders',
@@ -283,6 +305,7 @@ export default {
     onMounted(() => {
       loadOrders()
       loadOrderStats()
+      loadWarehouseList()
     })
 
     const loading = ref(false)
@@ -315,13 +338,45 @@ export default {
     const shipForm = reactive({
       order: null,
       company: '',
-      number: ''
+      number: '',
+      warehouse_id: ''
     })
+    
+    // 仓库列表
+    const warehouseList = ref([])
+    
+    // 物流公司列表
+    const logisticsCompanies = ref([
+      { label: '顺丰速运', value: 'SF', code: 'SF' },
+      { label: '圆通速递', value: 'YTO', code: 'YTO' },
+      { label: '中通快递', value: 'ZTO', code: 'ZTO' },
+      { label: '申通快递', value: 'STO', code: 'STO' },
+      { label: '韵达速递', value: 'YD', code: 'YD' },
+      { label: '京东物流', value: 'JD', code: 'JD' },
+      { label: '邮政EMS', value: 'EMS', code: 'EMS' },
+      { label: '德邦快递', value: 'DBL', code: 'DBL' },
+      { label: '百世快递', value: 'HTKY', code: 'HTKY' },
+      { label: '天天快递', value: 'HHTT', code: 'HHTT' }
+    ])
 
     // 订单列表
     const orders = ref([])
 
     // 方法
+    // 加载仓库列表
+    const loadWarehouseList = async () => {
+      try {
+        const result = await warehouseService.getWarehouseList({ status: 'active' })
+        if (result.success) {
+          warehouseList.value = result.data
+        } else {
+          console.error('加载仓库列表失败:', result.message)
+        }
+      } catch (error) {
+        console.error('加载仓库列表失败:', error)
+      }
+    }
+    
     const loadOrders = async () => {
       loading.value = true
       try {
@@ -413,6 +468,30 @@ export default {
       }
       return texts[status] || '未知'
     }
+    
+    const getPaymentStatusType = (status) => {
+      const types = {
+        pending_payment: 'warning',    // 待付款
+        paid: 'success',              // 已付款
+        pending_shipment: 'primary',  // 待发货
+        shipped: 'success',           // 已发货
+        completed: 'success',         // 已完成
+        cancelled: 'info',            // 已取消
+        refunding: 'danger'           // 退款中
+      }
+      return types[status] || 'info'
+    }
+    
+    const getPaymentStatusText = (status) => {
+      const texts = {
+        pending_payment: '等待买家付款',
+        paid: '已付款',
+        completed: '已完成',
+        refunding: '退款中',
+        refunded: '已退款'
+      }
+      return texts[status] || '未知'
+    }
 
     const viewOrder = (order) => {
       ElMessage.info('订单详情功能开发中...')
@@ -422,27 +501,29 @@ export default {
       shipForm.order = order
       shipForm.company = ''
       shipForm.number = ''
+      shipForm.warehouse_id = ''
       shipDialogVisible.value = true
     }
 
     const confirmShip = async () => {
-      if (!shipForm.company || !shipForm.number) {
-        ElMessage.error('请填写完整的物流信息')
+      if (!shipForm.company || !shipForm.warehouse_id) {
+        ElMessage.error('请填写完整的发货信息')
         return
       }
 
       shipping.value = true
       try {
-        const response = await request.post(`/api/web/order/${shipForm.order.id}/ship`, {
+        const response = await request.post(`/api/web/logistics/shipping`, {
             company: shipForm.company,
-            tracking_number: shipForm.number
+            order_id: shipForm.order.id,
+            warehouse_id: shipForm.warehouse_id
         })
         if (response.data.code === 200) {
           ElMessage.success('发货成功')
           shipDialogVisible.value = false
           loadOrders() // 重新加载订单列表
         } else {
-          ElMessage.error(result.message || '发货失败')
+          ElMessage.error(response.data.message || '发货失败')
         }
       } catch (error) {
         console.error('发货失败:', error)
@@ -454,6 +535,20 @@ export default {
 
     const viewLogistics = (order) => {
       ElMessage.info('物流跟踪功能开发中...')
+    }
+    
+    // 格式化日期时间
+    const formatDateTime = (dateTime) => {
+      if (!dateTime) return ''
+      const date = new Date(dateTime)
+      return date.toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      })
     }
 
     const refundOrder = async (order) => {
@@ -491,6 +586,8 @@ export default {
       shipDialogVisible,
       shipForm,
       shipping,
+      warehouseList,
+      logisticsCompanies,
       loadOrders,
       loadOrderStats,
       handleSearch,
@@ -499,12 +596,15 @@ export default {
       getStatusType,
       getStatusText,
       getShipStatusText,
+      getPaymentStatusType,
+      getPaymentStatusText,
       viewOrder,
       shipOrder,
       confirmShip,
       viewLogistics,
       refundOrder,
       exportOrders,
+      formatDateTime,
       handleSizeChange,
       handleCurrentChange
     }
@@ -563,6 +663,87 @@ export default {
 .stat-icon.shipped {
   background-color: #f6ffed;
   color: #52c41a;
+}
+
+/* 发货对话框样式 */
+.form-tip {
+  margin-top: 4px;
+  color: #999;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.order-info {
+  padding: 12px;
+}
+
+.order-header {
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.order-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.order-id {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.payment-time {
+  font-size: 12px;
+  color: #666;
+}
+
+.order-info p {
+  margin: 4px 0;
+  font-size: 14px;
+  color: #333;
+}
+
+.order-info strong {
+  color: #666;
+  font-weight: 500;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* 仓库选择器样式优化 */
+:deep(.el-select-dropdown__item) {
+  padding: 8px 20px;
+}
+
+:deep(.el-select-dropdown__item:hover) {
+  background-color: #f5f7fa;
+}
+
+/* 响应式优化 */
+@media (max-width: 768px) {
+  :deep(.el-dialog) {
+    width: 95% !important;
+    margin: 0 auto;
+  }
+  
+  :deep(.el-dialog__body) {
+    padding: 20px;
+  }
+  
+  .order-info {
+    padding: 10px;
+  }
+  
+  .order-info p {
+    font-size: 13px;
+  }
 }
 
 .stat-icon.completed {
@@ -642,7 +823,7 @@ export default {
 .item-specs {
   margin: 0 0 5px 0;
   color: #666;
-  font-size: 0.8rem;
+  font-size: 0.7rem;
 }
 
 .item-price {

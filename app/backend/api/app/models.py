@@ -1,10 +1,12 @@
-from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+
+from flask_sqlalchemy import SQLAlchemy
 
 # 假设 db 在 app.py 中初始化
 # from app import db
 
 db = SQLAlchemy()
+
 
 class User(db.Model):
     __tablename__ = 'users'
@@ -17,6 +19,7 @@ class User(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
     orders = db.relationship('Order', backref='user', lazy=True)  # 用户订单
     reviews = db.relationship('Review', backref='user', lazy=True)  # 用户评价
+
 
 class Merchant(db.Model):
     __tablename__ = 'merchants'
@@ -36,6 +39,7 @@ class Merchant(db.Model):
     order_items = db.relationship('OrderItem', backref='merchant', lazy=True)  # 商家订单项
     order_stats = db.relationship('MerchantOrderStats', backref='merchant', lazy=True)  # 商家订单统计
 
+
 class Group(db.Model):
     __tablename__ = 'groups'
     id = db.Column(db.Integer, primary_key=True)  # 分组ID
@@ -49,6 +53,8 @@ class Group(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
     # 分组下的商品（非外键关系）
     # products = db.relationship('Product', backref='group_rel', lazy=True)
+
+
 # 整个平台通用的全局商品分类
 class Category(db.Model):
     __tablename__ = 'categories'
@@ -62,6 +68,7 @@ class Category(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
     #  products = db.relationship('Product', backref='global_category_rel', lazy=True)  # 分类下的商品
+
 
 class Product(db.Model):
     __tablename__ = 'products'
@@ -82,11 +89,12 @@ class Product(db.Model):
     has_specs = db.Column(db.Boolean, default=False)  # 是否有规格
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
-    
+
     # 关联关系
     reviews = db.relationship('Review', backref='product', lazy=True)  # 商品评价
     specs = db.relationship('ProductSpec', backref='product', lazy=True)  # 商品规格
     spec_combinations = db.relationship('ProductSpecCombination', backref='product', lazy=True)  # 规格组合
+
 
 class ProductSpec(db.Model):
     __tablename__ = 'product_specs'
@@ -97,6 +105,7 @@ class ProductSpec(db.Model):
     sort_order = db.Column(db.Integer, default=0)  # 排序权重
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
+
 
 class ProductSpecCombination(db.Model):
     __tablename__ = 'product_spec_combinations'
@@ -110,10 +119,12 @@ class ProductSpecCombination(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
 
+
 class Order(db.Model):
     __tablename__ = 'orders'
     id = db.Column(db.Integer, primary_key=True)  # 订单ID
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)  # 下单用户ID
+    snapshot = db.Column(db.Text)  # 快照信息
     order_number = db.Column(db.String(50), unique=True, nullable=False)  # 订单号
     total_amount = db.Column(db.Float, nullable=False)  # 订单总金额
     status = db.Column(db.String(32), default='pending')  # 订单状态
@@ -122,11 +133,13 @@ class Order(db.Model):
     # 关联关系
     logistics = db.relationship('Logistics', backref='order', uselist=False)  # 物流信息
 
+
 class OrderItem(db.Model):
     __tablename__ = 'order_items'
     id = db.Column(db.Integer, primary_key=True)  # 订单商品ID
     order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=False)  # 订单ID
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)  # 商品ID
+    snapshot = db.Column(db.Text)  # 快照信息
     spec_combination_id = db.Column(db.Integer, db.ForeignKey('product_spec_combinations.id'))  # 规格组合ID
     price = db.Column(db.Float, nullable=False)  # 商品价格
     quantity = db.Column(db.Integer, nullable=False)  # 商品数量
@@ -134,18 +147,20 @@ class OrderItem(db.Model):
     merchant_id = db.Column(db.Integer, db.ForeignKey('merchants.id'), nullable=False)  # 商家ID
     item_status = db.Column(db.String(32), default='pending')  # 商品状态：pending(待处理)/shipped(已发货)/delivered(已送达)/refunded(已退款)
     shipping_company = db.Column(db.String(64))  # 物流公司
+    logistics_ext_info = db.Column(db.Text, default='')  # 物流扩展信息
     tracking_number = db.Column(db.String(64))  # 物流单号
     shipped_at = db.Column(db.DateTime)  # 发货时间
     delivered_at = db.Column(db.DateTime)  # 送达时间
     refund_reason = db.Column(db.Text)  # 退款原因
     refunded_at = db.Column(db.DateTime)  # 退款时间
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
-    
+
     # 关联关系
     order = db.relationship('Order', backref='items')
     product = db.relationship('Product', backref='order_items')
     spec_combination = db.relationship('ProductSpecCombination', backref='order_items')
     # merchant = db.relationship('Merchant', backref='order_items')
+
 
 class Cart(db.Model):
     __tablename__ = 'cart'
@@ -156,11 +171,12 @@ class Cart(db.Model):
     quantity = db.Column(db.Integer, nullable=False, default=1)  # 数量
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
-    
+
     # 关联关系
     user = db.relationship('User', backref='cart_items')
     product = db.relationship('Product', backref='cart_items')
     spec_combination = db.relationship('ProductSpecCombination', backref='cart_items')
+
 
 class Review(db.Model):
     __tablename__ = 'reviews'
@@ -174,6 +190,7 @@ class Review(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
 
+
 class Account(db.Model):
     __tablename__ = 'accounts'
     id = db.Column(db.Integer, primary_key=True)  # 账户ID
@@ -182,6 +199,7 @@ class Account(db.Model):
     bank_account = db.Column(db.String(64))  # 银行账户
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
+
 
 class Logistics(db.Model):
     __tablename__ = 'logistics'
@@ -193,6 +211,7 @@ class Logistics(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
 
+
 class OrderItemLogistics(db.Model):
     __tablename__ = 'order_item_logistics'
     id = db.Column(db.Integer, primary_key=True)  # 物流ID
@@ -202,9 +221,10 @@ class OrderItemLogistics(db.Model):
     status = db.Column(db.String(32), default='shipped')  # 物流状态：shipped(已发货)/in_transit(运输中)/delivered(已送达)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
-    
+
     # 关联关系
     order_item = db.relationship('OrderItem', backref='logistics')
+
 
 class MerchantOrderStats(db.Model):
     __tablename__ = 'merchant_order_stats'
@@ -221,14 +241,15 @@ class MerchantOrderStats(db.Model):
     refunded_orders = db.Column(db.Integer, default=0)  # 已退款订单数
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
-    
+
     # 关联关系
     # merchant = db.relationship('Merchant', backref='order_stats')  # 已在Merchant模型中定义
-    
+
     # 唯一约束
     __table_args__ = (
         db.UniqueConstraint('merchant_id', 'stat_date', name='uk_merchant_date'),
     )
+
 
 class Address(db.Model):
     __tablename__ = 'addresses'
@@ -243,9 +264,10 @@ class Address(db.Model):
     is_default = db.Column(db.Boolean, default=False)  # 是否默认地址
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
-    
+
     # 关联关系
     user = db.relationship('User', backref='addresses')
+
 
 class ChatRoom(db.Model):
     __tablename__ = 'chat_rooms'
@@ -256,16 +278,17 @@ class ChatRoom(db.Model):
     last_message_at = db.Column(db.DateTime)  # 最后消息时间
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
-    
+
     # 关联关系
     user = db.relationship('User', backref='chat_rooms')
     merchant = db.relationship('Merchant', backref='chat_rooms')
     messages = db.relationship('ChatMessage', backref='chat_room', lazy=True, cascade='all, delete-orphan')
-    
+
     # 唯一约束：一个用户和一个商家只能有一个聊天室
     __table_args__ = (
         db.UniqueConstraint('user_id', 'merchant_id', name='uk_user_merchant_chat'),
     )
+
 
 class ChatMessage(db.Model):
     __tablename__ = 'chat_messages'

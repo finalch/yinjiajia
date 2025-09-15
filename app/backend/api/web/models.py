@@ -297,3 +297,23 @@ class ChatMessage(db.Model):
     file_url = db.Column(db.String(256))  # 文件URL（图片、文件等）
     is_read = db.Column(db.Boolean, default=False)  # 是否已读
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
+
+
+class Warehouse(db.Model):
+    __tablename__ = 'warehouses'
+    id = db.Column(db.Integer, primary_key=True)  # 仓库ID
+    merchant_id = db.Column(db.Integer, db.ForeignKey('merchants.id'), nullable=False)  # 商家ID
+    name = db.Column(db.String(100), nullable=False)  # 仓库名称
+    province = db.Column(db.String(32), nullable=False)  # 省份
+    city = db.Column(db.String(32), nullable=False)  # 城市
+    district = db.Column(db.String(32), nullable=False)  # 区县
+    detail_address = db.Column(db.Text, nullable=False)  # 仓库地址
+    contact_person = db.Column(db.String(50), nullable=False)  # 联系人
+    contact_phone = db.Column(db.String(20), nullable=False)  # 联系电话
+    remark = db.Column(db.Text)  # 备注信息
+    status = db.Column(db.String(16), default='active')  # 状态：active/inactive
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
+    
+    # 关联关系
+    merchant = db.relationship('Merchant', backref='warehouses')
