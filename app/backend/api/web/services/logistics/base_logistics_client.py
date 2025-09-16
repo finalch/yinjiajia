@@ -31,6 +31,22 @@ class LogisticsResponse:
     tracking_number: Optional[str] = None
     logistics_ext_info: Optional[str] = None
     error_message: Optional[str] = None
+@dataclass
+class LogisticsRoute:
+    """物流路由信息"""
+    time: str
+    address: str
+    remark: str
+    opCode: str
+    firstStatusCode: str
+    firstStatusName: str
+    secondaryStatusCode: str
+    secondaryStatusName: str
+
+@dataclass
+class LogisticsRoutes:
+    """物流路由信息"""
+    route: List[LogisticsRoute]
 
 
 class BaseLogisticsClient(ABC):

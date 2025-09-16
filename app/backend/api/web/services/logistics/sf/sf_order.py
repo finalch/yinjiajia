@@ -20,7 +20,7 @@ class SfOrder:
         self.language = "zh-CN"
         self.cargoDetails = cargo_details
         self.contactInfoList = contact_info_List
-    
+
     def to_dict(self):
         """转换为可序列化的字典"""
         return {
@@ -28,4 +28,16 @@ class SfOrder:
             'language': self.language,
             'cargoDetails': [cargo.__dict__ for cargo in self.cargoDetails],
             'contactInfoList': [contact.__dict__ for contact in self.contactInfoList]
+        }
+
+
+class SfOrderQuery:
+    def __init__(self, sf_no: str):
+        self.trackingType = 1
+        self.trackingNumber = [sf_no]
+
+    def to_dict(self):
+        return {
+            'trackingType': self.trackingType,
+            'trackingNumber': self.trackingNumber
         }

@@ -32,11 +32,13 @@ def ship_order():
         if not LogisticsFactory.is_supported(company):
             return jsonify(code=500, message='暂不支持该物流公司'), 400
 
-        # 获取订单和商家信息
+        # 获取商家信息
         merchant = Merchant.query.get(merchant_id)
+        if not merchant:
+            return jsonify(code=1, message='商户不存在'), 400
         order = Order.query.get(order_id)
-        if not merchant or not order:
-            return jsonify(code=1, message='订单或商户不存在'), 400
+        if not order:
+            return jsonify(code=1, message='订单不存在'), 400
         # 获取仓库信息
         warehouse = Warehouse.query.filter_by(
             id=warehouse_id,
@@ -53,9 +55,9 @@ def ship_order():
             return jsonify(code=1, message='订单不存在'), 400
 
         # 检查订单状态
-        for item in items:
-            if item.item_status != 'pending':
-                return jsonify(code=1, message='订单状态不是待处理'), 400
+        # for item in items:
+        #     if item.item_status != 'pending':
+        #         return jsonify(code=1, message='订单状态不是待处理'), 400
 
         # 创建物流客户端
         logistics_client = LogisticsFactory.create_client(company)
@@ -100,14 +102,19 @@ def ship_order():
 
         # 更新订单项状态
         shipped_at = datetime.utcnow()
-        for item in items:
-            item.shipping_no = response.shipping_no
-            item.logistics_ext_info = response.logistics_ext_info
-            item.tracking_number = response.tracking_number
-            item.shipping_company = company
-            item.shipped_at = shipped_at
-            item.item_status = 'shipped'
+        # for item in items:
+        #     item.shipping_no = response.shipping_no
+        #     item.logistics_ext_info = response.logistics_ext_info
+        #     item.tracking_number = response.tracking_number
+        #     item.shipping_company = company
+        #     item.shipped_at = shipped_at
+        #     item.item_status = 'shipped'
         order.ship_status = 'shipped'
+        order.shipping_no = response.shipping_no
+        order.logistics_ext_info = response.logistics_ext_info
+        order.tracking_number = response.tracking_number
+        order.shipping_company = company
+        order.shipped_at = shipped_at
         db.session.commit()
 
         logger.info(f'创建{company.upper()}运单成功, 运单号: {response.shipping_no}')
@@ -121,3 +128,26 @@ def ship_order():
     except Exception as e:
         logger.error(f'发货失败: {str(e)}')
         return jsonify(code=1, message='发货失败: {}'.format(str(e))), 500
+
+
+@web_logistics_api.route('/query/route', methods=['POST'])
+def query_logistics_route():
+    try:
+        shipping_no = request.json.get('shipping_no')
+        company = request.json.get('company')
+
+        if not shipping_no:
+            return jsonify(code=1, message='请输入正确的运单号'), 400
+        if not company:
+            return jsonify(code=1, message='请选择正确的物流公司'), 400
+
+        client = LogisticsFactory.create_client(company)
+        routes = client.query_order(shipping_no)
+
+        return jsonify(code=200, data={
+            "routes": routes
+        }), 200
+
+    except Exception as e:
+        logger.error(f'查询物流路由失败: {str(e)}')
+        return jsonify(code=1, message='查询物流路由失败: {}'.format(str(e))), 500

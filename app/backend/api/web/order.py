@@ -74,6 +74,7 @@ def get_orders():
                     'item_status': item.item_status,
                     'shipping_company': item.shipping_company,
                     'tracking_number': item.tracking_number,
+                    'shipping_no': item.shipping_no,
                     'shipped_at': item.shipped_at.strftime('%Y-%m-%d %H:%M:%S') if item.shipped_at else None,
                     'delivered_at': item.delivered_at.strftime('%Y-%m-%d %H:%M:%S') if item.delivered_at else None
                 })
@@ -89,6 +90,7 @@ def get_orders():
                 'ship_status': order.ship_status,
                 'shipping_company': order.shipping_company,
                 'tracking_number': order.tracking_number,
+                'shipping_no': order.shipping_no,
                 'shipped_at': order.shipped_at.strftime('%Y-%m-%d %H:%M:%S') if order.shipped_at else None,
                 'delivered_at': order.delivered_at.strftime('%Y-%m-%d %H:%M:%S') if order.delivered_at else None,
                 'status': order.status,

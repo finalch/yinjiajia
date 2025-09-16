@@ -280,16 +280,81 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- 物流查看对话框 -->
+    <el-dialog
+        v-model="logisticsDialogVisible"
+        title="物流跟踪"
+        width="800px"
+    >
+      <div v-if="logisticsLoading" class="logistics-loading">
+        <el-icon class="is-loading"><Loading /></el-icon>
+        <span>正在查询物流信息...</span>
+      </div>
+      
+      <div v-else-if="logisticsRoutes.length > 0" class="logistics-content">
+        <div class="logistics-info">
+          <div class="logistics-header">
+            <div class="logistics-meta">
+              <p class="logistics-company">
+                <strong>物流公司：</strong>{{ getLogisticsCompanyName(currentLogisticsCompany) }}
+              </p>
+              <p class="logistics-tracking">
+                <strong>运单号：</strong>
+                <span class="shipping_no">{{ currentShippingNo }}</span>
+                <el-button 
+                  type="text" 
+                  size="small" 
+                  @click="copyTrackingNumber"
+                  class="copy-btn"
+                >
+                  <el-icon><DocumentCopy /></el-icon>
+                  复制
+                </el-button>
+              </p>
+            </div>
+          </div>
+          
+          <el-timeline>
+            <el-timeline-item
+              v-for="(route, index) in logisticsRoutes"
+              :key="index"
+              placement="top"
+            >
+              <div class="route-content">
+                <span class="route-time">{{ route.time }}</span>
+                <span class="route-address" v-if="route.address">{{ route.address }}</span>
+                <span class="route-remark">{{ route.remark }}</span>
+              </div>
+            </el-timeline-item>
+          </el-timeline>
+        </div>
+      </div>
+      
+      <div v-else class="logistics-empty">
+        <el-empty description="暂无物流信息" />
+      </div>
+      
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="logisticsDialogVisible = false">关闭</el-button>
+          <el-button type="primary" @click="refreshLogistics" :loading="logisticsLoading">
+            刷新
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script>
 import {onMounted, reactive, ref} from 'vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
-import {CircleCheck, Clock, Download, RefreshLeft, Van} from '@element-plus/icons-vue'
+import {CircleCheck, Clock, Download, RefreshLeft, Van, Loading, DocumentCopy} from '@element-plus/icons-vue'
 import orderService from "@/services/orderService.js";
 import request from "../api/request";
 import warehouseService from '../services/warehouseService';
+import logisticsService from '../services/logisticsService';
 
 export default {
   name: 'Orders',
@@ -298,7 +363,9 @@ export default {
     Clock,
     Van,
     CircleCheck,
-    RefreshLeft
+    RefreshLeft,
+    Loading,
+    DocumentCopy
   },
   setup() {
     // 初始化数据
@@ -312,6 +379,15 @@ export default {
     const shipDialogVisible = ref(false)
     const shipping = ref(false)
     const selectedOrders = ref([])
+    
+    // 物流相关状态
+    const logisticsDialogVisible = ref(false)
+    const logisticsLoading = ref(false)
+    const logisticsRoutes = ref([])
+    const currentTrackingNumber = ref('')
+    const currentShippingNo = ref('')
+    const currentLogisticsCompany = ref('')
+    const currentOrder = ref(null)
 
     // 订单统计
     const orderStats = ref({
@@ -533,9 +609,87 @@ export default {
       }
     }
 
-    const viewLogistics = (order) => {
-      ElMessage.info('物流跟踪功能开发中...')
+    const viewLogistics = async (order) => {
+      // 检查订单是否有物流信息
+      // const shippedItems = order.items?.filter(item => item.item_status === 'shipped' && item.tracking_number)
+      
+      // if (!shippedItems || shippedItems.length === 0) {
+      //   ElMessage.warning('该订单暂无物流信息')
+      //   return
+      // }
+      
+      // 使用第一个已发货商品的物流信息
+      // const firstShippedItem = shippedItems[0]
+      currentTrackingNumber.value = order.tracking_number
+      currentShippingNo.value = order.shipping_no
+      currentLogisticsCompany.value = order.shipping_company
+      currentOrder.value = order
+      
+      // 显示物流对话框
+      logisticsDialogVisible.value = true
+      
+      // 查询物流信息
+      await queryLogisticsInfo()
     }
+    
+    const queryLogisticsInfo = async () => {
+      logisticsLoading.value = true
+      try {
+        const result = await logisticsService.queryLogisticsRoute(
+          currentTrackingNumber.value,
+          currentLogisticsCompany.value,
+          currentShippingNo.value
+        )
+        
+        if (result.success) {
+          logisticsRoutes.value = result.data.routes || []
+
+          if (logisticsRoutes.value.length === 0) {
+            ElMessage.info('暂无物流跟踪信息')
+          }
+        } else {
+          ElMessage.error(result.message || '查询物流信息失败')
+          logisticsRoutes.value = []
+        }
+      } catch (error) {
+        console.error('查询物流信息失败:', error)
+        ElMessage.error('查询物流信息失败')
+        logisticsRoutes.value = []
+      } finally {
+        logisticsLoading.value = false
+      }
+    }
+    
+    const refreshLogistics = async () => {
+      await queryLogisticsInfo()
+    }
+    
+    const getLogisticsCompanyName = (code) => {
+      const company = logisticsCompanies.value.find(item => item.code === code)
+      return company ? company.label : code
+    }
+    
+    const copyTrackingNumber = async () => {
+      try {
+        await navigator.clipboard.writeText(currentShippingNo.value)
+        ElMessage.success('运单号已复制到剪贴板')
+      } catch (error) {
+        console.error('复制失败:', error)
+        // 备用方案：使用传统的复制方法
+        const textArea = document.createElement('textarea')
+        textArea.value = currentShippingNo.value
+        document.body.appendChild(textArea)
+        textArea.select()
+        try {
+          document.execCommand('copy')
+          ElMessage.success('运单号已复制到剪贴板')
+        } catch (fallbackError) {
+          ElMessage.error('复制失败，请手动复制')
+        }
+        document.body.removeChild(textArea)
+      }
+    }
+    
     
     // 格式化日期时间
     const formatDateTime = (dateTime) => {
@@ -588,6 +742,14 @@ export default {
       shipping,
       warehouseList,
       logisticsCompanies,
+      // 物流相关
+      logisticsDialogVisible,
+      logisticsLoading,
+      logisticsRoutes,
+      currentTrackingNumber,
+      currentShippingNo,
+      currentLogisticsCompany,
+      currentOrder,
       loadOrders,
       loadOrderStats,
       handleSearch,
@@ -602,6 +764,10 @@ export default {
       shipOrder,
       confirmShip,
       viewLogistics,
+      queryLogisticsInfo,
+      refreshLogistics,
+      getLogisticsCompanyName,
+      copyTrackingNumber,
       refundOrder,
       exportOrders,
       formatDateTime,
@@ -889,5 +1055,157 @@ export default {
 .pagination {
   margin-top: 20px;
   text-align: center;
+}
+
+/* 物流对话框样式 */
+.logistics-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: #666;
+}
+
+.logistics-loading .el-icon {
+  margin-right: 8px;
+}
+
+.logistics-content {
+  padding: 20px 0;
+}
+
+.logistics-header {
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.logistics-header h3 {
+  margin: 0 0 10px 0;
+  color: #333;
+  font-size: 18px;
+}
+
+.logistics-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.logistics-meta p {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logistics-company {
+  font-weight: 500;
+}
+
+.logistics-tracking {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.shipping_no {
+  font-family: 'Courier New', monospace;
+  background-color: #f5f5f5;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #333;
+}
+
+.copy-btn {
+  padding: 2px 6px !important;
+  font-size: 12px !important;
+  color: #409eff !important;
+}
+
+.copy-btn:hover {
+  color: #66b1ff !important;
+}
+
+.route-content {
+  padding: 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.route-time {
+  color: #666;
+  font-size: 13px;
+  font-weight: 500;
+  min-width: 120px;
+  flex-shrink: 0;
+}
+
+.route-address {
+  color: #999;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.route-remark {
+  color: #333;
+  font-size: 14px;
+  font-weight: 500;
+  flex: 1;
+}
+
+.logistics-empty {
+  padding: 40px 0;
+  text-align: center;
+}
+
+/* 响应式优化 */
+@media (max-width: 768px) {
+  
+  .logistics-meta p {
+    font-size: 13px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  
+  .logistics-tracking {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  
+  .shipping_no {
+    font-size: 12px;
+  }
+  
+  .copy-btn {
+    font-size: 11px !important;
+  }
+  
+  .route-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  
+  .route-time {
+    min-width: auto;
+    font-size: 12px;
+  }
+  
+  .route-address {
+    font-size: 11px;
+  }
+  
+  .route-remark {
+    font-size: 13px;
+  }
 }
 </style> 

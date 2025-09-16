@@ -128,10 +128,12 @@ class Order(db.Model):
     total_amount = db.Column(db.Float, nullable=False)  # 订单总金额
     snapshot = db.Column(db.Text)  # 订单快照信息
     status = db.Column(db.String(32), default='pending')  # 订单状态
+    shipping_no = db.Column(db.String(255))  # 物流侧的唯一订单号
     ship_status = db.Column(db.String(32), default='pending')  # 发货状态
     shipping_company = db.Column(db.String(64))  # 物流公司
     tracking_number = db.Column(db.String(64))  # 物流单号
     shipped_at = db.Column(db.DateTime)  # 发货时间
+    logistics_ext_info = db.Column(db.Text)  # 物流扩展信息
     delivered_at = db.Column(db.DateTime)  # 送达时间
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
@@ -314,6 +316,6 @@ class Warehouse(db.Model):
     status = db.Column(db.String(16), default='active')  # 状态：active/inactive
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
-    
+
     # 关联关系
     merchant = db.relationship('Merchant', backref='warehouses')
