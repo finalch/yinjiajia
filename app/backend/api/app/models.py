@@ -124,10 +124,17 @@ class Order(db.Model):
     __tablename__ = 'orders'
     id = db.Column(db.Integer, primary_key=True)  # 订单ID
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)  # 下单用户ID
-    snapshot = db.Column(db.Text)  # 快照信息
     order_number = db.Column(db.String(50), unique=True, nullable=False)  # 订单号
     total_amount = db.Column(db.Float, nullable=False)  # 订单总金额
+    snapshot = db.Column(db.Text)  # 订单快照信息
     status = db.Column(db.String(32), default='pending')  # 订单状态
+    shipping_no = db.Column(db.String(255))  # 物流侧的唯一订单号
+    ship_status = db.Column(db.String(32), default='pending')  # 发货状态
+    shipping_company = db.Column(db.String(64))  # 物流公司
+    tracking_number = db.Column(db.String(64))  # 物流单号
+    shipped_at = db.Column(db.DateTime)  # 发货时间
+    logistics_ext_info = db.Column(db.Text)  # 物流扩展信息
+    delivered_at = db.Column(db.DateTime)  # 送达时间
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
     # 关联关系
@@ -146,9 +153,10 @@ class OrderItem(db.Model):
     subtotal = db.Column(db.Float, nullable=False)  # 小计金额
     merchant_id = db.Column(db.Integer, db.ForeignKey('merchants.id'), nullable=False)  # 商家ID
     item_status = db.Column(db.String(32), default='pending')  # 商品状态：pending(待处理)/shipped(已发货)/delivered(已送达)/refunded(已退款)
+    logistics_ext_info = db.Column(db.Text)  # 物流扩展信息
     shipping_company = db.Column(db.String(64))  # 物流公司
-    logistics_ext_info = db.Column(db.Text, default='')  # 物流扩展信息
-    tracking_number = db.Column(db.String(64))  # 物流单号
+    shipping_no = db.Column(db.String(64))  # 物流侧的唯一订单号
+    tracking_number = db.Column(db.String(64))  # 物流侧的唯一订单号
     shipped_at = db.Column(db.DateTime)  # 发货时间
     delivered_at = db.Column(db.DateTime)  # 送达时间
     refund_reason = db.Column(db.Text)  # 退款原因
@@ -272,28 +280,18 @@ class Address(db.Model):
 class ChatRoom(db.Model):
     __tablename__ = 'chat_rooms'
     id = db.Column(db.Integer, primary_key=True)  # 聊天室ID
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)  # 用户ID
-    merchant_id = db.Column(db.Integer, db.ForeignKey('merchants.id'), nullable=False)  # 商家ID
+    user_id = db.Column(db.Integer, nullable=False)  # 用户ID
+    merchant_id = db.Column(db.Integer, nullable=False)  # 商家ID
     status = db.Column(db.String(16), default='active')  # 状态：active/closed
     last_message_at = db.Column(db.DateTime)  # 最后消息时间
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
 
-    # 关联关系
-    user = db.relationship('User', backref='chat_rooms')
-    merchant = db.relationship('Merchant', backref='chat_rooms')
-    messages = db.relationship('ChatMessage', backref='chat_room', lazy=True, cascade='all, delete-orphan')
-
-    # 唯一约束：一个用户和一个商家只能有一个聊天室
-    __table_args__ = (
-        db.UniqueConstraint('user_id', 'merchant_id', name='uk_user_merchant_chat'),
-    )
-
 
 class ChatMessage(db.Model):
     __tablename__ = 'chat_messages'
     id = db.Column(db.Integer, primary_key=True)  # 消息ID
-    chat_room_id = db.Column(db.Integer, db.ForeignKey('chat_rooms.id'), nullable=False)  # 聊天室ID
+    chat_room_id = db.Column(db.Integer, nullable=False)  # 聊天室ID
     sender_type = db.Column(db.String(16), nullable=False)  # 发送者类型：user/merchant
     sender_id = db.Column(db.Integer, nullable=False)  # 发送者ID
     content = db.Column(db.Text, nullable=False)  # 消息内容
@@ -301,3 +299,23 @@ class ChatMessage(db.Model):
     file_url = db.Column(db.String(256))  # 文件URL（图片、文件等）
     is_read = db.Column(db.Boolean, default=False)  # 是否已读
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
+
+
+class Warehouse(db.Model):
+    __tablename__ = 'warehouses'
+    id = db.Column(db.Integer, primary_key=True)  # 仓库ID
+    merchant_id = db.Column(db.Integer, db.ForeignKey('merchants.id'), nullable=False)  # 商家ID
+    name = db.Column(db.String(100), nullable=False)  # 仓库名称
+    province = db.Column(db.String(32), nullable=False)  # 省份
+    city = db.Column(db.String(32), nullable=False)  # 城市
+    district = db.Column(db.String(32), nullable=False)  # 区县
+    detail_address = db.Column(db.Text, nullable=False)  # 仓库地址
+    contact_person = db.Column(db.String(50), nullable=False)  # 联系人
+    contact_phone = db.Column(db.String(20), nullable=False)  # 联系电话
+    remark = db.Column(db.Text)  # 备注信息
+    status = db.Column(db.String(16), default='active')  # 状态：active/inactive
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
+
+    # 关联关系
+    merchant = db.relationship('Merchant', backref='warehouses')

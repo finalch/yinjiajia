@@ -287,37 +287,45 @@ class OrderService:
                 })
 
             # 从OrderItem中获取物流信息
-            logistics_info = None
-            shipped_items = [item for item in order_items if item.shipping_company and item.tracking_number]
+            # logistics_info = None
+            # shipped_items = [item for item in order_items if item.shipping_company and item.tracking_number]
 
-            if shipped_items:
-                # 使用第一个有物流信息的商品作为主要物流信息
-                main_item = shipped_items[0]
-                logistics_info = {
-                    'tracking_number': main_item.tracking_number,
-                    'carrier': main_item.shipping_company,
-                    'status': main_item.item_status,
-                    'updated_at': main_item.shipped_at.isoformat() if main_item.shipped_at else None
-                }
+            # if shipped_items:
+            #     # 使用第一个有物流信息的商品作为主要物流信息
+            #     main_item = shipped_items[0]
+            #     logistics_info = {
+            #         'tracking_number': main_item.tracking_number,
+            #         'carrier': main_item.shipping_company,
+            #         'status': main_item.item_status,
+            #         'updated_at': main_item.shipped_at.isoformat() if main_item.shipped_at else None
+            #     }
 
             # 计算物流驱动的状态，并与订单自身状态合并
-            derived_status = OrderService._calculate_order_status(order_items)
-            order_status = order.status
-            if order_status not in ('cancelled', 'refunded', 'completed') and derived_status in ('shipped', 'delivered'):
-                order_status = derived_status
+            # derived_status = OrderService._calculate_order_status(order_items)
+            # order_status = order.status
+            # if order_status not in ('cancelled', 'refunded', 'completed') and derived_status in ('shipped', 'delivered'):
+            #     order_status = derived_status
 
             # 如果指定了状态筛选，检查订单状态是否匹配
-            if status and order_status != status:
-                continue
+            # if status and order_status != status:
+            #     continue
 
             orders.append({
                 'id': order.id,
                 'order_number': order.order_number,
-                'status': order_status,
-                'status_text': OrderService._get_order_status_text(order_status),
+                'status': order.status,
+                'status_text': OrderService._get_order_status_text(order.status, order.ship_status),
                 'total_amount': float(order.total_amount),
                 'items': items,
-                'logistics': logistics_info,
+                'logistics': {
+                    'tracking_number': order.tracking_number,
+                    'shipping_no': order.shipping_no,
+                    'shipping_company': order.shipping_company,
+                    'ship_status': order.ship_status
+                },
+                'tracking_number': order.tracking_number,
+                'shipping_no': order.shipping_no,
+                'shipping_company': order.shipping_company,
                 'created_at': order.created_at.isoformat() if order.created_at else None,
                 'updated_at': order.updated_at.isoformat() if order.updated_at else None
             })
@@ -368,7 +376,7 @@ class OrderService:
         return 'pending'
 
     @staticmethod
-    def _get_order_status_text(status: str) -> str:
+    def _get_order_status_text(status: str, ship_status: str) -> str:
         """获取订单状态文本"""
         status_map = {
             'pending': '待付款',
@@ -379,4 +387,6 @@ class OrderService:
             'cancelled': '已取消',
             'refunded': '已退款'
         }
+        if ship_status == 'shipped':
+            return '已发货'
         return status_map.get(status, '未知状态')

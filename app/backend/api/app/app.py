@@ -84,6 +84,7 @@ def create_app():
     from auth import app_auth_api
     from order import app_order_api
     from review import app_review_api
+    from logistics import app_logistics_api
 
     # 全局接口
     from category import category_api
@@ -94,6 +95,7 @@ def create_app():
     app.register_blueprint(app_address_api)
     app.register_blueprint(app_auth_api)
     app.register_blueprint(app_order_api)
+    app.register_blueprint(app_logistics_api)
 
     app.register_blueprint(app_review_api)
 

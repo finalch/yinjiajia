@@ -129,7 +129,7 @@
             <div class="order-info">
               <div class="order-header">
                 <div class="order-meta">
-                  <span class="order-id">订单ID: {{ row.id }}</span>
+                  <span class="order-id">订单ID: {{ row.order_number }}</span>
                   <span class="payment-time" v-if="row.paid_at">付款时间: {{ formatDateTime(row.paid_at) }}</span>
                 </div>
               </div>

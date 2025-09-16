@@ -51,7 +51,7 @@ const getBreadcrumbName = (path) => {
     'edit': '编辑商品',
     'audit': '商品审核',
     'groups': '商品分类',
-    'logistics': '物流管理',
+    // 'logistics': '物流管理',
     'after-sales': '售后处理',
     'reviews': '评价管理'
   }
@@ -185,7 +185,7 @@ onUnmounted(() => {
                 <span>订单管理</span>
               </template>
               <el-menu-item index="/orders">订单列表</el-menu-item>
-              <el-menu-item index="/logistics">物流管理</el-menu-item>
+              <!-- <el-menu-item index="/logistics">物流管理</el-menu-item> -->
               <el-menu-item index="/after-sales">售后处理</el-menu-item>
             </el-sub-menu>
             

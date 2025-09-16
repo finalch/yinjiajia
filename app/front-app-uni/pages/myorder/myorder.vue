@@ -72,9 +72,9 @@
                 <view class="order-actions">
                   <button v-if="order.status === 'pending'" class="action-btn primary" @click.stop="goPay(order)">去支付</button>
                   <button v-if="order.status === 'pending' || order.status === 'paid'" class="action-btn secondary" @click.stop="cancelOrder(order)">取消订单</button>
-                  <button v-if="order.status === 'shipped' || order.status === 'delivered'" class="action-btn secondary" @click.stop="viewLogistics(order)">查看物流</button>
-                  <button v-if="order.status === 'shipped' || order.status === 'delivered'" class="action-btn primary" @click.stop="confirmReceipt(order)">确认收货</button>
-                  <button v-if="order.status === 'delivered' || order.status === 'completed'" class="action-btn secondary" @click.stop="afterSales(order)">售后</button>
+                  <button v-if="order.status === 'paid' && order.tracking_number" class="action-btn secondary" @click.stop="viewLogistics(order)">查看物流</button>
+                  <button v-if="order.status === 'paid' && order.logistics.ship_status === 'delivered'" class="action-btn primary" @click.stop="confirmReceipt(order)">确认收货</button>
+                  <button v-if="order.status === 'completed' " class="action-btn secondary" @click.stop="afterSales(order)">售后</button>
                 </view>
               </view>
             </view>
@@ -104,11 +104,55 @@
       </button>
     </view>
   </view>
+
+  <!-- 物流详情弹窗 -->
+  <view v-if="logisticsModalVisible" class="logistics-modal-overlay" @click="closeLogisticsModal">
+    <view class="logistics-modal" @click.stop>
+      <view class="logistics-header">
+        <text class="logistics-title">物流跟踪</text>
+        <text class="close-btn" @click="closeLogisticsModal">×</text>
+      </view>
+      
+      <view class="logistics-info">
+        <view class="info-row">
+          <text class="label">物流公司：</text>
+          <text class="value">{{ currentLogisticsCompany }}</text>
+        </view>
+        <view class="info-row">
+          <text class="label">运单号：</text>
+          <text class="value tracking-number">{{ currentShippingNo }}</text>
+          <text class="copy-btn" @click="copyShippingNo">复制</text>
+        </view>
+      </view>
+      
+      <view class="logistics-routes" v-if="logisticsRoutes.length > 0">
+        <view class="routes-title">物流跟踪</view>
+        <view class="routes-list">
+          <view 
+            class="route-item" 
+            v-for="(route, index) in logisticsRoutes" 
+            :key="index"
+          >
+            <view class="route-time">{{ route.time }}</view>
+            <view class="route-content">
+              <view class="route-address" v-if="route.address">{{ route.address }}</view>
+              <view class="route-remark">{{ route.remark }}</view>
+            </view>
+          </view>
+        </view>
+      </view>
+      
+      <view class="logistics-empty" v-else>
+        <text>暂无物流跟踪信息</text>
+      </view>
+    </view>
+  </view>
 </template>
 
 <script>
 import { getUserId } from '@/src/utils/auth.js'
 import request from '@/src/utils/request.js'
+import logisticsService from '@/src/services/logisticsService.js'
 
 export default {
   name: 'MyOrder',
@@ -121,6 +165,11 @@ export default {
       orders: [],
       loading: false,
       hasNextPage: false,
+      // 物流弹窗相关
+      logisticsModalVisible: false,
+      logisticsRoutes: [],
+      currentLogisticsCompany: '',
+      currentShippingNo: '',
       statusOptions: [
         { label: '全部', value: '' },
         { label: '待付款', value: 'pending' },
@@ -331,21 +380,90 @@ export default {
     },
 
     // 查看物流
-    viewLogistics(order) {
-      if (order.logistics) {
-        const logistics = order.logistics
-        const message = `物流公司：${logistics.carrier}\n物流单号：${logistics.tracking_number}\n物流状态：${logistics.status_text || logistics.status}`
-        uni.showModal({
-          title: '物流信息',
-          content: message,
-          showCancel: false
-        })
-      } else {
+    async viewLogistics(order) {
+      if (!order.tracking_number || !order.shipping_company) {
         uni.showToast({
           title: '暂无物流信息',
           icon: 'none'
         })
+        return
       }
+
+      // 设置当前物流信息
+      this.currentLogisticsCompany = this.getLogisticsCompanyName(order.shipping_company)
+      this.currentShippingNo = order.shipping_no
+      this.logisticsRoutes = []
+      this.logisticsModalVisible = true
+
+      // 显示加载提示
+      uni.showLoading({
+        title: '查询物流信息...'
+      })
+
+      try {
+        const result = await logisticsService.queryLogisticsRoute(
+          order.tracking_number,
+          order.shipping_company,
+          order.shipping_no
+        )
+
+        uni.hideLoading()
+
+        if (result.success && result.data.routes) {
+          this.logisticsRoutes = result.data.routes
+        } else {
+          this.logisticsRoutes = []
+        }
+      } catch (error) {
+        uni.hideLoading()
+        console.error('查询物流信息失败:', error)
+        uni.showToast({
+          title: '查询物流信息失败',
+          icon: 'none'
+        })
+        this.logisticsRoutes = []
+      }
+    },
+
+    // 关闭物流弹窗
+    closeLogisticsModal() {
+      this.logisticsModalVisible = false
+    },
+
+    // 复制运单号
+    copyShippingNo() {
+      uni.setClipboardData({
+        data: this.currentShippingNo,
+        success: () => {
+          uni.showToast({
+            title: '运单号已复制',
+            icon: 'success'
+          })
+        },
+        fail: () => {
+          uni.showToast({
+            title: '复制失败',
+            icon: 'none'
+          })
+        }
+      })
+    },
+
+    // 获取物流公司名称
+    getLogisticsCompanyName(code) {
+      const companies = {
+        'SF': '顺丰速运',
+        'YTO': '圆通速递',
+        'ZTO': '中通快递',
+        'STO': '申通快递',
+        'YD': '韵达速递',
+        'JD': '京东物流',
+        'EMS': '邮政EMS',
+        'DBL': '德邦快递',
+        'HTKY': '百世快递',
+        'HHTT': '天天快递'
+      }
+      return companies[code] || code
     },
 
     // 确认收货
@@ -669,5 +787,234 @@ export default {
 .load-more-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* 物流弹窗样式 */
+.logistics-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.logistics-modal {
+  background: white;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 500px;
+  max-height: 80vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.logistics-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 20px 0 20px;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 20px;
+}
+
+.logistics-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.close-btn {
+  font-size: 24px;
+  color: #999;
+  cursor: pointer;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-btn:hover {
+  color: #666;
+}
+
+.logistics-info {
+  padding: 0 20px 20px 20px;
+}
+
+.info-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.info-row:last-child {
+  margin-bottom: 0;
+}
+
+.label {
+  font-size: 14px;
+  color: #666;
+  min-width: 80px;
+}
+
+.value {
+  font-size: 14px;
+  color: #333;
+  flex: 1;
+}
+
+.tracking-number {
+  font-family: 'Courier New', monospace;
+  background-color: #f5f5f5;
+  padding: 4px 8px;
+  border-radius: 4px;
+  margin-right: 8px;
+}
+
+.copy-btn {
+  font-size: 12px;
+  color: #409eff;
+  cursor: pointer;
+  padding: 4px 8px;
+  border: 1px solid #409eff;
+  border-radius: 4px;
+}
+
+.copy-btn:hover {
+  background-color: #409eff;
+  color: white;
+}
+
+.logistics-routes {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.routes-title {
+  padding: 0 20px 15px 20px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.routes-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 15px 20px 20px 20px;
+}
+
+.route-item {
+  display: flex;
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.route-item:last-child {
+  margin-bottom: 0;
+}
+
+.route-item::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 0;
+  bottom: -20px;
+  width: 2px;
+  background-color: #e0e0e0;
+}
+
+.route-item:last-child::before {
+  display: none;
+}
+
+.route-item::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #409eff;
+}
+
+.route-time {
+  font-size: 12px;
+  color: #999;
+  min-width: 120px;
+  padding-right: 15px;
+  line-height: 1.4;
+}
+
+.route-content {
+  flex: 1;
+  padding-left: 15px;
+}
+
+.route-address {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.route-remark {
+  font-size: 14px;
+  color: #333;
+  line-height: 1.4;
+}
+
+.logistics-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: #999;
+  font-size: 14px;
+}
+
+/* 响应式优化 */
+@media (max-width: 480px) {
+  .logistics-modal {
+    margin: 10px;
+    max-height: 85vh;
+  }
+  
+  .logistics-header {
+    padding: 15px 15px 0 15px;
+  }
+  
+  .logistics-info {
+    padding: 0 15px 15px 15px;
+  }
+  
+  .routes-list {
+    padding: 15px 15px 20px 15px;
+  }
+  
+  .route-time {
+    min-width: 100px;
+    font-size: 11px;
+  }
+  
+  .route-content {
+    padding-left: 10px;
+  }
+  
+  .route-address {
+    font-size: 12px;
+  }
+  
+  .route-remark {
+    font-size: 13px;
+  }
 }
 </style>
