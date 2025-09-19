@@ -38,7 +38,7 @@ def get_warehouse_list():
             warehouses.append({
                 'id': warehouse.id,
                 'name': warehouse.name,
-                'address': warehouse.detail_address,
+                'detail_address': warehouse.detail_address,
                 'province': warehouse.province,
                 'city': warehouse.city,
                 'district': warehouse.district,
@@ -96,7 +96,7 @@ def get_warehouse_detail(warehouse_id):
         warehouse_data = {
             'id': warehouse.id,
             'name': warehouse.name,
-            'address': warehouse.detail_address,
+            'detail_address': warehouse.detail_address,
             'province': warehouse.province,
             'city': warehouse.city,
             'district': warehouse.district,
@@ -131,7 +131,7 @@ def create_warehouse():
         data = request.get_json()
         
         # 验证必填字段
-        required_fields = ['name', 'address', 'contact_person', 'contact_phone']
+        required_fields = ['name', 'detail_address', 'contact_person', 'contact_phone']
         for field in required_fields:
             if not data.get(field):
                 return jsonify({
@@ -157,7 +157,7 @@ def create_warehouse():
         warehouse = Warehouse(
             merchant_id=merchant_id,
             name=data['name'],
-            address=data['address'],
+            detail_address=data['detail_address'],
             province=data['province'],
             city=data['city'],
             district=data['district'],
@@ -178,7 +178,7 @@ def create_warehouse():
             'data': {
                 'id': warehouse.id,
                 'name': warehouse.name,
-                'address': warehouse.address,
+                'detail_address': warehouse.detail_address,
                 'province': warehouse.province,
                 'city': warehouse.city,
                 'district': warehouse.district,
@@ -236,8 +236,8 @@ def update_warehouse(warehouse_id):
         # 更新字段
         if 'name' in data:
             warehouse.name = data['name']
-        if 'address' in data:
-            warehouse.address = data['address']
+        if 'detail_address' in data:
+            warehouse.detail_address = data['detail_address']
         if 'province' in data:
             warehouse.province = data['province']
         if 'city' in data:
@@ -265,7 +265,7 @@ def update_warehouse(warehouse_id):
             'data': {
                 'id': warehouse.id,
                 'name': warehouse.name,
-                'address': warehouse.address,
+                'detail_address': warehouse.detail_address,
                 'province': warehouse.province,
                 'city': warehouse.city,
                 'district': warehouse.district,

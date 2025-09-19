@@ -26,8 +26,8 @@
             <el-form-item label="联系邮箱" prop="email">
               <el-input v-model="basicForm.email" placeholder="请输入联系邮箱" />
             </el-form-item>
-            <el-form-item label="店铺地址" prop="address">
-              <el-input v-model="basicForm.address" placeholder="请输入店铺地址" />
+            <el-form-item label="店铺地址" prop="detail_address">
+              <el-input v-model="basicForm.detail_address" placeholder="请输入店铺地址" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" @click="saveBasicSettings">保存设置</el-button>
@@ -111,7 +111,7 @@
             <el-table-column label="仓库地址" width="300">
               <template #default="scope">
                 <div class="address-display">
-                  <div v-if="scope.row.province || scope.row.city || scope.row.district || scope.row.address" class="address-content">
+                  <div v-if="scope.row.province || scope.row.city || scope.row.district || scope.row.detail_address" class="address-content">
                     <!-- 省市区信息 -->
                     <div v-if="scope.row.province || scope.row.city || scope.row.district" class="region-line">
                       <span v-if="scope.row.province" class="region-item province">{{ scope.row.province }}</span>
@@ -119,8 +119,8 @@
                       <span v-if="scope.row.district" class="region-item district">{{ scope.row.district }}</span>
                     </div>
                     <!-- 详细地址 -->
-                    <div v-if="scope.row.address" class="detail-line">
-                      {{ scope.row.address }}
+                    <div v-if="scope.row.detail_address" class="detail-line">
+                      {{ scope.row.detail_address }}
                     </div>
                   </div>
                   <div v-else class="no-address">
@@ -189,7 +189,7 @@
               v-for="province in provinces" 
               :key="province.code"
               :label="province.name"
-              :value="province.code"
+              :value="province.name"
             />
           </el-select>
         </el-form-item>
@@ -207,7 +207,7 @@
               v-for="city in cities" 
               :key="city.code"
               :label="city.name"
-              :value="city.code"
+              :value="city.name"
             />
           </el-select>
         </el-form-item>
@@ -224,7 +224,7 @@
               v-for="district in districts" 
               :key="district.code"
               :label="district.name"
-              :value="district.code"
+              :value="district.name"
             />
           </el-select>
         </el-form-item>
@@ -264,7 +264,7 @@
 </template>
 
 <script>
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, onMounted, watch, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { LocationInformation } from '@element-plus/icons-vue'
 import warehouseService from '../services/warehouseService'
@@ -291,7 +291,7 @@ export default {
       shopDescription: '专业销售各类数码产品，品质保证，服务至上。',
       phone: '400-123-4567',
       email: 'contact@yinjiajia.com',
-      address: '北京市朝阳区xxx街道xxx号'
+      detail_address: '北京市朝阳区xxx街道xxx号'
     })
     
     const basicRules = {
@@ -597,7 +597,7 @@ export default {
       resetWarehouseForm()
     }
     
-    const editWarehouse = (warehouse) => {
+    const editWarehouse = async (warehouse) => {
       isEditMode.value = true
       warehouseDialogTitle.value = '编辑仓库'
       currentWarehouseId.value = warehouse.id
@@ -608,14 +608,22 @@ export default {
       warehouseForm.contact_phone = warehouse.contact_phone
       warehouseForm.remark = warehouse.remark
       
-      // 解析地址信息
+      // 解析地址信息（warehouse中的省市区已经是名称）
       if (warehouse.province) {
         warehouseForm.province = warehouse.province
+        // 先设置省份，然后加载对应的城市列表
         handleProvinceChange(warehouse.province)
+        
+        // 等待城市数据加载完成
+        await nextTick()
         
         if (warehouse.city) {
           warehouseForm.city = warehouse.city
+          // 先设置城市，然后加载对应的区县列表
           handleCityChange(warehouse.city)
+          
+          // 等待区县数据加载完成
+          await nextTick()
           
           if (warehouse.district) {
             warehouseForm.district = warehouse.district
@@ -632,9 +640,21 @@ export default {
       try {
         await warehouseFormRef.value.validate()
         
+        // 准备提交数据，确保使用省市区名称而不是code
+        const submitData = {
+          name: warehouseForm.name,
+          province: warehouseForm.province, // 这里已经是名称
+          city: warehouseForm.city, // 这里已经是名称
+          district: warehouseForm.district, // 这里已经是名称
+          detail_address: warehouseForm.detail_address,
+          contact_person: warehouseForm.contact_person,
+          contact_phone: warehouseForm.contact_phone,
+          remark: warehouseForm.remark
+        }
+        
         if (isEditMode.value) {
           // 编辑模式
-          const result = await warehouseService.updateWarehouse(currentWarehouseId.value, warehouseForm)
+          const result = await warehouseService.updateWarehouse(currentWarehouseId.value, submitData)
           if (result.success) {
             ElMessage.success(result.message || '仓库信息更新成功')
             await loadWarehouseList() // 重新加载列表
@@ -643,7 +663,7 @@ export default {
           }
         } else {
           // 新增模式
-          const result = await warehouseService.createWarehouse(warehouseForm)
+          const result = await warehouseService.createWarehouse(submitData)
           if (result.success) {
             ElMessage.success(result.message || '仓库添加成功')
             await loadWarehouseList() // 重新加载列表
@@ -727,12 +747,14 @@ export default {
       }))
     }
     
-    const handleProvinceChange = (provinceCode) => {
+    const handleProvinceChange = (provinceName) => {
       warehouseForm.city = ''
       warehouseForm.district = ''
       cities.value = []
       districts.value = []
       
+      // 根据省份名称找到对应的code
+      const provinceCode = provinces.value.find(p => p.name === provinceName)?.code
       if (provinceCode && regionData[provinceCode]) {
         cities.value = Object.keys(regionData[provinceCode].children || {}).map(code => ({
           code,
@@ -741,17 +763,23 @@ export default {
       }
     }
     
-    const handleCityChange = (cityCode) => {
+    const handleCityChange = (cityName) => {
       warehouseForm.district = ''
       districts.value = []
       
-      if (cityCode && warehouseForm.province && regionData[warehouseForm.province]) {
-        const cityData = regionData[warehouseForm.province].children[cityCode]
-        if (cityData && cityData.children) {
-          districts.value = Object.keys(cityData.children).map(code => ({
-            code,
-            name: cityData.children[code].name
-          }))
+      // 根据省份名称找到对应的code
+      const provinceCode = provinces.value.find(p => p.name === warehouseForm.province)?.code
+      if (cityName && provinceCode && regionData[provinceCode]) {
+        // 在城市列表中查找对应的code
+        const cityCode = cities.value.find(c => c.name === cityName)?.code
+        if (cityCode) {
+          const cityData = regionData[provinceCode].children[cityCode]
+          if (cityData && cityData.children) {
+            districts.value = Object.keys(cityData.children).map(code => ({
+              code,
+              name: cityData.children[code].name
+            }))
+          }
         }
       }
     }
@@ -766,14 +794,14 @@ export default {
     }
     
     // 解析地址字符串为省市区
-    const parseAddress = (address) => {
+    const parseAddress = (detail_address) => {
       // 这里可以根据实际需要实现地址解析逻辑
       // 暂时返回空值，需要根据实际数据结构调整
       return {
         province: '',
         city: '',
         district: '',
-        detail_address: address || ''
+        detail_address: detail_address || ''
       }
     }
     
