@@ -3,15 +3,18 @@ class JdConfigBase:
     def __init__(self):
         self.app_key = "8e028ea4817f4adebe0867447a6675a0"
         self.app_secret = "07d07121f426408ab23282cc6280fb16"
+        self.access_token = "7c4022da749743ffb24a611c5c44b4c7"
+        self.refresh_token = "77584e5666d64bbda6999e88b1634a67"
         self.base_url = "https://api.jd.com/routerjson"
         self.paths = {
             "create_order": "/ecap/v1/orders/create"
         }
+        self.customer_code = "010K11168644"
 
 class JdConfigSandbox(JdConfigBase):
     def __init__(self):
         super().__init__()
-        self.base_url = "https://uat-api.jdl.com"
+        self.base_url = "http://uat-api.jdl.com"
 
 class JdConfigProduction(JdConfigBase):
     def __init__(self):

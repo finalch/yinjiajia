@@ -1,9 +1,11 @@
 """
 京东物流订单数据模型
 """
+from dataclasses import dataclass
 from typing import List, Optional, Dict, Any
 
 
+@dataclass
 class JdSenderInfo:
     """寄件人信息"""
     name: str
@@ -15,6 +17,7 @@ class JdSenderInfo:
     post_code: Optional[str] = None
 
 
+@dataclass()
 class JdReceiverInfo:
     """收件人信息"""
     name: str
@@ -26,6 +29,7 @@ class JdReceiverInfo:
     post_code: Optional[str] = None
 
 
+@dataclass()
 class JdCargoDetail:
     """货物详情"""
     name: str
@@ -35,10 +39,11 @@ class JdCargoDetail:
     remark: Optional[str] = None
 
 
+@dataclass()
 class JdOrderRequest:
     """京东物流订单请求"""
     order_id: str
-    service_type: str = "STANDARD_EXPRESS"  # 服务类型
+    service_type: str  # 服务类型
     sender: JdSenderInfo
     receiver: JdReceiverInfo
     cargo_details: List[JdCargoDetail]
@@ -50,39 +55,39 @@ class JdOrderRequest:
         """转换为京东API请求格式"""
         return {
             "orderId": self.order_id,
-            "serviceType": self.service_type,
-            "sender": {
+            "orderOrigin": 1,
+            "settleType": 3,
+            "senderContact": {
                 "name": self.sender.name,
                 "phone": self.sender.phone,
-                "province": self.sender.province,
-                "city": self.sender.city,
-                "district": self.sender.district,
-                "address": self.sender.address,
-                "postCode": self.sender.post_code
+                # "province": self.sender.province,
+                # "city": self.sender.city,
+                # "district": self.sender.district,
+                "fullAddress": self.sender.address
             },
-            "receiver": {
+            "receiverContact": {
                 "name": self.receiver.name,
                 "phone": self.receiver.phone,
-                "province": self.receiver.province,
-                "city": self.receiver.city,
-                "district": self.receiver.district,
-                "address": self.receiver.address,
-                "postCode": self.receiver.post_code
+                # "province": self.receiver.province,
+                # "city": self.receiver.city,
+                # "district": self.receiver.district,
+                "fullAddress": self.receiver.address,
+                # "postCode": self.receiver.post_code
             },
-            "cargoDetails": [
+            "productsReq": {
+                "productCode": "ed-m-0001"
+
+            },
+            "cargoes": [
                 {
-                    "name": cargo.name,
-                    "weight": cargo.weight,
-                    "value": cargo.value,
-                    "quantity": cargo.quantity,
-                    "remark": cargo.remark
+                    "name": self.cargo_details[0].name,
+                    "weight": self.cargo_details[0].weight,
+                    "volume": 100,
+                    "quantity": 1
                 }
-                for cargo in self.cargo_details
-            ],
-            "remark": self.remark,
-            "insuranceValue": self.insurance_value,
-            "codValue": self.cod_value
+            ]
         }
+
 
 class JdOrderResponse:
     """京东物流订单响应"""
