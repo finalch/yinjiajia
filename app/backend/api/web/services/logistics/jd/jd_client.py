@@ -100,7 +100,7 @@ class JdClient:
             # print(http_response.headers)
             # print(http_response.read().decode("UTF-8"))
             #
-            print( result)
+            print(result)
             return result
 
 
@@ -131,9 +131,16 @@ class JdClient:
 
     def query_order(self, waybill_no: str) -> Dict[str, Any]:
         """查询物流订单"""
-        method = 'jingdong.ecap.v1.orders.query'
-        data = {'waybillNo': waybill_no}
-        return self.request(method, data)
+        method = self.config.paths['query_order']
+        url = self.config.base_url + method
+        data = {'orderOrigin': 1, 'waybillCode': waybill_no, 'customerCode': self.config.customer_code}
+        return self.request(url, method, data)
+
+    def trace_order(self, waybill_no: str) -> Dict[str, Any]:
+        method = self.config.paths['trace_order']
+        url = self.config.base_url + method
+        data = {'orderOrigin': 1, 'waybillCode': waybill_no, 'customerCode': self.config.customer_code}
+        return self.request(url, method, data)
 
     def cancel_order(self, waybill_no: str) -> Dict[str, Any]:
         """取消物流订单"""

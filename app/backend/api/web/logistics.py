@@ -89,7 +89,7 @@ def ship_order():
             receiver_phone=address["phone"],
             receiver_province=address["province"],
             receiver_city=address["city"],
-            receiver_district=address.get("distinct", ""),
+            receiver_district=address.get("district", ""),
             receiver_address=address.get("detail_address", ""),
             cargo_details=cargo_details
         )

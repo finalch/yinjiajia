@@ -1132,11 +1132,11 @@ export default {
 }
 
 .route-content {
-  padding: 8px 0;
+  padding: 1px 0;
   display: flex;
   align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 1px;
+  /* flex-wrap: wrap; */
 }
 
 .route-time {
@@ -1163,6 +1163,27 @@ export default {
 .logistics-empty {
   padding: 40px 0;
   text-align: center;
+}
+
+/* Timeline 组件间距调整 */
+:deep(.el-timeline) {
+  padding-left: 0;
+}
+
+:deep(.el-timeline-item) {
+  padding-bottom: 8px !important;
+}
+
+:deep(.el-timeline-item:last-child) {
+  padding-bottom: 0 !important;
+}
+
+:deep(.el-timeline-item__wrapper) {
+  padding-left: 28px;
+}
+
+:deep(.el-timeline-item__content) {
+  margin-top: -4px;
 }
 
 /* 响应式优化 */
@@ -1192,7 +1213,8 @@ export default {
   .route-content {
     flex-direction: column;
     align-items: flex-start;
-    gap: 4px;
+    gap: 1px;
+    padding: 3px 0;
   }
   
   .route-time {
@@ -1206,6 +1228,19 @@ export default {
   
   .route-remark {
     font-size: 13px;
+  }
+  
+  /* 移动端 Timeline 间距进一步缩小 */
+  :deep(.el-timeline-item) {
+    padding-bottom: 4px !important;
+  }
+  
+  :deep(.el-timeline-item__wrapper) {
+    padding-left: 24px;
+  }
+  
+  :deep(.el-timeline-item__content) {
+    margin-top: -6px;
   }
 }
 </style> 
