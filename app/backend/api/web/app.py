@@ -18,19 +18,19 @@ def create_app():
     db.init_app(app)
 
     # 启用CORS，允许所有来源访问
-    CORS(app, 
+    CORS(app,
          supports_credentials=True,
          origins="*",
          methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
          allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
          expose_headers=["Content-Type", "Authorization"])
-    
+
     # 初始化SocketIO
-    socketio = SocketIO(app, 
-                       cors_allowed_origins="*", 
-                       logger=True, 
-                       engineio_logger=True,
-                       path='/socket.io/')
+    socketio = SocketIO(app,
+                        cors_allowed_origins="*",
+                        logger=True,
+                        engineio_logger=True,
+                        path='/socket.io/')
 
     # 获取logger
     logger = get_logger(__name__)
@@ -42,12 +42,17 @@ def create_app():
         logger.info(f"Request: {request.method} {request.path} - User-Agent: {request.headers.get('User-Agent', 'Unknown')}")
         if request.method in ['POST', 'PUT', 'PATCH']:
             logger.debug(f"Request Body: {request.get_json(silent=True)}")
-        
+
         # OPTIONS请求不需要token验证（CORS预检请求）
         if request.method == 'OPTIONS':
             return None
-            
-        if request.path == '/api/web/auth/login' or request.path == '/api/web/auth/register' or request.path == '/api/app/auth/login' or request.path == '/api/app/auth/register':
+
+        if (request.path == '/api/web/auth/login'
+                or request.path == '/api/web/auth/register'
+                or request.path == '/api/app/auth/login'
+                or request.path == '/api/app/auth/register'
+                or request.path == '/api/web/media/get_post_signature_for_oss_upload'
+                or request.path == '/api/web/media/create-oss-bucket'):
             return None
         authorization = request.headers.get('authorization')
         if authorization is None:
@@ -109,7 +114,7 @@ def create_app():
     # 初始化WebSocket事件处理器
     from websocket_chat import init_websocket
     init_websocket(socketio)
-    
+
     # 启动原生WebSocket服务器
     from websocket_native import websocket_handler
     websocket_handler.start_server(host='0.0.0.0', port=8002)

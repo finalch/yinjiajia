@@ -92,13 +92,39 @@ export const orderApi = {
 		return request.post(`/api/app/order/${orderId}/cancel`, {
 			user_id: userId
 		})
+	},
+
+	// 确认收货
+	confirmReceipt(orderId, userId = 1) {
+		return request.post(`/api/app/order/${orderId}/confirm-receipt`, {
+			user_id: userId
+		})
+	}
+}
+
+// 评价相关API
+export const reviewApi = {
+	// 添加评价
+	addReview(data) {
+		return request.post('/api/app/review/', data)
+	},
+
+	// 获取商品评价列表
+	getProductReviews(productId, params = {}) {
+		return request.get(`/api/app/review/product/${productId}`, params)
+	},
+
+	// 检查订单项是否已评价
+	checkReviewStatus(orderItemId) {
+		return request.get(`/api/app/review/check/${orderItemId}`)
 	}
 }
 
 export default {
 	productApi,
 	cartApi,
-	orderApi
+	orderApi,
+	reviewApi
 }
 
 // 认证API

@@ -74,7 +74,9 @@
                   <button v-if="order.status === 'pending' || order.status === 'paid'" class="action-btn secondary" @click.stop="cancelOrder(order)">取消订单</button>
                   <button v-if="order.status === 'paid' && order.tracking_number" class="action-btn secondary" @click.stop="viewLogistics(order)">查看物流</button>
                   <button v-if="order.status === 'paid' && order.logistics.ship_status === 'delivered'" class="action-btn primary" @click.stop="confirmReceipt(order)">确认收货</button>
-                  <button v-if="order.status === 'completed' " class="action-btn secondary" @click.stop="afterSales(order)">售后</button>
+                  <button v-if="order.status === 'completed' && hasUnreviewedItems(order)" class="action-btn primary" @click.stop="goReview(order)">评价</button>
+                  <button v-if="order.status === 'completed' && !hasUnreviewedItems(order)" class="action-btn disabled">已评价</button>
+                  <button v-if="order.status === 'completed'" class="action-btn secondary" @click.stop="afterSales(order)">售后</button>
                 </view>
               </view>
             </view>
@@ -377,6 +379,19 @@ export default {
         title: '售后功能开发中...',
         icon: 'none'
       })
+    },
+
+    // 去评价
+    goReview(order) {
+      uni.navigateTo({
+        url: `/pages/review/review?order_id=${order.id}`
+      })
+    },
+
+    // 检查是否有未评价的商品
+    hasUnreviewedItems(order) {
+      if (!order.items || order.items.length === 0) return false
+      return order.items.some(item => !item.is_reviewed)
     },
 
     // 查看物流

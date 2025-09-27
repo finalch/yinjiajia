@@ -86,7 +86,7 @@ def get_products():
         rating_avg, review_count = db.session.query(
             func.coalesce(func.avg(Review.rating), 0.0),
             func.count(Review.id)
-        ).filter(Review.product_id == product.id).first()
+        ).join(OrderItem).filter(OrderItem.product_id == product.id).first()
 
         # 默认规格组合ID（若有规格则取第一个有效规格组合）
         default_spec_combination_id = None

@@ -102,6 +102,12 @@
 				"navigationBarTitleText": "客服聊天",
 				"navigationStyle": "custom"
 			}
+		},
+		{
+			"path": "pages/review/review",
+			"style": {
+				"navigationBarTitleText": "商品评价"
+			}
 		}
 	],
 	"globalStyle": {

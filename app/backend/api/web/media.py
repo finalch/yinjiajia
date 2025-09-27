@@ -1,24 +1,63 @@
 from flask import Blueprint, jsonify, request
+
+from services.oss import oss_service
+
 web_media_api = Blueprint('media_api', __name__, url_prefix='/api/web/media')
+
+
+@web_media_api.route('/get_post_signature_for_oss_upload', methods=['GET'])
+def get_post_signature_for_oss_upload():
+    return jsonify({
+        "code": 200,
+        "message": "获取成功",
+        "data": oss_service.get_post_signature_for_oss_upload()
+    }), 200
+
+
+@web_media_api.route('/create-oss-bucket', methods=['GET'])
+def create_oss_bucket():
+    return jsonify({
+        "code": 200,
+        "message": "获取成功",
+        "data": oss_service.put_bucket()
+    }), 200
+
 
 @web_media_api.route('/upload-image', methods=['POST'])
 def upload_image():
-    # Mock实现，实际存储逻辑后续补充
-    return jsonify({
-        "code": 200,
-        "message": "上传成功",
-        "data": {
-            "url": "https://img12.360buyimg.com/n5/s720x720_jfs/t1/110781/9/39729/35768/6630b66eF7b8cbb65/a9cfa77aa778f872.jpg"
-        }
-    }), 200
+    file = request.files.get('file')
+    if not file:
+        return jsonify({"code": 400, "message": "请选择要上传的文件"}), 400
+
+    try:
+        url = oss_service.upload_image(file)
+        return jsonify({
+            "code": 200,
+            "message": "上传成功",
+            "data": {
+                "url": url
+            }
+        }), 200
+    except Exception as e:
+        print("Upload image error:", e)
+        return jsonify({"code": 500, "message": "上传失败"}), 500
+
 
 @web_media_api.route('/upload-video', methods=['POST'])
 def upload_video():
-    # Mock实现，实际存储逻辑后续补充
-    return jsonify({
-        "code": 200,
-        "message": "上传成功",
-        "data": {
-            "url": "https://vod.300hu.com/24/4c1f7a6atransbjngwcloud1oss/46291626964916957953441793/1097_5000_1_ab24dad66_f.mp4?source=1&h265=1088_3000_1_8e6f5c602_f.mp4"
-        }
-    }), 200
+    file = request.files.get('file')
+    if not file:
+        return jsonify({"code": 400, "message": "请选择要上传的文件"}), 400
+
+    try:
+        url = oss_service.upload_video(file)
+        return jsonify({
+            "code": 200,
+            "message": "上传成功",
+            "data": {
+                "url": url
+            }
+        }), 200
+    except Exception as e:
+        print("Upload video error:", e)
+        return jsonify({"code": 500, "message": "上传失败"}), 500
