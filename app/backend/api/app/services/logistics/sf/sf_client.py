@@ -103,9 +103,9 @@ class SfClient:
         json_data = json.dumps(order_data.to_dict(), ensure_ascii=False)
         return self.call_api("EXP_RECE_CREATE_ORDER", json_data)
 
-    def query_order(self, tracking_number: str) -> Dict[str, Any]:
+    def query_order(self, ship_no: str) -> Dict[str, Any]:
         """查询快递订单"""
-        json_data = json.dumps({"trackingNumber": tracking_number, "trackingType": 1}, ensure_ascii=False)
+        json_data = json.dumps({"trackingNumber": ship_no, "trackingType": 1}, ensure_ascii=False)
         return self.call_api("EXP_RECE_SEARCH_ROUTES", json_data)
 
     def clear_token(self):

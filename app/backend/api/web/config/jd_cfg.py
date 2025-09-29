@@ -15,7 +15,9 @@ class JdConfigBase:
         self.base_url = "https://api.jd.com/routerjson"
         self.paths = {
             "create_order": "/ecap/v1/orders/create",
-            "trace_order": "/ecap/v1/orders/trace/query"
+            "trace_order": "/ecap/v1/orders/trace/query",
+            "query_order": "/ecap/v1/orders/query",
+            "get_order_status": "/ecap/v1/orders/status/get",
         }
 
 

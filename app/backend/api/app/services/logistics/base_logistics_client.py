@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
+from typing import Dict, Any, List, Optional
 
 
 @dataclass
@@ -31,6 +31,8 @@ class LogisticsResponse:
     tracking_number: Optional[str] = None
     logistics_ext_info: Optional[str] = None
     error_message: Optional[str] = None
+
+
 @dataclass
 class LogisticsRoute:
     """物流路由信息"""
@@ -43,6 +45,7 @@ class LogisticsRoute:
     secondaryStatusCode: str
     secondaryStatusName: str
 
+
 @dataclass
 class LogisticsRoutes:
     """物流路由信息"""
@@ -51,25 +54,30 @@ class LogisticsRoutes:
 
 class BaseLogisticsClient(ABC):
     """物流客户端抽象基类"""
-    
+
     def __init__(self, company_name: str):
         self.company_name = company_name
-    
+
     @abstractmethod
     def create_order(self, order: LogisticsOrder) -> LogisticsResponse:
         """创建物流订单"""
         pass
-    
+
     @abstractmethod
     def query_order(self, tracking_number: str) -> LogisticsResponse:
         """查询物流订单状态"""
         pass
-    
+
+    @abstractmethod
+    def get_order_status(self, tracking_number: str) -> str:
+        """查询物流订单状态"""
+        pass
+
     @abstractmethod
     def cancel_order(self, tracking_number: str) -> LogisticsResponse:
         """取消物流订单"""
         pass
-    
+
     def validate_order(self, order: LogisticsOrder) -> bool:
         """验证订单数据是否有效"""
         required_fields = [
@@ -78,7 +86,7 @@ class BaseLogisticsClient(ABC):
             order.receiver_name, order.receiver_phone
         ]
         return all(field and str(field).strip() for field in required_fields)
-    
+
     def _create_tracking_number(self) -> str:
         """生成跟踪号"""
         import uuid

@@ -142,6 +142,12 @@ class JdClient:
         data = {'orderOrigin': 1, 'waybillCode': waybill_no, 'customerCode': self.config.customer_code}
         return self.request(url, method, data)
 
+    def get_order_status(self, waybill_no: str) -> str:
+        method = self.config.paths['get_order_status']
+        url = self.config.base_url + method
+        data = {'orderOrigin': 1, 'waybillCode': waybill_no, 'customerCode': self.config.customer_code}
+        return self.request(url, method, data)
+
     def cancel_order(self, waybill_no: str) -> Dict[str, Any]:
         """取消物流订单"""
         method = 'jingdong.ecap.v1.orders.cancel'

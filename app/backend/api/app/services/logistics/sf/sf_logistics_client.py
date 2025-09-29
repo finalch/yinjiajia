@@ -119,3 +119,7 @@ class SfLogisticsClient(BaseLogisticsClient):
             success=False,
             error_message="顺丰订单取消功能暂未实现"
         )
+    def get_order_status(self, shipping_no: str) -> str:
+        """获取顺丰物流订单状态"""
+        # TODO: 实现顺丰订单状态查询接口
+        return ""

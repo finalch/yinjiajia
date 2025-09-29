@@ -226,3 +226,13 @@ class JdLogisticsClient(BaseLogisticsClient):
         if tracking_number.startswith('JD-'):
             return tracking_number[3:]
         return tracking_number
+    def get_order_status(self, waybill_no: str) -> str:
+        """获取京东物流订单状态"""
+        response = self.client.get_order_status(waybill_no)
+        if response.get('success', False):
+            # 提取运单号
+            result_data = response.get('result', {})
+            status = result_data.get('status')
+            if status == '510':
+                return 'Completed'
+        return 'Unknown'

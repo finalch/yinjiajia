@@ -100,3 +100,7 @@ class ZtLogisticsClient(BaseLogisticsClient):
             success=False,
             error_message="中通订单取消功能暂未实现"
         )
+    def get_order_status(self, shipping_no: str) -> str:
+        """获取中通物流订单状态"""
+        # TODO: 实现中通订单状态查询接口
+        return ""

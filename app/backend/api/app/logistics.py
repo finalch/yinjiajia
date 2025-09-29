@@ -41,7 +41,7 @@ def query_logistics_route():
 
         # 创建物流客户端并查询
         client = LogisticsFactory.create_client(company)
-        routes = client.query_order(tracking_number)
+        routes = client.query_order(shipping_no)
 
         return jsonify(code=200, data={
             "routes": routes
