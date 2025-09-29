@@ -1,5 +1,0 @@
-
-oss_bucket = "yjj-test-bucket"
-oss_endpoint = "oss-cn-hangzhou.aliyuncs.com"
-oss_prefix = "yjj-oss"
-id_a="LTAI5t9f6Rczap2AbHis96H6/nQcYAvy1cbkApiwotpABpNrjlM1NJ1"
