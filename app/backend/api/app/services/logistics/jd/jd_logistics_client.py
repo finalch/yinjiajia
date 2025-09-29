@@ -231,7 +231,7 @@ class JdLogisticsClient(BaseLogisticsClient):
         response = self.client.get_order_status(waybill_no)
         if response.get('success', False):
             # 提取运单号
-            result_data = response.get('result', {})
+            result_data = response.get('data', {})
             status = result_data.get('status')
             if status == '510':
                 return 'Completed'

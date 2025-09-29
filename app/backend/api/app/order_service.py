@@ -6,6 +6,7 @@ from typing import List, Dict, Any
 from config.log import get_logger
 from models import db, Product, Order, OrderItem, Cart, ProductSpecCombination, Address, User
 from order_snapshot import ProductItemSnapshot, UserSnapshot
+from services.logistics import LogisticsFactory
 
 logger = get_logger(__name__)
 
@@ -289,31 +290,13 @@ class OrderService:
                     'rating': item.rating,
                     'review_content': item.review_content
                 })
-
-            # 从OrderItem中获取物流信息
-            # logistics_info = None
-            # shipped_items = [item for item in order_items if item.shipping_company and item.tracking_number]
-
-            # if shipped_items:
-            #     # 使用第一个有物流信息的商品作为主要物流信息
-            #     main_item = shipped_items[0]
-            #     logistics_info = {
-            #         'tracking_number': main_item.tracking_number,
-            #         'carrier': main_item.shipping_company,
-            #         'status': main_item.item_status,
-            #         'updated_at': main_item.shipped_at.isoformat() if main_item.shipped_at else None
-            #     }
-
-            # 计算物流驱动的状态，并与订单自身状态合并
-            # derived_status = OrderService._calculate_order_status(order_items)
-            # order_status = order.status
-            # if order_status not in ('cancelled', 'refunded', 'completed') and derived_status in ('shipped', 'delivered'):
-            #     order_status = derived_status
-
-            # 如果指定了状态筛选，检查订单状态是否匹配
-            # if status and order_status != status:
-            #     continue
-
+            if order.shipping_no and (order.status != 'completed' and order.status != 'cancelled'):
+                client = LogisticsFactory.create_client(order.shipping_company)
+                status = client.get_order_status(order.shipping_no)
+                if status == 'Completed':
+                    order.status = 'completed'
+                    order.ship_status = 'completed'
+                    db.session.commit()
             orders.append({
                 'id': order.id,
                 'order_number': order.order_number,
