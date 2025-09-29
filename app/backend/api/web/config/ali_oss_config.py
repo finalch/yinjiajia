@@ -1,5 +1,5 @@
-oss_key_id = "**LTAI5t9f6Rczap2AbHis96H6"
-oss_key_secret = "**nQcYAvy1cbkApiwotpABpNrjlM1NJ1"
+oss_key_id = "**LTAI5t9f***6Rczap2AbHis96H6"
+oss_key_secret = "**nQcYAvy***1cbkApiwotpABpNrjlM1NJ1"
 oss_bucket = "yjj-test-bucket"
 oss_endpoint = "oss-cn-hangzhou.aliyuncs.com"
 oss_prefix = "yjj-oss"
