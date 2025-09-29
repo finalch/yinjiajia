@@ -3,7 +3,7 @@ import json
 from flask import Blueprint, jsonify, request
 from sqlalchemy import or_, func
 
-from models import db, Product, Group, ProductSpec, ProductSpecCombination, Order, OrderItem, Review, Merchant, Category
+from models import db, Product, Group, ProductSpec, ProductSpecCombination, Order, OrderItem, Merchant, Category
 
 app_product_api = Blueprint('app_product_api', __name__, url_prefix='/api/app/product')
 
@@ -82,11 +82,17 @@ def get_products():
             Order.status.in_(['paid', 'shipped', 'delivered', 'completed'])
         ).scalar() or 0
 
-        # 评分与评价数
-        rating_avg, review_count = db.session.query(
-            func.coalesce(func.avg(Review.rating), 0.0),
-            func.count(Review.id)
-        ).join(OrderItem).filter(OrderItem.product_id == product.id).first()
+        # 评分与评价数（从OrderItem表中获取已评价的记录）
+        rating_stats = db.session.query(
+            func.coalesce(func.avg(OrderItem.rating), 0.0),
+            func.count(OrderItem.id)
+        ).filter(
+            OrderItem.product_id == product.id,
+            OrderItem.rating.isnot(None)  # 只统计已评价的记录
+        ).first()
+        
+        rating_avg = rating_stats[0] if rating_stats else 0.0
+        review_count = rating_stats[1] if rating_stats else 0
 
         # 默认规格组合ID（若有规格则取第一个有效规格组合）
         default_spec_combination_id = None
@@ -210,6 +216,26 @@ def get_product_detail(product_id):
             except json.JSONDecodeError:
                 continue
 
+    # 计算销量（已付款及之后状态的订单项数量）
+    sales_count = db.session.query(func.coalesce(func.sum(OrderItem.quantity), 0)) \
+                      .join(Order, Order.id == OrderItem.order_id) \
+                      .filter(
+        OrderItem.product_id == product.id,
+        Order.status.in_(['paid', 'shipped', 'delivered', 'completed'])
+    ).scalar() or 0
+
+    # 计算评分与评价数（从OrderItem表中获取已评价的记录）
+    rating_stats = db.session.query(
+        func.coalesce(func.avg(OrderItem.rating), 0.0),
+        func.count(OrderItem.id)
+    ).filter(
+        OrderItem.product_id == product.id,
+        OrderItem.rating.isnot(None)  # 只统计已评价的记录
+    ).first()
+    
+    rating_avg = rating_stats[0] if rating_stats else 0.0
+    review_count = rating_stats[1] if rating_stats else 0
+
     data = {
         'id': product.id,
         'name': product.name,
@@ -230,9 +256,9 @@ def get_product_detail(product_id):
         'has_specs': product.has_specs,  # 是否有规格
         'specs': specs,  # 规格信息
         'spec_combinations': spec_combinations,  # 规格组合
-        'sales_count': 0,  # TODO: 添加销量统计
-        'rating': 4.5,  # TODO: 添加评分统计
-        'review_count': 0,  # TODO: 添加评价数量统计
+        'sales_count': int(sales_count),
+        'rating': float(rating_avg) if rating_avg else 0.0,
+        'review_count': int(review_count) if review_count else 0,
         'created_at': product.created_at.isoformat() if product.created_at else None,
         'updated_at': product.updated_at.isoformat() if product.updated_at else None
     }

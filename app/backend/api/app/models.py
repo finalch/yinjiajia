@@ -90,6 +90,8 @@ class Product(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
 
+    # 关联关系
+    # reviews = db.relationship('Review', backref='product', lazy=True)  # 商品评价
     specs = db.relationship('ProductSpec', backref='product', lazy=True)  # 商品规格
     spec_combinations = db.relationship('ProductSpecCombination', backref='product', lazy=True)  # 规格组合
 
@@ -151,7 +153,7 @@ class OrderItem(db.Model):
     subtotal = db.Column(db.Float, nullable=False)  # 小计金额
     merchant_id = db.Column(db.Integer, db.ForeignKey('merchants.id'), nullable=False)  # 商家ID
     item_status = db.Column(db.String(32), default='pending')  # 商品状态：pending(待处理)/shipped(已发货)/delivered(已送达)/refunded(已退款)
-    logistics_ext_info = db.Column(db.Text)  # 物流扩展信息
+    logistics_ext_info = db.Column(db.Text, default='')  # 物流扩展信息
     shipping_company = db.Column(db.String(64))  # 物流公司
     shipping_no = db.Column(db.String(64))  # 物流侧的唯一订单号
     tracking_number = db.Column(db.String(64))  # 物流侧的唯一订单号
@@ -159,7 +161,11 @@ class OrderItem(db.Model):
     delivered_at = db.Column(db.DateTime)  # 送达时间
     refund_reason = db.Column(db.Text)  # 退款原因
     refunded_at = db.Column(db.DateTime)  # 退款时间
-    is_reviewed = db.Column(db.Boolean, default=False)  # 是否已评价
+    # 评价相关字段
+    rating = db.Column(db.Integer)  # 评分 (1-5)
+    review_content = db.Column(db.Text)  # 评价内容
+    review_image_url = db.Column(db.String(256))  # 评价图片URL
+    review_video_url = db.Column(db.String(256))  # 评价视频URL
     reviewed_at = db.Column(db.DateTime)  # 评价时间
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
 
@@ -191,7 +197,7 @@ class Review(db.Model):
     id = db.Column(db.Integer, primary_key=True)  # 评价ID
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)  # 用户ID
     order_item_id = db.Column(db.Integer, db.ForeignKey('order_items.id'), nullable=False)  # 订单项ID
-    product_id = db.Column(db.Integer)
+    product_id = db.Column(db.Integer)  # 冗余字段，可通过order_item_id获取
     content = db.Column(db.Text)  # 评价内容
     rating = db.Column(db.Integer, nullable=False)  # 评分 (1-5)
     image_url = db.Column(db.String(256))  # 评价图片URL

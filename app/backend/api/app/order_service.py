@@ -284,8 +284,10 @@ class OrderService:
                     'spec_combination_id': item.spec_combination_id,
                     'merchant_id': item.merchant_id,
                     'merchant_name': (product.merchant.name if getattr(product, 'merchant', None) else ''),
-                    'is_reviewed': item.is_reviewed,
-                    'reviewed_at': item.reviewed_at.isoformat() if item.reviewed_at else None
+                    'is_reviewed': item.rating is not None,
+                    'reviewed_at': item.reviewed_at.isoformat() if item.reviewed_at else None,
+                    'rating': item.rating,
+                    'review_content': item.review_content
                 })
 
             # 从OrderItem中获取物流信息

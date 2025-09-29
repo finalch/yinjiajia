@@ -176,20 +176,12 @@ export default {
           comment: ''
         })
 
-        // 如果已评价，获取评价详情
+        // 如果已评价，直接使用订单项中的评价信息
         if (item.is_reviewed) {
-          try {
-            const res = await reviewApi.checkReviewStatus(item.id)
-            if (res.data && res.data.code === 200) {
-              const reviewData = res.data.data
-              const lastItem = this.orderItems[this.orderItems.length - 1]
-              lastItem.review_rating = reviewData.review_rating || 0
-              lastItem.review_content = reviewData.review_content || ''
-              lastItem.review_created_at = reviewData.review_created_at
-            }
-          } catch (error) {
-            console.error('获取评价详情失败:', error)
-          }
+          const lastItem = this.orderItems[this.orderItems.length - 1]
+          lastItem.review_rating = item.rating || 0
+          lastItem.review_content = item.review_content || ''
+          lastItem.review_created_at = item.reviewed_at
         }
       }
     },
@@ -253,7 +245,7 @@ export default {
           item.is_reviewed = true
           item.review_rating = item.rating
           item.review_content = item.comment
-          item.review_created_at = new Date().toISOString()
+          item.review_created_at = res.data.data.reviewed_at
           
           // 清空输入
           item.rating = 0

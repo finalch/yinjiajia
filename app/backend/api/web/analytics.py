@@ -100,10 +100,10 @@ def get_dashboard_data():
         ).scalar() or 0
 
     # 平均评分
-    avg_rating = db.session.query(func.avg(Review.rating)).join(
-        Product, Review.product_id == Product.id
-    ).filter(Product.merchant_id == merchant_id).scalar() or 0
-
+    # avg_rating = db.session.query(func.avg(Review.rating)).join(
+    #     Product, Review.product_id == Product.id
+    # ).filter(Product.merchant_id == merchant_id).scalar() or 0
+    avg_rating = 0
     return jsonify({
         "code": 200,
         "message": "获取仪表板数据成功",

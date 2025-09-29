@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request, g
 from datetime import datetime
-from models import db, Review, OrderItem, Order, Product, User
+from models import db, OrderItem, Order, Product, User
 from config.log import get_logger
 
 logger = get_logger(__name__)
@@ -40,29 +40,15 @@ def add_review():
             return jsonify({'code': 400, 'message': '只有已完成的订单才能评价'}), 400
         
         # 检查是否已经评价过
-        existing_review = Review.query.filter_by(
-            order_item_id=order_item_id,
-            user_id=user_id
-        ).first()
-        
-        if existing_review:
+        if order_item.rating is not None:
             return jsonify({'code': 400, 'message': '该商品已经评价过了'}), 400
         
-        # 创建评价
-        review = Review(
-            user_id=user_id,
-            order_item_id=order_item_id,
-            product_id=order_item.product_id,
-            rating=rating,
-            content=content.strip() if content else None
-        )
-        
-        # 更新订单项的评价状态
+        # 更新订单项的评价信息
         now = datetime.utcnow()
-        order_item.is_reviewed = True
+        order_item.rating = rating
+        order_item.review_content = content.strip() if content else None
         order_item.reviewed_at = now
         
-        db.session.add(review)
         db.session.commit()
         
         logger.info(f"用户评价成功: user_id={user_id}, order_item_id={order_item_id}, rating={rating}")
@@ -71,10 +57,10 @@ def add_review():
             'code': 200,
             'message': '评价成功',
             'data': {
-                'review_id': review.id,
-                'rating': review.rating,
-                'content': review.content,
-                'created_at': review.created_at.isoformat()
+                'order_item_id': order_item_id,
+                'rating': order_item.rating,
+                'content': order_item.review_content,
+                'reviewed_at': order_item.reviewed_at.isoformat()
             }
         }), 200
         
@@ -99,8 +85,11 @@ def get_product_reviews(product_id):
         if not product:
             return jsonify({'code': 404, 'message': '商品不存在'}), 404
         
-        # 获取评价列表
-        reviews_query = Review.query.join(OrderItem).filter(OrderItem.product_id == product_id).order_by(Review.created_at.desc())
+        # 获取商品评价（从order_items表中获取已评价的记录）
+        reviews_query = OrderItem.query.filter(
+            OrderItem.product_id == product_id,
+            OrderItem.rating.isnot(None)  # 只获取已评价的记录
+        ).order_by(OrderItem.reviewed_at.desc())
         
         pagination = reviews_query.paginate(
             page=page,
@@ -109,23 +98,27 @@ def get_product_reviews(product_id):
         )
         
         reviews = []
-        for review in pagination.items:
+        for order_item in pagination.items:
+            user = User.query.get(order_item.order.user_id)
             reviews.append({
-                'id': review.id,
-                'user_name': review.user.username if review.user else '匿名用户',
-                'rating': review.rating,
-                'content': review.content,
-                'created_at': review.created_at.isoformat(),
-                'image_url': review.image_url,
-                'video_url': review.video_url
+                'id': order_item.id,
+                'user_name': user.username if user else '匿名用户',
+                'rating': order_item.rating,
+                'content': order_item.review_content,
+                'created_at': order_item.reviewed_at.isoformat() if order_item.reviewed_at else None,
+                'image_url': order_item.review_image_url,
+                'video_url': order_item.review_video_url
             })
         
         # 计算平均评分和总评价数
         from sqlalchemy import func
         rating_stats = db.session.query(
-            func.avg(Review.rating).label('avg_rating'),
-            func.count(Review.id).label('total_count')
-        ).join(OrderItem).filter(OrderItem.product_id == product_id).first()
+            func.avg(OrderItem.rating).label('avg_rating'),
+            func.count(OrderItem.id).label('total_count')
+        ).filter(
+            OrderItem.product_id == product_id,
+            OrderItem.rating.isnot(None)
+        ).first()
         
         return jsonify({
             'code': 200,
@@ -170,16 +163,8 @@ def check_review_status(order_item_id):
         if not order_item:
             return jsonify({'code': 404, 'message': '订单项不存在'}), 404
         
-        # 检查是否已评价（优先使用order_item的is_reviewed字段）
-        has_reviewed = order_item.is_reviewed
-        existing_review = None
-        
-        if has_reviewed:
-            # 如果已评价，获取评价详情
-            existing_review = Review.query.filter_by(
-                order_item_id=order_item_id,
-                user_id=user_id
-            ).first()
+        # 检查是否已评价
+        has_reviewed = order_item.rating is not None
         
         return jsonify({
             'code': 200,
@@ -190,10 +175,9 @@ def check_review_status(order_item_id):
                 'product_name': order_item.product.name if order_item.product else '未知商品',
                 'can_review': order_item.order.status == 'completed' and not has_reviewed,
                 'has_reviewed': has_reviewed,
-                'review_id': existing_review.id if existing_review else None,
-                'review_rating': existing_review.rating if existing_review else None,
-                'review_content': existing_review.content if existing_review else None,
-                'review_created_at': existing_review.created_at.isoformat() if existing_review else None
+                'review_rating': order_item.rating,
+                'review_content': order_item.review_content,
+                'review_created_at': order_item.reviewed_at.isoformat() if order_item.reviewed_at else None
             }
         }), 200
         
