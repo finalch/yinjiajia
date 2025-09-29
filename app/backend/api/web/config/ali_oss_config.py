@@ -1,5 +1,4 @@
-# oss_key_id = ""
-# oss_key_secret = ""
+
 oss_bucket = "yjj-test-bucket"
 oss_endpoint = "oss-cn-hangzhou.aliyuncs.com"
 oss_prefix = "yjj-oss"
